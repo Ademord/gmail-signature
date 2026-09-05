@@ -1,156 +1,124 @@
-# Gmail signature — Juan Francisco Ribera Laszkowski
+# Signature editor
 
-A Gmail-compatible HTML email signature that reproduces the business card
-(front + back A, side by side) 1:1 at screen scale: each panel is 321 × 208 px,
-which is 85 × 55 mm at 96 dpi. Built with tables and inline styles only, so
-Gmail's signature editor keeps everything.
+A static email signature editor with a live preview, editable contact details, and HTML export. The public example is **Avery Morgan**. Your own details stay in your browser unless you copy, download, or deliberately share them.
 
-## Repository layout
+![Signature editor preview](docs/preview.png)
 
-```
-.
-├── README.md             this file
-├── signature.html        preview page + "copy to clipboard" tool (open in Chrome)
-├── signature-only.html   the bare signature markup, nothing else (what gets pasted into Gmail)
-└── sig/
-    ├── dots.png          front-panel dot grid, 152 × 364 px (2×, displayed at 76 × 182)
-    ├── icon-mail.png     30 × 30 px (2×, displayed at 15 × 15), cream #f3f0ea stroke on transparent
-    ├── icon-phone.png
-    ├── icon-linkedin.png
-    └── icon-pin.png
+## Run locally
+
+Install Node.js 22 or newer, then run these commands in this folder:
+
+```sh
+npm start
 ```
 
-## Instructions for Claude Code (or whoever pushes this)
+Open **http://127.0.0.1:4173**. No package install is required: the app and scripts have no third-party dependencies. Stop the server with Ctrl+C. `signature.html` is also an editor entry point.
 
-1. Push this folder as-is to a **public** GitHub repository (or a public branch of one).
-   The PNGs must stay in `sig/` and keep their names.
-2. Work out the raw base URL of the `sig/` folder:
-   `https://raw.githubusercontent.com/<user>/<repo>/<branch>/sig`
-   Verify it by opening `<base>/icon-mail.png` in a browser — it must return the PNG, not HTML.
-3. In `signature.html` and `signature-only.html`, replace every occurrence of the
-   placeholder `https://YOUR-HOST/sig` with that base URL (no trailing slash). Commit and push again.
-   (`signature.html` also has an input field at the top that does this substitution live in the
-   browser, so step 3 is optional if the user prefers to type the URL there each time.)
-4. Report the final base URL back to the user.
+If that port is occupied, set `PORT` before starting. In PowerShell: `$env:PORT='4186'`, then `npm start`. The server prints its actual address.
 
-Do not change any pixel values, font stacks, colours or table structure — they were measured
-against the original card (see "Verification" below).
+The local server serves only the app files and the eleven approved PNG assets. It does not serve this README, handoff notes, `.git`, `.private`, or arbitrary files from the folder.
 
-## Installing in Gmail
+## Make your signature
 
-1. Open `signature.html` in Chrome. Make sure the image base URL field at the top contains the
-   real hosted URL and the preview shows the icons and dot grid.
-2. Click **Copy signature to clipboard** (it writes real `text/html` to the clipboard).
-   Fallback: select the two panels with the mouse and press Ctrl/Cmd+C.
-3. Gmail → Settings (gear) → *See all settings* → *General* → *Signature* → *Create new* → paste with
-   Ctrl/Cmd+V → *Save Changes* at the bottom of the page.
-4. Send yourself a test mail and check it on desktop and on the phone app.
+1. Replace the example details. A portfolio website can replace an email address; other contact fields can be left blank.
+2. Choose the paired or stacked cards and adjust the card width and height. The preview and exported signature use the same renderer.
+3. The image base is prefilled with the original public asset folder. To use your own host, open Layout → Advanced settings and set a public HTTPS URL for the `sig` folder. Recipients need a publicly reachable image URL; the editor's local preview uses bundled artwork for the default base.
+4. Copy the signature with the editor's copy action, then paste it into Gmail's signature settings. If clipboard access is denied, follow the editor's manual-copy fallback. If your browser blocks a download, open the editor in Chrome or Edge and retry.
+5. In Gmail, choose which signature is used for new messages and replies, then save changes.
+6. Send an actual test message and inspect the received message on desktop and mobile. Check images, spacing, and links before relying on it.
 
-Gmail's limit is 10,000 characters per signature; this one is 5147.
+Side-by-side cards export at 662 × 208 px by default. Stacked cards export at 321 × 436 px and suit narrower email views. Preview scaling helps the editor fit your screen; it does not resize the exported signature. The title is free text: use your current role and update it when the new role begins.
 
-## Why some things differ from the card (and what to expect)
+## Card colors and saved themes
 
-- **Fonts.** Gmail does not load web fonts. The stacks are
-  `Schibsted Grotesk → Helvetica Neue → Helvetica → Arial → sans-serif` for the name and
-  `IBM Plex Mono → SF Mono → Menlo → Consolas → Courier New → monospace` for everything else.
-  Recipients with Schibsted Grotesk / IBM Plex Mono installed see the exact card typography;
-  everyone else gets the fallback. The layout was rendered with Arial/Courier-class fallbacks
-  too and nothing wraps or shifts (Arial Bold "Ribera Laszkowski" measures 186 px inside a
-  211 px column).
-- **Paper grain and gloss.** These were `data-screen-only` CSS overlays (SVG turbulence +
-  gradient, `mix-blend-mode`) on the original and have no email equivalent. The panels are flat
-  `#f3f0ea` / `#1c1c1c`.
-- **Icons and dot grid are images.** The originals were inline SVG and a CSS
-  `radial-gradient` background; Gmail strips both, so they are hosted PNGs at 2× resolution.
-  They render exactly as on the card, including the four off-grid red dots. If images are
-  blocked by a recipient, the signature degrades to the text + the cream vertical rule.
-- **Uppercase is literal.** `text-transform` is not supported by Gmail, so the title, tagline
-  and tags are typed in capitals.
-- **Gap between the panels** is a 20 px spacer cell (`<td width="20">`). On the original
-  desk view the cards were 9 mm ≈ 34 px apart; change that one value if you want it wider.
+Open **Colors** to choose the name-card background, contact-card background, and accent. Use the color pickers or type six-digit hex codes. The same colors appear in the preview, copied HTML, downloads, and draft links. Text automatically switches to a readable color when necessary, including when an accent is too close to its background.
 
-## Verification
+Start with Original, Midnight, or Spruce, or choose your own colors. Enter a unique theme name and click **Save new**. To revise a saved theme, select it, change its colors or name, and click **Update selected**. **Delete** removes the saved theme while leaving the current card colors in place; an Undo action restores it.
 
-The signature was rendered in headless Chromium next to the original card (fonts embedded
-for the comparison) and element positions were measured:
+Themes persist in this browser and store only the three colors and a name. Applying a theme does not replace your contact details, job title, card size, or arrangement. Clearing browser data removes saved themes. Draft links include the current colors, but not your theme library. Older drafts automatically use the original card colors.
 
-| Element | Original (px) | Signature (px) |
-|---|---|---|
-| Panel size | 321 × 208 | 321 × 208 |
-| Red square | 17 × 17 at (22.7, 22.7) | 17 × 17 at (23, 23) |
-| Name block top | y = 80.1 | y = 80 |
-| Title top | y = 132.6 | y = 133 |
-| Tagline top | y = 160.6 | y = 161 |
-| Dot grid | 76 × 181 at (234.3, 13.2) | 76 × 182 at (234, 13) |
-| Contact rows | y = 61.7 / 86.6 / 111.6 / 136.5 | y = 61 / 86 / 111 / 136 |
-| Contact text x | 62.2 | 63 |
-| Cream rule x | 51.4 | 52 |
-| Red line | y = 164.4 | y = 165 |
-| Tags top | y = 175.2 | y = 175 |
-| "j.francisco.ribera@gmail.com" width | 145.3 | 145.3 |
+## Contact icons
 
-CSS checked absent from the pasted markup: `position`, `flex`, `grid`, `background-image`,
-`<svg>`, `data:` URIs, `<style>`, `class`, `text-transform`, `margin`, `@font-face`, `transform`.
+Open **Icons** to choose a globe, envelope, phone, LinkedIn mark, location pin, or **None** for each contact row. The selector shows the selected artwork. None hides only the icon; leaving a contact field empty hides the entire row. Choices persist with the signature draft and travel in draft links and HTML exports. Color themes leave icon choices unchanged.
 
-## The signature markup
+The signature uses transparent PNG files in `sig/`. The renderer checks the contact-card background and automatically chooses cream or charcoal artwork with at least 3:1 calculated contrast. No solid backing boxes or CSS filters are needed in email. Publish all eleven PNG files with the demo, including the five `*-dark.png` variants, and keep the image base pointing to that public folder. Icon selectors choose from this bundled set; they do not upload files.
 
-This is `signature-only.html` verbatim (placeholder `https://YOUR-HOST/sig` still in place):
+To regenerate the dark variants after changing the original icons, run `node scripts/prepare-icons.mjs`. This dependency-free script preserves the original dimensions and every alpha byte while changing the ink to charcoal.
 
-```html
-<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr>
-<td valign="top" style="padding:0">
-<table cellpadding="0" cellspacing="0" border="0" width="321" style="border-collapse:collapse;width:321px;height:208px;background-color:#f3f0ea"><tr>
-<td valign="top" style="padding:23px 0 23px 23px;vertical-align:top">
-<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-<tr><td style="padding:0;width:17px;height:17px;background-color:#c8362a;font-size:1px;line-height:17px">&nbsp;</td></tr>
-</table>
-<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-<tr><td style="padding:40px 0 0 0;font-family:'Schibsted Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:21px;line-height:23px;font-weight:600;letter-spacing:-0.2px;color:#1c1c1c;white-space:nowrap">Juan Francisco<br>Ribera Laszkowski</td></tr>
-<tr><td style="padding:7px 0 0 0;font-family:'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:9px;line-height:11px;font-weight:500;letter-spacing:0.73px;color:#c8362a;white-space:nowrap">AI PLATFORM ENGINEER</td></tr>
-<tr><td style="padding:17px 0 0 0;font-family:'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:8px;line-height:12px;letter-spacing:1.11px;color:#5a5651;white-space:nowrap">BUILDING RELIABLE AI PLATFORMS<br>THAT SCALE.</td></tr>
-</table>
-</td>
-<td valign="top" align="right" width="76" style="width:76px;padding:13px 11px 0 0;vertical-align:top;text-align:right;line-height:0;font-size:0"><img src="https://YOUR-HOST/sig/dots.png" width="76" height="182" alt="" style="width:76px;height:182px;border:0;vertical-align:top"></td>
-</tr></table>
-</td>
-<td width="20" style="width:20px;padding:0;font-size:1px;line-height:1px">&nbsp;</td>
-<td valign="top" style="padding:0">
-<table cellpadding="0" cellspacing="0" border="0" width="321" style="border-collapse:collapse;width:321px;height:208px;background-color:#1c1c1c"><tr>
-<td valign="top" style="padding:23px;vertical-align:top">
-<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-<tr><td style="padding:0"><table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-<tr><td style="padding:0;width:17px;height:17px;background-color:#c8362a;font-size:1px;line-height:17px">&nbsp;</td></tr>
-</table></td></tr>
-<tr><td style="padding:21px 0 0 0">
-<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:9.45px;line-height:13px;letter-spacing:0.19px;color:#f3f0ea">
-<tr>
-<td width="17" valign="middle" style="width:17px;height:15px;padding:0 10px 10px 2px;vertical-align:middle"><img src="https://YOUR-HOST/sig/icon-mail.png" width="15" height="15" alt="" style="display:block;width:15px;height:15px;border:0"></td>
-<td rowspan="4" width="1" style="width:1px;padding:0;background-color:#f3f0ea;font-size:1px;line-height:1px">&nbsp;</td>
-<td valign="middle" style="padding:0 0 10px 10px;height:15px;vertical-align:middle;white-space:nowrap"><a href="mailto:j.francisco.ribera@gmail.com" style="color:#f3f0ea;text-decoration:none">j.francisco.ribera@gmail.com</a></td>
-</tr>
-<tr>
-<td valign="middle" style="width:17px;height:15px;padding:0 10px 10px 2px;vertical-align:middle"><img src="https://YOUR-HOST/sig/icon-phone.png" width="15" height="15" alt="" style="display:block;width:15px;height:15px;border:0"></td>
-<td valign="middle" style="padding:0 0 10px 10px;height:15px;vertical-align:middle;white-space:nowrap"><a href="tel:+41765593461" style="color:#f3f0ea;text-decoration:none">+41 76 559 34 61</a></td>
-</tr>
-<tr>
-<td valign="middle" style="width:17px;height:15px;padding:0 10px 10px 2px;vertical-align:middle"><img src="https://YOUR-HOST/sig/icon-linkedin.png" width="15" height="15" alt="" style="display:block;width:15px;height:15px;border:0"></td>
-<td valign="middle" style="padding:0 0 10px 10px;height:15px;vertical-align:middle;white-space:nowrap"><a href="https://www.linkedin.com/in/ribr" style="color:#f3f0ea;text-decoration:none">linkedin.com/in/ribr</a></td>
-</tr>
-<tr>
-<td valign="middle" style="width:17px;height:15px;padding:0 10px 0 2px;vertical-align:middle"><img src="https://YOUR-HOST/sig/icon-pin.png" width="15" height="15" alt="" style="display:block;width:15px;height:15px;border:0"></td>
-<td valign="middle" style="padding:0 0 0 10px;height:15px;vertical-align:middle;white-space:nowrap">Winterthur, Switzerland</td>
-</tr>
-</table>
-</td></tr>
-<tr><td style="padding:13px 0 0 0">
-<table cellpadding="0" cellspacing="0" border="0" width="275" style="border-collapse:collapse;width:275px">
-<tr><td style="padding:0;height:1px;background-color:#c8362a;font-size:1px;line-height:1px">&nbsp;</td></tr>
-<tr><td style="padding:10px 0 0 0;font-family:'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:8px;line-height:10px;letter-spacing:1.11px;color:#b5b0a8;white-space:nowrap">PLATFORMS &middot; DATA &middot; ML &middot; AUTOMATION</td></tr>
-</table>
-</td></tr>
-</table>
-</td>
-</tr></table>
-</td>
-</tr></table>
+## Undo and redo
+
+Use **Undo** and **Redo** above the fields to move through text, color, icon, dimension, layout, theme-application, reset, and same-page draft-import changes. Continuous typing in one field is grouped into a step. Invalid edits can be undone too. A new edit after Undo clears the abandoned Redo branch.
+
+History holds up to 100 steps in the current page session. Reloading the page clears history but retains the saved draft. Saving or deleting named themes uses the theme library's own controls; draft history does not change that library.
+
+## Back up and restore a session
+
+Click **Export data** below the editor, then **Download JSON**. **Copy JSON** is available too. The file contains your signature details, colors, icons, card dimensions, saved themes, active editor tab, preview view, and image-export settings. Keep it somewhere private: contact details are readable in the file.
+
+On another browser or device, open **Import data**, choose the JSON file or paste its contents, and click **Restore session**. Import replaces the current signature and adds the saved themes. Existing themes stay; duplicates are reused and conflicting names receive an imported suffix. Invalid files show an error before anything changes. Older plain signature-draft JSON files are also accepted.
+
+The JSON file works between the local editor and the hosted demo. Browser storage is separate for each site address, so export before moving. A restored signature can be undone in the current tab; that Undo does not remove imported themes. Undo history itself is not included in a backup.
+
+![Session import dialog](docs/session.png)
+
+## Export an HD image
+
+Click **Export image · HD** beside the preview, then choose **2×**, **4× HD**, or **6× Maximum**. The dialog shows the PNG before downloading and its exact dimensions. The default paired signature exports at 2648 × 832 px at 4×; stacked layouts and custom card sizes are respected. Choose a transparent or white gap between the cards.
+
+Click **Download PNG**, or right-click the generated preview and save the image. The PNG contains only the cards. Images do not preserve clickable links; use Copy signature for linked email signatures. A blocked browser download is reported as a request, not a confirmed file save.
+
+![HD PNG export dialog](docs/export.png)
+
+Rendering uses the same table HTML as the live preview, with its image assets embedded before rasterization. Default artwork loads locally, so PNG export works before the demo is published. A custom image host must allow cross-origin reads and serve valid image files; missing or corrupt artwork stops export with an error. Text is rendered at the selected resolution; original raster artwork retains its source detail. Checked in the Chromium-based Codex browser; other browser engines need their own verification. See [MDN's SVG image restrictions](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image) for the embedding requirement.
+
+Gmail setup and its 10,000-character limit are described in [Google's signature instructions](https://support.google.com/mail/answer/8395?hl=en).
+
+Keep a downloaded copy somewhere private if you need a backup. Browser data can be cleared, and drafts belong to the browser and site address where you created them. This app has no account or server-side draft storage. Local drafts are convenient storage, not encryption: someone with access to your browser profile can read them.
+
+## Publish your own demo
+
+The repository includes a GitHub Pages workflow. Before your first deployment:
+
+1. Review the files you intend to commit. Public source should contain only example values; do not commit a personal export or backup.
+2. In the GitHub repository, open **Settings → Pages → Build and deployment → Source**, and select **GitHub Actions**.
+3. Push the reviewed source to `main`. The workflow runs the tests, builds the public files, and deploys the `dist` artifact. You can also run it from the Actions tab with **Run workflow**. Pull requests run tests and build without deploying.
+4. Open the Pages address reported by the successful deployment. The public images will be under that address's `sig/` path. Use that full HTTPS path as the image base, and open `dots.png` at that path to check it loads.
+
+For example, a project published at `https://YOUR-USERNAME.github.io/YOUR-REPOSITORY/` uses `https://YOUR-USERNAME.github.io/YOUR-REPOSITORY/sig` as its image base. Keep the site and image paths stable so signatures already sent can still load their assets.
+
+For updates, back up your session, pull the latest source, run the checks below, and restart the local server. After a Pages deployment succeeds, refresh the hosted editor. If old controls remain, use a hard refresh. Import your JSON when moving between the local and hosted addresses. If saving is blocked by browser settings or storage limits, the editor reports that the session is only in the current tab; export it before closing.
+
+The Pages workflow follows [GitHub's custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). The local build scripts do not push changes, alter repository visibility, or rewrite history.
+
+## Privacy and existing history
+
+**The old commits in this repository contain personal contact information. Replacing the current files does not erase that history.** A public source repository exposes its committed history even when the deployed site contains only generic examples. `.gitignore` does not remove files that were already tracked.
+
+Before making this repository public or pushing its existing history to a new public repository, decide whether you want to retain that history. A fresh repository containing only the reviewed generic files is one option. Rewriting history is a separate operation that can disrupt existing clones and does not remove copies already made elsewhere. This project does not do it automatically.
+
+The build publishes only its explicit app and PNG allowlist. Keep private notes and exports under the ignored `.private/` folder, or outside the repository. When you paste the signature into email, its contact details become part of that message. Loading externally hosted images also contacts their host, subject to the email client's image proxy behavior.
+
+## Checks and project files
+
+```sh
+npm test
+npm run build
 ```
+
+Tests check safe input handling, optional fields, Unicode values, declared dimensions, export size, undo/redo, icon contrast and transparency, PNG export validation, session-file round trips and theme merging, storage recovery, and the public-file boundary. The build replaces `dist` with the ten app files and eleven PNG assets listed in `scripts/public-files.mjs`; documentation and repository metadata are excluded.
+
+| File | Purpose |
+| --- | --- |
+| `index.html`, `signature.html` | Editor entry points |
+| `app.js`, `editor.css` | Editor behavior and styling |
+| `signature-core.js` | Shared validation, HTML rendering, and plain text output |
+| `editor-history.js` | Bounded session undo/redo snapshots |
+| `signature-image.js` | HD PNG rendering, preview and download dialog |
+| `session-data.js`, `session-controls.js` | Validated session files, theme merging, and import/export dialog |
+| `signature-only.html` | Generic standalone signature example |
+| `sig/` | Hosted decorative grid and contact icons |
+| `scripts/` | Dependency-free local server and public build |
+| `tests/` | Node tests |
+| `.github/workflows/pages.yml` | Tests, build, and GitHub Pages deployment |
+
+The signature uses tables and inline styling to suit email. Email clients can still change fonts, colors, spacing, and image loading. Browser screenshots and automated tests verify the editor and generated markup; they **do not prove that Gmail preserves the signature after pasting or sending**. A real Gmail recipient test remains the final compatibility check. See `PROGRESS.md` for the latest checks actually completed.

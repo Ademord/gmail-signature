@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.private/
+test-results/
+.test-tmp/
+signature-session-*.json
+*.log
