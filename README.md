@@ -2,6 +2,8 @@
 
 A static email signature editor with a live preview, editable contact details, and HTML export. The public example is **Avery Morgan**. Your own details stay in your browser unless you copy, download, or deliberately share them.
 
+[Open the live demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml)
+
 ![Signature editor preview](docs/preview.png)
 
 ## Run locally
