@@ -1,0 +1,33 @@
+/* The collection is available when requested; the workspace stays focused. */
+.design-library{width:min(1060px,calc(100vw - 48px));max-width:none;max-height:min(840px,calc(100dvh - 64px));padding:0;border:1px solid #d7dcd5;border-radius:12px;background:#fffefa;color:#30372f;box-shadow:0 24px 80px #17271b35;overflow:hidden}
+.design-library[open]{display:flex;flex-direction:column}
+.design-library::backdrop{background:#18241b70;backdrop-filter:blur(3px)}
+.library-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:25px 28px 20px;flex:none}
+.library-heading h2{font:600 23px/1.25 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:-.65px;margin:0}
+.library-heading p{font-size:13px;line-height:1.5;color:#707a6b;margin:6px 0 0}
+.library-heading .icon-button{margin:-4px -7px 0 0;min-width:40px;min-height:40px;border:0;box-shadow:none;background:transparent;color:#5a6755}
+.library-tabs{display:flex;gap:3px;padding:0 28px;border-bottom:1px solid #e0e4dc;flex:none}
+.library-tabs button{position:relative;border:0;background:transparent;color:#70796b;font:500 13px/1.4 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;padding:12px 18px;min-height:44px}
+.library-tabs button:first-child{padding-left:0;padding-right:23px}
+.library-tabs button[aria-selected="true"]{color:#263c2b}
+.library-tabs button[aria-selected="true"]:after{content:"";position:absolute;height:2px;background:#3f6044;bottom:-1px;left:14px;right:14px}
+.library-tabs button:first-child[aria-selected="true"]:after{left:0;right:18px}
+.library-tabs span{font:10px/1 ui-monospace,Consolas,monospace;margin-left:5px;color:#828d7b}
+.library-content{padding:24px 28px 28px;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-gutter:stable}
+.library-note{font-size:12px;line-height:1.5;color:#6e7867;margin:0 0 18px}
+.design-library .design-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;overflow:visible;padding:0;scroll-snap-type:none}
+.design-library .design-choice{min-width:0;display:flex;flex-direction:column;text-align:left;flex:none;border-color:#dde2d7;border-radius:8px;box-shadow:none;overflow:hidden}
+.design-library .design-choice:hover{transform:none;border-color:#879b79}
+.design-library .design-choice[aria-pressed="true"]{border-color:#526e44;box-shadow:0 0 0 1px #526e44}
+.design-library .design-thumbnail{background:#e9ece3}
+.design-library .collection-choice .design-thumbnail{background:#e7e9e2}
+.design-library .design-caption{padding:12px 13px 5px;font-size:13px;line-height:1.4}
+.design-library .design-caption strong{font-size:13px}
+.design-library .design-caption-note{font-size:11px;line-height:1.5;color:#727c6b;padding:0 13px 14px}
+.design-library .design-number{font-size:10px}
+.design-library .pattern-choices{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin:0}
+.design-library .pattern-choice{min-height:164px;padding:14px 7px 11px;gap:10px;font-size:12px;border-radius:7px;background:#f3f5ee}
+.design-library .pattern-artwork{width:76px;max-width:100%;height:112px;overflow:hidden;font-size:30px}
+.design-library .pattern-artwork img{width:47px;height:112px;object-fit:contain}
+@media(max-width:780px){.design-library{width:calc(100vw - 32px);max-height:calc(100dvh - 32px)}.library-heading{padding:21px 20px 17px}.library-tabs{padding:0 20px}.library-content{padding:20px}.design-library .design-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.design-library .pattern-choices{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.design-library .pattern-choice{min-height:148px}.design-library .pattern-artwork{height:96px}.design-library .pattern-artwork img{height:96px;width:40px}}
+@media(max-width:480px){.design-library{width:calc(100vw - 20px);max-height:calc(100dvh - 20px);border-radius:10px}.library-heading{padding:19px 17px 16px;gap:12px}.library-heading h2{font-size:21px}.library-heading p{font-size:12px}.library-tabs{padding:0 17px}.library-tabs button{font-size:12px;padding-inline:13px}.library-content{padding:17px}.design-library .design-gallery{grid-template-columns:1fr;gap:14px}.design-library .design-caption,.design-library .design-caption strong{font-size:14px}.design-library .design-caption-note{font-size:12px}.design-library .pattern-choices{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.design-library .pattern-choice{font-size:11px}}

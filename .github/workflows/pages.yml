@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - name: Test
         run: npm test
+      - name: Check generated artwork
+        run: node scripts/prepare-patterns.mjs --check
       - name: Build public files
         run: npm run build
       - name: Configure Pages

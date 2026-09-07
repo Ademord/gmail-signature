@@ -9,6 +9,8 @@ const types = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
+  '.bin': 'application/octet-stream',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 export function createPublicServer(root = projectRoot) {

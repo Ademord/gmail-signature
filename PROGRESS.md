@@ -1,8 +1,41 @@
 # Signature editor — progress and handoff
 
-Updated: 2026-09-06. Current task: add portable session export/import, back up the user's data before loading sample values, then publish to the existing public GitHub repository and GitHub Pages. Publication is explicitly authorized. Do not rewrite history or change repository visibility.
+Updated: 2026-09-07. Active scope: six new compositions, private smart portrait cropping, four fantasy themes, external-AI extension, selective imports, and a simpler editor. The user selected gauntlet-loop and expanded the team from six to eight agents. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
 
-## Resume here
+## Active design-studio gauntlet
+
+- Working checkout: `C:\Users\Franco\Documents\ChatGPT\mvp\gmail-signature`, branch `codex/signature-design-studio`, starting at `3c46e99`. The original Downloads checkout and private backups are preserved.
+- Reference: real HubSpot Email Signature Generator, https://www.hubspot.com/email-signature-generator. Fresh paired captures have actual DOM viewports of 1280×720; mobile checks use 390×844. Earlier requested viewport sizes did not apply to the reference tab, so those earlier captures are not treated as a matched comparison.
+- Eight agents across waves: renderer, studio UI, artwork/roadmap, portrait critic, studio critic, release critic, AI builder and extension critic. Lead implements portraits, collections, selective imports, integration and release. Current decluttering is assigned to the artwork/UI builder with a separate critic recheck.
+- Six new designs: Orbit, Studio, Contour, Prism, Editorial, Signal. Original remains available. Designs change composition, artwork and palette. Fields, dimensions, themes, icon choices, HTML/PNG, history and session backups must remain usable.
+- Portraits: local JPG/PNG/WebP upload; bundled Pico worker detects face regions; manual pan/zoom, multi-face choice, brightness, monochrome, mirror, shape/size, square crop download and removal. Uploaded crop stays in local storage/JSON/PNG. Clickable HTML needs a hosted square photo URL; do not silently embed unsupported local data in email HTML or upload a photo to a service.
+- Galaxy, Starlight, Moonlight (Sailor Moon inspired) and Frost Crown (Frozen Throne inspired) collections add four sets of procedural artwork and palettes. Original and all six new geometries remain available.
+- External-AI workflow works in seven sections: visible prompt, optional manual selection, editable examples, strict JSON response validation, separate proposal preview, one-step apply/undo and stale-proposal rejection. Custom layout recipes choose a base composition, name font and alignment; custom artwork uses bounded native-table pixel patterns. Default prompts omit identity, contacts, photo data and URLs. No model API call or upload service.
+- User flagged crowding after the first integrated studio. The final editor moves galleries into a Browse designs library with Layouts/Themes/Artwork tabs and uses contextual AI links. Root browser checks and independent image/source review approve the revised UI. Updated README screenshots show the actual final workspace and dialogs.
+- Signal right-shift cause fixed: the first spacer row now declares all three frame columns. Root Codex browser and independent screenshot review confirmed the aligned frame, including a photo. The latest user screenshot depicts the pre-fix frame; recheck after final refresh/publication.
+- Selective imports now have Information and Design checkboxes. Unselected fields stay; Design includes saved themes and photo formatting, Information includes the photo itself. Copy cleanup supports email escape artifacts and identical Markdown URL wrappers and reports each cleanup. User's exact pasted example validates with three cleanups; its contents are only in ignored `.private/`.
+- Gmail check attempted: available browser redirects to Google sign-in. No authenticated Gmail session is available and no test email has been sent. Finish other work; a real send/receive check needs user sign-in and explicit test-send authorization.
+- User explicitly chose Codex's browser instead of personal Edge. Actual Codex downloads were found in the OS Downloads folder: JSON 34,132 bytes, SHA256 `632126046560D79BB6247A84C31C8483DF0FB56B68A202A60EBABE3C9A804A49`; portrait PNG 2648×832, 272,069 bytes, SHA256 `BAB63A2B0A2DF3E32C556CDFC97826550160C4459E6589909D5CBCA4C49FE0D8`. Native Edge automation was stopped by its URL-confidence safety check and is no longer the selected browser path.
+- Hosted personal-session restoration remains pending. Back up the existing hosted session before importing; preserve both original private backup hashes. Public screenshots use generic details and the licensed NASA test photo.
+- Final complete local run: **155 tests, 154 pass, 0 fail, 1 Windows symlink skip**. All ten generated PNG assets pass deterministic checks; production build has **44 allowlisted files**, with matching HTML entry points and no private profile matches in publishable source. Original backup copies still match `4A43FCDFFDB2A05ACDEF378626AA50BE61368E651BE60D4CD4C5FC3B7CBE11ED`.
+- Final Signal PNG from Codex downloaded to the OS Downloads folder: 2648×832, 260,417 bytes, SHA256 `A53BB2E3C9A6709D2EC65EE0EF4C70C0442C6482160D67B2C1F0DD49CD0FCA4A`. Its frame and portrait were checked in the real preview; earlier renderer browser matrices tested 674 fitting cases and 68 decoded PNG cases.
+- Root browser: Design-only import retained Avery and the portrait while applying Signal/Frost; Undo restored Orbit/Galaxy. Information-only imported Jordan while keeping Galaxy; Undo restored the photo. Mobile import and library dialogs have equal client/scroll widths (335 and 369 px at a 390×844 viewport). Library keyboard tabs, selection close/focus return, and Custom artwork → AI dialog transition work. See the independent follow-up in `docs/reviews/ai-extension-2026-09-07.md`.
+
+| Current gate | Expected evidence | Status |
+| --- | --- | --- |
+| Seven designs / patterns / palettes | Real controls, distinct compositions, reversible changes without losing contacts | Passed, including final library |
+| Private smart portrait workflow | Real image detection and crop, manual adjustments, preview/PNG/JSON, safe HTML photo URL handling | Passed; saved crop Adjust also verified |
+| External AI and recipes | Privacy, strict section contract, actual preview/apply/history/session and failure recovery | Passed independent core and Codex browser review |
+| Selective import | Information/Design/both preserve unselected state; copied-text recovery | Passed independent tests and root browser checks |
+| Regression suite and public build | All existing journeys plus new independent expectations; exact allowlist | Passed locally: 154 pass / 1 platform skip, 44 files |
+| Independent visual comparison | Same-size real reference/artifact captures and critic verdict | GUI wins nonblind; final declutter also approved independently |
+| Exact-commit CI / Pages | Successful run, reviewed source published, critical live controls exercised | Pending |
+| Gmail send/receive | Received signature on desktop/mobile/light/dark | Blocked: sign-in and send authorization |
+| Browser downloads | Selected Codex browser download produces actual JSON/PNG files | Passed |
+
+The following sections retain the prior released baseline; they do not claim verification of the new design-studio changes.
+
+## Historical baseline — before the current studio extension
 
 - Local app: this folder. Remote: https://github.com/Ademord/gmail-signature, branch `main`. Starting commit: `1edfa379cee56bf06908987fc6c99f71f1003d7f`.
 - Published app commit: `a78925506dbd93c2ecf594720a634f3e81601d45`. [CI and Pages deployment passed](https://github.com/Ademord/gmail-signature/actions/runs/33995141058). [Live demo](https://ademord.github.io/gmail-signature/) verified in a fresh browser origin with Avery Morgan and zero saved themes. A documentation-only follow-up records this result; app source is unchanged.
@@ -55,7 +88,7 @@ Public screenshots use only generic example data. Actual personal HTML, draft li
 
 The repository was already public before this work. Old commits contain personal contact details; replacing current files and using an allowlisted build does not erase that history. No force push, history deletion or visibility change was performed. Hosted preview artwork and embedded PNG export now load successfully from the Pages site. Real email-client fetching of exported public image URLs remains part of the Gmail test below.
 
-## TODO for tomorrow
+## Historical TODOs — superseded by the active gate table above
 
 - Import the private session backup on the hosted editor when ready to use the personal signature there. The local and hosted sites have separate browser storage.
 - Paste a signature into Gmail and inspect an actual received message on desktop and mobile, including light/dark mail views. This has not been verified by sending email.

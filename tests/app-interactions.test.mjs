@@ -19,15 +19,17 @@ const coreSource = readFileSync(resolve(projectRoot, 'signature-core.js'), 'utf8
 const historySource = readFileSync(resolve(projectRoot, 'editor-history.js'), 'utf8');
 const sessionSource = readFileSync(resolve(projectRoot, 'session-data.js'), 'utf8');
 const sessionControlsSource = readFileSync(resolve(projectRoot, 'session-controls.js'), 'utf8');
+const collectionsSource = readFileSync(resolve(projectRoot, 'design-collections.js'), 'utf8');
 const pageSource = readFileSync(resolve(projectRoot, 'index.html'), 'utf8');
 const coreContext = { module: { exports: {} }, URL };
 vm.runInNewContext(coreSource, coreContext, { filename: 'signature-core.js' });
 const core = coreContext.module.exports;
 const storageKey = 'signature-studio:draft:v1';
 const draftHash = draft => '#v=' + Buffer.from(JSON.stringify(draft), 'utf8').toString('base64url');
+const localPortrait = 'data:image/png;base64,' + readFileSync(resolve(projectRoot, 'sig/icon-web.png')).toString('base64');
 
-function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, expectPreview = true } = {}) {
-  const nodes = new Map(), downloads = [], objectURLs = new Map(), revoked = [], timers = [], clipboardTexts = [];
+function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, expectPreview = true, clipboardSucceeds = false } = {}) {
+  const nodes = new Map(), downloads = [], objectURLs = new Map(), revoked = [], timers = [], clipboardTexts = [], clipboardItems = [];
   const storage = new Map(initialDraft ? [[storageKey, JSON.stringify(initialDraft)]] : []);
   if (initialThemes) storage.set('signature-studio:themes:v1', JSON.stringify(initialThemes));
   const globalEvents = new Map(), documentEvents = new Map();
@@ -97,7 +99,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   // Derive IDs from the real page so removed or renamed controls fail loudly.
   for (const match of pageSource.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)) new Element(match[1], match[2]);
   const node = id => { assert.ok(nodes.has(id), `Required app element #${id} exists`); return nodes.get(id); };
-  const panelNames = ['details', 'layout', 'colors', 'icons'];
+  const panelNames = ['details', 'layout', 'colors', 'icons', 'design', 'photo'];
   const tabs = panelNames.map(name => node(name + '-tab'));
   const panels = panelNames.map(name => node(name + '-panel'));
   tabs.forEach((element, index) => { element.dataset.editorTab = panelNames[index]; });
@@ -149,7 +151,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
       removeItem(key) { if (storageFails) throw new Error('QuotaExceededError'); storage.delete(key); },
     },
     navigator: { clipboard: {
-      async write() { clipboardAttempts++; throw new Error('Clipboard blocked'); },
+      async write(items) { clipboardAttempts++; if (clipboardSucceeds) { clipboardItems.push(...items); return; } throw new Error('Clipboard blocked'); },
       async writeText(value) { clipboardAttempts++; clipboardTexts.push(value); throw new Error('Clipboard blocked'); },
     } },
     URL: HarnessURL, Blob, ClipboardItem, TextEncoder, TextDecoder, Uint8Array, atob, btoa,
@@ -161,16 +163,18 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   vm.runInNewContext(historySource, context, { filename: 'editor-history.js' });
   vm.runInNewContext(sessionSource, context, { filename: 'session-data.js' });
   vm.runInNewContext(sessionControlsSource, context, { filename: 'session-controls.js' });
+  vm.runInNewContext(collectionsSource, context, { filename: 'design-collections.js' });
   vm.runInNewContext(appSource, context, { filename: 'app.js' });
   if (expectPreview) assert.ok(node('signature-preview').innerHTML.includes('<table'), 'Startup must render successfully; swallowed runtime errors are not a pass.');
   return {
-    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts,
+    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,
     failNextWrite(key) { nextWriteFailure = key; },
     get imageSettings() { return imageSettings; },
     click: id => node(id).click(),
     async input(key, value) { const field = inputs[key] || node(key); field.value = String(value); await emit(node('editor-form').events, 'input', { target: field }); },
     async selectTheme(id) { node('theme-select').value = id; await emit(node('theme-select').events, 'change'); },
     async pasteSession(text) { node('session-json').value = text; await emit(node('session-json').events, 'input'); },
+    async importParts(information, design) { node('session-import-information').checked=information; node('session-import-design').checked=design; await emit(node('session-import-information').events,'change'); },
     async chooseSessionFile(file) { node('session-file').files = [file]; await emit(node('session-file').events, 'change'); },
     async navigateHash(hash) { location.hash = hash; await emit(globalEvents, 'hashchange'); },
     get selected() { return selectedRanges.at(-1)?.container; },
@@ -178,6 +182,95 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     flushTimers() { for (const callback of timers.splice(0)) callback(); },
   };
 }
+
+test('fantasy collections change composition, palette and artwork together without losing photos or details', async () => {
+  const app = harness({initialDraft:{...core.defaults,nameLine1:'Jordan',portraitData:localPortrait}});
+  for (const [id,design,background] of [['galaxy','orbit','#15192e'],['starlight','editorial','#18283e'],['moonlight','contour','#f1e7fa'],['frost','signal','#d7eef6']]) {
+    await app.click('choose-collection-' + id);
+    const saved = JSON.parse(app.storage.get(storageKey));
+    assert.equal(saved.design,design); assert.equal(saved.pattern,id); assert.equal(saved.frontBackground,background);
+    assert.equal(saved.nameLine1,'Jordan'); assert.equal(saved.portraitData,localPortrait);
+    assert.match(app.node('signature-preview').innerHTML, new RegExp('pattern-' + id + '\\.png'));
+  }
+  await app.click('undo-change'); assert.equal(app.node('pattern').value,'moonlight');
+  await app.click('redo-change'); assert.equal(app.node('pattern').value,'frost');
+  await app.click('export-data'); const saved = app.node('session-json').value;
+  await app.click('close-session'); await app.click('reset-draft');
+  await app.click('import-data'); await app.pasteSession(saved); await app.click('session-restore');
+  assert.equal(app.node('pattern').value,'frost'); assert.equal(app.node('portraitData').value,localPortrait);
+});
+
+test('all seven design choices preserve identity and can be undone', async () => {
+  const app = harness();
+  await app.input('nameLine1', 'Jordan'); await app.input('website', 'https://example.org/work');
+  for (const id of ['orbit','studio','contour','prism','editorial','signal','original']) {
+    await app.click('choose-design-' + id);
+    const saved = JSON.parse(app.storage.get(storageKey));
+    assert.equal(saved.design, id); assert.equal(saved.nameLine1, 'Jordan'); assert.equal(saved.website, 'https://example.org/work');
+  }
+  await app.click('undo-change'); assert.equal(app.node('design').value, 'signal');
+  await app.click('redo-change'); assert.equal(app.node('design').value, 'original');
+});
+
+test('import cards apply information, design or both and leave unselected parts unchanged', async () => {
+  const incoming={format:'signature-editor-session',version:1,exportedAt:'2026-09-05T21:54:10.556Z',draft:{...core.defaults,nameLine1:'Jordan',design:'signal',pattern:'frost',frontBackground:'#e0eff6'},themes:[],ui:{}};
+  const app=harness({initialDraft:{...core.defaults,nameLine1:'Avery',design:'prism',portraitData:localPortrait}});
+  await app.click('import-data'); await app.pasteSession(JSON.stringify(incoming));
+  await app.importParts(false,false); assert.equal(app.node('session-restore').disabled,true);
+  await app.importParts(false,true); assert.equal(app.node('session-restore').disabled,false);
+  await app.click('session-restore'); assert.equal(app.node('nameLine1').value,'Avery'); assert.equal(app.node('design').value,'signal'); assert.equal(app.node('portraitData').value,localPortrait);
+  await app.click('undo-change'); assert.equal(app.node('design').value,'prism');
+  await app.click('import-data'); await app.pasteSession(JSON.stringify(incoming)); await app.importParts(true,false); await app.click('session-restore');
+  assert.equal(app.node('nameLine1').value,'Jordan'); assert.equal(app.node('design').value,'prism'); assert.equal(app.node('portraitData').value,'');
+  await app.click('import-data'); await app.pasteSession(JSON.stringify(incoming)); await app.click('session-restore');
+  assert.equal(app.node('design').value,'signal'); assert.equal(app.node('nameLine1').value,'Jordan');
+});
+
+test('design and uploaded photo survive export reset restore and history', async () => {
+  const app = harness({initialDraft: {...core.defaults, nameLine1:'Jordan', design:'prism', pattern:'contour', portraitData:localPortrait, portraitShape:'rounded', portraitSize:64}});
+  await app.input('theme-name', 'Portrait colors'); await app.click('save-theme'); await app.click('photo-tab');
+  await app.click('export-data'); const exported = app.node('session-json').value;
+  assert.equal(JSON.parse(exported).ui.editorTab, 'photo');
+  await app.click('close-session'); await app.click('reset-draft');
+  assert.equal(app.node('portraitData').value, '');
+  await app.click('import-data'); await app.pasteSession(exported); await app.click('session-restore');
+  const restored = JSON.parse(app.storage.get(storageKey));
+  assert.equal(restored.nameLine1,'Jordan'); assert.equal(restored.design,'prism'); assert.equal(restored.pattern,'contour');
+  assert.equal(restored.portraitData,localPortrait); assert.equal(restored.portraitShape,'rounded');
+  assert.equal(JSON.parse(app.storage.get('signature-studio:themes:v1')).themes[0].name,'Portrait colors');
+  assert.equal(app.node('photo-tab').getAttribute('aria-selected'),'true');
+  await app.click('undo-change'); assert.equal(app.node('portraitData').value,'');
+  await app.click('redo-change'); assert.equal(app.node('portraitData').value,localPortrait);
+});
+
+test('uploaded-only portraits never silently become broken email HTML or oversized draft links', async () => {
+  const app = harness({initialDraft:{...core.defaults,portraitData:localPortrait},clipboardSucceeds:true});
+  assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait));
+  await app.click('copy-signature'); assert.equal(app.clipboardItems.length,0);
+  assert.equal(app.node('photo-tab').getAttribute('aria-selected'),'true');
+  assert.match(app.node('status').textContent,/photo|portrait|hosted/i);
+  await app.click('download-html'); assert.equal(app.downloads.length,0);
+  await app.click('share-link'); assert.equal(app.clipboardTexts.length,0);
+  assert.match(app.node('status').textContent,/Export data/);
+  await app.click('export-data'); assert.equal(JSON.parse(app.node('session-json').value).draft.portraitData,localPortrait);
+});
+
+test('blocked storage guides photo users to a backup that can preserve the portrait', async () => {
+  const app=harness({initialDraft:{...core.defaults,portraitData:localPortrait},storageFails:true});
+  assert.match(app.footer.textContent,/Export data/);
+  await app.click('export-data'); await app.click('session-download');
+  const download=app.downloads.at(-1), backup=JSON.parse(await app.objectURLs.get(download.href).text());
+  assert.equal(backup.draft.portraitData,localPortrait);
+});
+
+test('normal rich clipboard writes both clickable public HTML and meaningful plain text', async () => {
+  const app = harness({initialDraft:{...core.defaults,nameLine1:'Jordan',design:'editorial',portraitUrl:'https://example.org/portrait.jpg'},clipboardSucceeds:true});
+  await app.click('copy-signature'); assert.equal(app.clipboardItems.length,1); assert.equal(app.attempts.legacy,0);
+  const parts=app.clipboardItems[0].parts, html=await parts['text/html'].text(), plain=await parts['text/plain'].text();
+  assert.match(html,/Jordan/); assert.match(html,/https:\/\/example\.org\/portrait\.jpg/); assert.match(html,/href="https:\/\/example.com/);
+  assert.doesNotMatch(html,/src="(?:data:|blob:|\.\/)/); assert.match(plain,/Jordan/); assert.match(plain,/example.com/);
+  assert.match(app.node('status').textContent,/Signature copied/);
+});
 
 test('manual clipboard fallback selects the current export with public image URLs', async () => {
   const app = harness();

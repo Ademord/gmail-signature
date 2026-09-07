@@ -5,13 +5,16 @@
     const $ = id => document.getElementById(id), codec = window.SignatureSession;
     const dialog = $('session-dialog');
     let mode = 'export', parsed = null, revision = 0;
+    const selection = () => ({information:$('session-import-information').checked,design:$('session-import-design').checked});
     function inspect() {
       parsed = null; $('session-restore').disabled = true;
       $('session-notice').dataset.error = 'false';
       if (!$('session-json').value.trim()) { $('session-notice').textContent = 'Choose a JSON file or paste your backup below.'; return; }
       try {
-        parsed = codec.parse($('session-json').value);
-        $('session-notice').textContent = [parsed.draft.nameLine1, parsed.draft.nameLine2].filter(Boolean).join(' ') + ' · ' + parsed.themes.length + ' saved theme' + (parsed.themes.length === 1 ? '' : 's');
+        const imported = codec.parsePasted($('session-json').value), parts = selection();
+        parsed = codec.selectParts(imported.session,settings.getSession(),parts);
+        const label = parts.information && parts.design ? 'Information and design ready to import.' : parts.information ? 'Information ready. Your current design and saved themes will stay.' : 'Design ready. Your current information and photo will stay.';
+        $('session-notice').textContent = label + (imported.repairs.length ? ' Cleaned copied text: ' + imported.repairs.join(' ') : '');
         $('session-restore').disabled = false;
       } catch (error) { $('session-notice').textContent = error.message; $('session-notice').dataset.error = 'true'; }
     }
@@ -23,7 +26,9 @@
       }
       ++revision; mode = nextMode; parsed = null;
       $('session-title').textContent = mode === 'export' ? 'Export session' : 'Import session';
-      $('session-description').textContent = mode === 'export' ? 'Save your signature, themes, and view settings in one JSON file.' : 'Restore your signature and add its saved themes. Existing themes stay.';
+      $('session-description').textContent = mode === 'export' ? 'Save your signature, themes, and view settings in one JSON file.' : 'Choose what to bring in. Everything else stays as it is.';
+      $('session-import-parts').hidden = mode !== 'import';
+      $('session-import-information').checked = true; $('session-import-design').checked = true;
       $('session-file-field').hidden = mode !== 'import';
       $('session-download').hidden = mode !== 'export';
       $('session-copy').hidden = mode !== 'export';
@@ -40,6 +45,7 @@
     $('close-session').addEventListener('click', () => dialog.close());
     dialog.addEventListener('close', () => { ++revision; parsed = null; });
     $('session-json').addEventListener('input', () => { ++revision; if (mode === 'import') inspect(); });
+    for (const id of ['session-import-information','session-import-design']) $(id).addEventListener('change', () => { if (mode === 'import') inspect(); });
     $('session-file').addEventListener('change', async () => {
       const request = ++revision, file = $('session-file').files[0];
       if (!file) return;
@@ -69,7 +75,7 @@
     });
     $('session-restore').addEventListener('click', () => {
       if (!parsed || mode !== 'import') return;
-      try { settings.restore(codec.parse($('session-json').value)); dialog.close(); }
+      try { settings.restore(codec.selectParts(codec.parsePasted($('session-json').value).session,settings.getSession(),selection())); dialog.close(); }
       catch (error) { $('session-notice').textContent = error.message; $('session-notice').dataset.error = 'true'; }
     });
   } });

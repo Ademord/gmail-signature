@@ -49,7 +49,7 @@
     var element = document.createElement('div');
     element.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     element.setAttribute('style', 'margin:0;padding:0;font-style:normal;font-variant:normal;letter-spacing:normal;text-align:left;direction:ltr;');
-    element.innerHTML = core.render(v, v.imageBase === core.defaults.imageBase ? { assetBase: './sig' } : {});
+    element.innerHTML = core.render(v, v.imageBase === core.defaults.imageBase ? { assetBase: './sig', allowPortraitData: true } : { allowPortraitData: true });
     // SVG images cannot fetch external resources. Embed each original PNG first.
     var assets = new Map();
     await Promise.all(Array.from(element.querySelectorAll('img')).map(async function (img) {
@@ -73,7 +73,8 @@
           return embedded;
         } catch (error) {
           if (options.signal && options.signal.aborted) throw new DOMException('Image export cancelled.', 'AbortError');
-          throw new Error('Could not load ' + new URL(source).pathname.split('/').pop() + '. Check the image base URL and that its host allows image export.');
+          var assetName = source.indexOf('data:') === 0 ? 'the uploaded photo' : new URL(source).pathname.split('/').pop();
+          throw new Error('Could not load ' + assetName + '. Check the image and that its host allows image export.');
         } finally {
           clearTimeout(timer);
           if (options.signal) options.signal.removeEventListener('abort', abort);

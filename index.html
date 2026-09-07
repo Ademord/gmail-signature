@@ -4,14 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f7f8">
-  <meta name="description" content="Create a personal email signature. Edit your details, adjust the layout, and copy it into your email settings.">
-  <title>Signature editor</title>
+  <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
+  <title>Signature Studio</title>
   <link rel="stylesheet" href="editor.css">
+  <link rel="stylesheet" href="portrait.css">
+  <link rel="stylesheet" href="ai-extension.css">
+  <link rel="stylesheet" href="library.css">
+  <script src="portrait-core.js" defer></script>
   <script src="signature-core.js" defer></script>
   <script src="editor-history.js" defer></script>
   <script src="signature-image.js" defer></script>
   <script src="session-data.js" defer></script>
   <script src="session-controls.js" defer></script>
+  <script src="portrait-controls.js" defer></script>
+  <script src="design-collections.js" defer></script>
+  <script src="ai-extension-core.js" defer></script>
+  <script src="ai-extension-controls.js" defer></script>
+  <script src="library-controls.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -19,7 +28,7 @@
   <header class="app-header">
     <a class="brand" href="./" aria-label="Signature editor home">
       <span class="brand-mark" aria-hidden="true"><span></span><span></span></span>
-      <span>Signature<span class="brand-descriptor">EDITOR</span></span>
+      <span>Signature<span class="brand-descriptor">STUDIO</span></span>
     </a>
     <div class="header-actions">
       <span class="save-state" id="save-status" role="status"><span class="status-dot" aria-hidden="true"></span>Draft saved</span>
@@ -35,24 +44,50 @@
   </header>
 
   <main class="workspace" data-preview-view="card">
-    <aside class="editor-rail" aria-label="Signature settings">
+    <aside id="signature-settings" class="editor-rail" aria-label="Signature settings">
       <div class="rail-heading">
-        <div><h1>Your signature</h1><p>Edit your details below.</p></div>
+        <div><h1>Edit signature</h1></div>
         <span class="edit-symbol" aria-hidden="true"><svg viewBox="0 0 20 20" width="19" height="19" fill="none"><path d="m11.9 4.1 4 4M3.5 16.5l1-4L13 4a1.9 1.9 0 0 1 2.7 0l.3.3a1.9 1.9 0 0 1 0 2.7l-8.5 8.5-4 1Z" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </div>
       <div class="editor-tabs" role="tablist" aria-label="Editor section">
-        <button id="details-tab" type="button" role="tab" aria-selected="true" aria-controls="details-panel" data-editor-tab="details" class="editor-tab is-active">Details</button>
+        <button id="design-tab" type="button" role="tab" aria-selected="true" aria-controls="design-panel" data-editor-tab="design" class="editor-tab is-active">Design</button>
+        <button id="details-tab" type="button" role="tab" aria-selected="false" aria-controls="details-panel" data-editor-tab="details" class="editor-tab" tabindex="-1">Details</button>
+        <button id="photo-tab" type="button" role="tab" aria-selected="false" aria-controls="photo-panel" data-editor-tab="photo" class="editor-tab" tabindex="-1">Photo</button>
         <button id="layout-tab" type="button" role="tab" aria-selected="false" aria-controls="layout-panel" data-editor-tab="layout" class="editor-tab" tabindex="-1">Layout</button>
         <button id="colors-tab" type="button" role="tab" aria-selected="false" aria-controls="colors-panel" data-editor-tab="colors" class="editor-tab" tabindex="-1">Colors</button>
         <button id="icons-tab" type="button" role="tab" aria-selected="false" aria-controls="icons-panel" data-editor-tab="icons" class="editor-tab" tabindex="-1">Icons</button>
       </div>
 
-      <div class="history-actions" role="group" aria-label="Edit history">
+      <div class="history-actions" role="group" aria-label="Edit history"><a class="mobile-preview-link" href="#preview-heading">View preview ↑</a>
         <button id="undo-change" class="history-button" type="button" aria-label="Undo last change" title="Undo last change" disabled><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="M6.5 4 3 7.5 6.5 11M3.5 7.5H11a4 4 0 0 1 0 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Undo</button>
         <button id="redo-change" class="history-button" type="button" aria-label="Redo last change" title="Redo last change" disabled><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="m11.5 4 3.5 3.5-3.5 3.5M14.5 7.5H7a4 4 0 0 0 0 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Redo</button>
       </div>
       <form id="editor-form" autocomplete="off">
-        <div id="details-panel" role="tabpanel" aria-labelledby="details-tab" data-editor-panel="details">
+        <input id="customPattern" name="customPattern" type="hidden" value="">
+        <input id="customLayout" name="customLayout" type="hidden" value="">
+        <input id="portraitData" name="portraitData" type="hidden" value="">
+        <input id="portraitUrl" name="portraitUrl" type="hidden" value="">
+        <input id="portraitShape" name="portraitShape" type="hidden" value="circle">
+        <input id="portraitSize" name="portraitSize" type="hidden" value="64">
+        <div id="design-panel" role="tabpanel" aria-labelledby="design-tab" data-editor-panel="design">
+          <fieldset class="field-section">
+            <legend>Design</legend>
+            <div class="field"><label for="design">Composition</label><select id="design" name="design" aria-describedby="design-description"></select></div>
+            <p class="field-note design-description" id="design-description"></p>
+            <button class="gallery-jump" type="button" data-open-library="layouts">Browse designs <span aria-hidden="true">↗</span></button>
+          </fieldset>
+          <fieldset class="field-section pattern-section">
+            <legend>Artwork</legend>
+            <div class="field"><label for="pattern">Pattern</label><select id="pattern" name="pattern" aria-describedby="pattern-note"></select></div>
+            <p class="field-note" id="pattern-note">Design default follows your composition.</p>
+            <div class="design-link-row"><button type="button" class="text-button" data-open-library="artwork">Browse artwork</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div>
+          </fieldset>
+          <div class="design-tools"><button id="customize-colors" class="text-button" type="button">Edit colors</button><button type="button" class="text-button ai-inline" data-ai-section="design">Extend with AI ↗</button></div>
+          <div class="explore-actions"><button id="shuffle-design" class="text-button" type="button">Surprise me</button><button id="reset-design" class="text-button" type="button">Reset design</button></div>
+        </div>
+        <div id="photo-panel" role="tabpanel" aria-labelledby="photo-tab" data-editor-panel="photo" hidden><div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="photo">Suggest a photo format with AI ↗</button></div><div id="portrait-panel-content"></div></div>
+        <div id="details-panel" role="tabpanel" aria-labelledby="details-tab" data-editor-panel="details" hidden>
+          <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="details">Refine wording with AI ↗</button></div>
           <fieldset class="field-section">
             <legend><span class="section-index">01</span> Identity</legend>
             <div class="field-grid">
@@ -81,9 +116,10 @@
         </div>
 
         <div id="layout-panel" role="tabpanel" aria-labelledby="layout-tab" data-editor-panel="layout" hidden>
+          <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="layout">Create a layout with AI ↗</button></div>
           <fieldset class="field-section">
             <legend><span class="section-index">01</span> Card size</legend>
-            <p class="section-note">Dimensions apply to each card.</p>
+            <p class="section-note">The preview shows the full export dimensions.</p>
             <div class="field-grid">
               <div class="field"><label for="width">Width</label><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1"><span aria-hidden="true">px</span></div></div>
               <div class="field"><label for="height">Height</label><div class="input-unit"><input id="height" name="height" type="number" value="208" min="180" max="320" step="1"><span aria-hidden="true">px</span></div></div>
@@ -92,12 +128,13 @@
           </fieldset>
           <fieldset class="field-section">
             <legend><span class="section-index">02</span> Arrangement</legend>
-            <div class="field"><label for="layout">Card layout</label><select id="layout" name="layout"><option value="paired" selected>Side by side</option><option value="stacked">Stacked</option></select></div>
-            <div class="layout-diagram" aria-hidden="true"><span class="diagram-card diagram-light"><i></i><b></b><b></b></span><span class="diagram-card diagram-dark"><i></i><b></b><b></b></span><span class="diagram-caption">Side by side</span></div>
+            <div class="field"><label for="layout">Card layout</label><select id="layout" name="layout"><option value="paired" selected>Wide</option><option value="stacked">Tall</option></select></div>
+            <div class="layout-diagram" aria-hidden="true"><span class="diagram-card diagram-light"><i></i><b></b><b></b></span><span class="diagram-card diagram-dark"><i></i><b></b><b></b></span><span class="diagram-caption">Wide</span></div>
           </fieldset>
           <details class="advanced-settings"><summary>Advanced settings<svg viewBox="0 0 16 16" width="15" height="15" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="field"><label for="imageBase">Image base URL</label><input id="imageBase" name="imageBase" type="url" value="https://raw.githubusercontent.com/Ademord/gmail-signature/main/sig" spellcheck="false" aria-describedby="image-base-note"><p class="field-note" id="image-base-note">Hosted images used in the signature.</p></div></details>
         </div>
         <div id="icons-panel" role="tabpanel" aria-labelledby="icons-tab" data-editor-panel="icons" hidden>
+          <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="icons">Choose icons with AI ↗</button></div>
           <fieldset class="field-section">
             <legend><span class="section-index">01</span> Contact icons</legend>
             <p class="section-note">Choose an icon for each contact. None hides the icon and keeps the text.</p>
@@ -110,6 +147,12 @@
           </fieldset>
         </div>
         <div id="colors-panel" role="tabpanel" aria-labelledby="colors-tab" data-editor-panel="colors" hidden>
+          <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="colors">Suggest colors with AI ↗</button></div>
+          <fieldset class="field-section">
+            <legend>Quick palettes</legend>
+            <div id="palette-choices" class="palette-choices" role="group" aria-label="Quick color palettes"></div>
+            <div class="studio-small-actions"><button id="swap-colors" class="text-button" type="button">Swap surface colors</button></div>
+          </fieldset>
           <fieldset class="field-section">
             <legend><span class="section-index">01</span> Theme</legend>
             <div class="field"><label for="theme-select">Choose a theme</label><select id="theme-select"><option value="">Custom colors</option></select></div>
@@ -130,15 +173,16 @@
             <p class="field-note">Themes save colors only, in this browser.</p>
           </fieldset>
         </div>
-        <div class="rail-footer"><span><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.2"/></svg> Draft stays in this browser.</span><button id="reset-draft" class="text-button" type="button">Reset</button></div>
+        <div class="rail-footer"><span><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.2"/></svg> Draft stays in this browser.</span><button id="reset-draft" class="text-button" type="button">Load example</button></div>
       </form>
       <div class="data-actions" role="group" aria-label="Session data"><button id="export-data" class="button button-secondary" type="button"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="M9 2.5v8m-3-3 3 3 3-3M3 11v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Export data</button><button id="import-data" class="button button-secondary" type="button"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="M9 10.5v-8m-3 3 3-3 3 3M3 11v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Import data</button><p>Your signature and saved themes in one JSON file.</p></div>
     </aside>
 
     <section class="preview-column" aria-labelledby="preview-heading">
+      <a class="mobile-edit-link" href="#signature-settings">Edit signature <span aria-hidden="true">↓</span></a>
       <div class="preview-heading"><div class="preview-title"><span class="live-dot" aria-hidden="true"></span><h2 id="preview-heading">Live preview</h2></div><div class="view-switch" role="group" aria-label="Preview view"><button type="button" class="is-active" data-view="card" aria-pressed="true"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M5 7h3M5 10h5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>Card</button><button type="button" data-view="email" aria-pressed="false"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="m3 5 6 4.5L15 5" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>Email</button></div></div>
       <div class="preview-frame">
-        <div class="canvas-topline" aria-hidden="true"><span class="canvas-label">SIGNATURE / 01</span><svg viewBox="0 0 16 16" width="16" height="16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1"/></svg></div>
+        <div class="canvas-topline"><span class="canvas-label" id="canvas-design-label">ORIGINAL / LIVE CANVAS</span><span class="canvas-customized" id="canvas-customized"></span></div>
         <div id="preview-viewport" class="preview-viewport">
           <div id="email-context" class="email-context" hidden><div class="email-window-header">New message<span aria-hidden="true">− &nbsp; ×</span></div><div class="email-address">To <span>recipient@example.com</span></div><div class="email-address email-subject">Subject <span>A quick introduction</span></div><div class="email-message"><p>Hi there,</p><p>Thanks for getting in touch.</p><p>Best,</p></div></div>
           <div id="preview-sizer"><div id="signature-preview" aria-label="Your email signature preview"></div></div>
@@ -151,11 +195,36 @@
     </section>
   </main>
 
+  <dialog id="design-library-dialog" class="design-library" aria-labelledby="design-library-title">
+    <div class="library-heading"><div><h2 id="design-library-title">Browse designs</h2><p>Choose a starting point. Your details stay.</p></div><button id="close-design-library" class="icon-button" type="button" aria-label="Close design browser"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+    <div class="library-tabs" role="tablist" aria-label="Browse collection">
+      <button id="library-tab-layouts" type="button" role="tab" aria-selected="true" aria-controls="library-panel-layouts" data-library-tab="layouts">Layouts <span>7</span></button>
+      <button id="library-tab-themes" type="button" role="tab" aria-selected="false" aria-controls="library-panel-themes" data-library-tab="themes" tabindex="-1">Themes <span>4</span></button>
+      <button id="library-tab-artwork" type="button" role="tab" aria-selected="false" aria-controls="library-panel-artwork" data-library-tab="artwork" tabindex="-1">Artwork</button>
+    </div>
+    <div class="library-content">
+      <section id="library-panel-layouts" role="tabpanel" aria-labelledby="library-tab-layouts" data-library-panel="layouts">
+        <h3 id="design-gallery-heading" class="sr-only">Signature layouts</h3>
+        <div id="design-gallery" class="design-gallery" role="group" aria-label="Signature design collection"></div>
+      </section>
+      <section id="library-panel-themes" role="tabpanel" aria-labelledby="library-tab-themes" data-library-panel="themes" hidden>
+        <h3 id="collection-gallery-heading" class="sr-only">Fantasy themes</h3>
+        <p class="library-note">Galaxy, Starlight, Moonlight, and Frost Crown combine a layout with colors and artwork.</p>
+        <div id="collection-gallery" class="design-gallery collection-gallery" role="group" aria-label="Fantasy theme collection"></div>
+      </section>
+      <section id="library-panel-artwork" role="tabpanel" aria-labelledby="library-tab-artwork" data-library-panel="artwork" hidden>
+        <p class="library-note">Change the decorative pattern while keeping your layout.</p>
+        <div id="pattern-choices" class="pattern-choices" role="group" aria-label="Choose a graphic pattern"></div>
+      </section>
+    </div>
+  </dialog>
+
   <dialog id="session-dialog" aria-labelledby="session-title">
     <div class="dialog-heading"><div><span class="dialog-eyebrow">SESSION DATA</span><h2 id="session-title">Export session</h2></div><button id="close-session" type="button" class="icon-button" aria-label="Close session data"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
     <p id="session-description" class="image-intro"></p>
     <div class="field" id="session-file-field" hidden><label for="session-file">Session JSON file</label><input type="file" id="session-file" accept=".json,application/json"></div>
-    <div class="field session-json-field"><label for="session-json">Session JSON</label><textarea id="session-json" rows="10" spellcheck="false" maxlength="1048576" aria-describedby="session-notice"></textarea></div>
+    <fieldset id="session-import-parts" class="session-import-parts" hidden><legend>What would you like to import?</legend><div class="session-part-options"><label class="session-part"><input type="checkbox" id="session-import-information" checked><span><strong>Information</strong><small>Name, role, contacts and photo</small></span></label><label class="session-part"><input type="checkbox" id="session-import-design" checked><span><strong>Design</strong><small>Layout, colors, artwork and saved themes</small></span></label></div></fieldset>
+    <div class="field session-json-field"><label for="session-json">Session JSON</label><textarea id="session-json" rows="7" spellcheck="false" maxlength="1048576" aria-describedby="session-notice"></textarea></div>
     <p id="session-notice" role="status" aria-live="polite"></p>
     <div class="session-footer"><button id="session-copy" class="button button-secondary" type="button">Copy JSON</button><button id="session-download" class="button button-primary" type="button">Download JSON</button><button id="session-restore" class="button button-primary" type="button" hidden disabled>Restore session</button></div>
   </dialog>
@@ -164,10 +233,10 @@
     <p class="image-intro">A high-resolution image of your signature.</p>
     <div class="image-options field-grid">
       <div class="field"><label for="image-scale">Resolution</label><select id="image-scale"><option value="2">2× · Standard</option><option value="4" selected>4× · HD</option><option value="6">6× · Maximum</option></select></div>
-      <div class="field"><label for="image-background">Space between cards</label><select id="image-background"><option value="transparent" selected>Transparent</option><option value="white">White</option></select></div>
+      <div class="field"><label for="image-background">Canvas background</label><select id="image-background"><option value="transparent" selected>Transparent</option><option value="white">White</option></select></div>
     </div>
     <div class="image-export-preview"><img id="image-result" alt="PNG export preview" hidden></div>
-    <div class="image-meta"><strong id="image-dimensions"></strong><span>Both cards · PNG</span></div>
+    <div class="image-meta"><strong id="image-dimensions"></strong><span>Signature · PNG</span></div>
     <p id="image-status" role="status" aria-live="polite"></p>
     <div class="image-footer"><button id="image-retry" class="text-button" type="button">Refresh preview</button><button id="image-download" class="button button-primary" type="button" disabled>Download PNG</button></div>
     <p class="field-note image-note">Image links aren’t clickable. Use Copy signature for clickable email links.</p>

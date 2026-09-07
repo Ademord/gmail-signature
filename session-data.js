@@ -16,6 +16,8 @@
   var uiDefaults = Object.freeze({editorTab:'details', previewView:'card', imageScale:4,
     imageBackground:'transparent', selectedThemeId:'', themeName:''});
   var own = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
+  var informationFields = Object.freeze(['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl']);
+  var designFields = Object.freeze(['width','height','layout','design','pattern','customPattern','customLayout','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize']);
   function fail(message) { throw new TypeError(message); }
   function object(value, label) {
     if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -87,7 +89,7 @@
     object(value, 'UI settings');
     var result = {};
     Object.keys(uiDefaults).forEach(function (key) { result[key] = own(value, key) ? value[key] : uiDefaults[key]; });
-    var enums = {editorTab:['details','layout','colors','icons'], previewView:['card','email'],
+    var enums = {editorTab:['design','details','photo','layout','colors','icons'], previewView:['card','email'],
       imageScale:[2,4,6], imageBackground:['transparent','white']};
     Object.keys(enums).forEach(function (key) { if (!enums[key].includes(result[key])) fail('UI ' + key + ' must be one of: ' + enums[key].join(', ') + '.'); });
     result.selectedThemeId = selectedId(result.selectedThemeId, themes);
@@ -135,6 +137,44 @@
     return checkedSession(value, false);
   }
   function sameColors(a, b) { return colors.every(function (key) { return a[key] === b[key]; }); }
+  // Chat applications sometimes wrap URLs in Markdown or insert an invalid \@
+  // escape in email strings. Repair only these recognizable copy artifacts,
+  // then pass the entire result through the normal strict session validator.
+  function parsePasted(text) {
+    if (typeof text !== 'string') fail('Paste a JSON session containing text.');
+    checkSize(text);
+    var input = text.replace(/^\uFEFF/, '').trim(), repairs = [];
+    var fence = /^```(?:json)?\s*\n([\s\S]*?)\n```$/i.exec(input);
+    if (fence) { input = fence[1]; repairs.push('Removed the code block wrapper.'); }
+    var fixed = input.replace(/("email"\s*:\s*")((?:[^"\\]|\\.)*)(")/g, function (_match, before, email, after) {
+      return before + email.replace(/\\@/g, '@') + after;
+    });
+    if (fixed !== input) repairs.push('Removed a copied escape before @ in the email.');
+    var value;
+    try { value = JSON.parse(fixed); } catch (_) { return {session:parse(fixed),repairs:repairs}; }
+    inspect(value,0,new Set()); object(value,'Session file');
+    var draft = own(value,'format') ? value.draft : value;
+    if (draft && typeof draft === 'object' && !Array.isArray(draft)) {
+      ['website','linkedin','imageBase','portraitUrl'].forEach(function (key) {
+        if (typeof draft[key] !== 'string') return;
+        var match = /^\[([^\]\r\n]+)\]\((https?:\/\/[^\s<>]+)\)$/.exec(draft[key].trim());
+        if (match && match[1] === match[2]) { draft[key] = match[2]; repairs.push('Unwrapped a Markdown link in ' + key + '.'); }
+      });
+    }
+    return {session:parse(JSON.stringify(value)),repairs:repairs};
+  }
+  function selectParts(incoming, current, selection) {
+    if (!selection || typeof selection.information !== 'boolean' || typeof selection.design !== 'boolean') fail('Choose Information, Design, or both.');
+    if (!selection.information && !selection.design) fail('Select Information, Design, or both to continue.');
+    var source = checkedSession(incoming,true);
+    object(current,'Current session'); inspect(current,0,new Set()); object(current.draft,'Current draft');
+    var existingThemes = checkedThemes(current.themes === undefined ? [] : current.themes);
+    var existing = {draft:Object.assign({},core.defaults,current.draft),themes:existingThemes,ui:checkedUI(current.ui,existingThemes)};
+    var fields = (selection.information ? informationFields : []).concat(selection.design ? designFields : []);
+    var draft = Object.assign({},existing.draft);
+    fields.forEach(function (key) { draft[key] = source.draft[key]; });
+    return checkedSession({draft:draft,themes:selection.design ? source.themes : existing.themes,ui:selection.design ? source.ui : existing.ui},true);
+  }
   function importedName(base, number) {
     var suffix = number === 1 ? ' (imported)' : ' (imported ' + number + ')';
     // Avoid splitting a surrogate pair when the 40-character field is full.
@@ -170,5 +210,5 @@
     });
     return {themes:result, selectedThemeId:mapping.get(selected) || selected, added:added};
   }
-  return Object.freeze({serialize:serialize, parse:parse, mergeThemes:mergeThemes});
+  return Object.freeze({serialize:serialize, parse:parse, parsePasted:parsePasted, selectParts:selectParts, informationFields:informationFields, designFields:designFields, mergeThemes:mergeThemes});
 }));
