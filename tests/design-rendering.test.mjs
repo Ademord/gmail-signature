@@ -12,7 +12,7 @@ const ids = ['original','orbit','studio','contour','prism','editorial','signal']
 
 test('design and pattern catalogs are immutable and old 23-field sessions inherit the original',()=>{
   assert.deepEqual(core.designs.map(d=>d.id),ids);
-  assert.deepEqual(Object.keys(core.patterns),['auto','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','custom','none']);
+  assert.deepEqual(Object.keys(core.patterns),['auto','cutpaper','colorfield','chromatic','counterform','overprint','gesture','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','custom','none']);
   assert.ok(Object.isFrozen(core.designs) && core.designs.every(Object.isFrozen) && Object.isFrozen(core.patterns));
   for(const d of core.designs){
     assert.equal(typeof d.name,'string');assert.equal(typeof d.description,'string');assert.equal(d.pattern,'auto');

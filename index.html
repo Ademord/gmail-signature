@@ -6,22 +6,22 @@
   <meta name="theme-color" content="#f6f7f8">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=9e64998744205214">
-  <link rel="stylesheet" href="portrait.css?v=9e64998744205214">
-  <link rel="stylesheet" href="ai-extension.css?v=9e64998744205214">
-  <link rel="stylesheet" href="library.css?v=9e64998744205214">
-  <script src="portrait-core.js?v=9e64998744205214" defer></script>
-  <script src="signature-core.js?v=9e64998744205214" defer></script>
-  <script src="editor-history.js?v=9e64998744205214" defer></script>
-  <script src="signature-image.js?v=9e64998744205214" defer></script>
-  <script src="session-data.js?v=9e64998744205214" defer></script>
-  <script src="session-controls.js?v=9e64998744205214" defer></script>
-  <script src="portrait-controls.js?v=9e64998744205214" defer></script>
-  <script src="design-collections.js?v=9e64998744205214" defer></script>
-  <script src="ai-extension-core.js?v=9e64998744205214" defer></script>
-  <script src="ai-extension-controls.js?v=9e64998744205214" defer></script>
-  <script src="library-controls.js?v=9e64998744205214" defer></script>
-  <script src="app.js?v=9e64998744205214" defer></script>
+  <link rel="stylesheet" href="editor.css?v=cc27cc5e607b403d">
+  <link rel="stylesheet" href="portrait.css?v=cc27cc5e607b403d">
+  <link rel="stylesheet" href="ai-extension.css?v=cc27cc5e607b403d">
+  <link rel="stylesheet" href="library.css?v=cc27cc5e607b403d">
+  <script src="portrait-core.js?v=cc27cc5e607b403d" defer></script>
+  <script src="signature-core.js?v=cc27cc5e607b403d" defer></script>
+  <script src="editor-history.js?v=cc27cc5e607b403d" defer></script>
+  <script src="signature-image.js?v=cc27cc5e607b403d" defer></script>
+  <script src="session-data.js?v=cc27cc5e607b403d" defer></script>
+  <script src="session-controls.js?v=cc27cc5e607b403d" defer></script>
+  <script src="portrait-controls.js?v=cc27cc5e607b403d" defer></script>
+  <script src="design-collections.js?v=cc27cc5e607b403d" defer></script>
+  <script src="ai-extension-core.js?v=cc27cc5e607b403d" defer></script>
+  <script src="ai-extension-controls.js?v=cc27cc5e607b403d" defer></script>
+  <script src="library-controls.js?v=cc27cc5e607b403d" defer></script>
+  <script src="app.js?v=cc27cc5e607b403d" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -199,7 +199,7 @@
     <div class="library-heading"><div><h2 id="design-library-title">Browse designs</h2><p>Choose a starting point. Your details stay.</p></div><button id="close-design-library" class="icon-button" type="button" aria-label="Close design browser"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
     <div class="library-tabs" role="tablist" aria-label="Browse collection">
       <button id="library-tab-layouts" type="button" role="tab" aria-selected="true" aria-controls="library-panel-layouts" data-library-tab="layouts">Layouts <span>7</span></button>
-      <button id="library-tab-themes" type="button" role="tab" aria-selected="false" aria-controls="library-panel-themes" data-library-tab="themes" tabindex="-1">Themes <span>4</span></button>
+      <button id="library-tab-themes" type="button" role="tab" aria-selected="false" aria-controls="library-panel-themes" data-library-tab="themes" tabindex="-1">Themes <span>10</span></button>
       <button id="library-tab-artwork" type="button" role="tab" aria-selected="false" aria-controls="library-panel-artwork" data-library-tab="artwork" tabindex="-1">Artwork</button>
     </div>
     <div class="library-content">
@@ -208,12 +208,18 @@
         <div id="design-gallery" class="design-gallery" role="group" aria-label="Signature design collection"></div>
       </section>
       <section id="library-panel-themes" role="tabpanel" aria-labelledby="library-tab-themes" data-library-panel="themes" hidden>
-        <h3 id="collection-gallery-heading" class="sr-only">Fantasy themes</h3>
-        <p class="library-note">Galaxy, Starlight, Moonlight, and Frost Crown combine a layout with colors and artwork.</p>
+        <h3 class="library-section-title">Abstract studies</h3>
+        <p class="library-note">Six compositions in shape, color and negative space. Each pairs artwork with a layout and palette.</p>
+        <div id="abstract-collection-gallery" class="design-gallery collection-gallery" role="group" aria-label="Abstract theme collection"></div>
+        <h3 id="collection-gallery-heading" class="library-section-title library-section-divider">Fantasy</h3>
+        <p class="library-note">Galaxies, constellations, moonlight and ice.</p>
         <div id="collection-gallery" class="design-gallery collection-gallery" role="group" aria-label="Fantasy theme collection"></div>
       </section>
       <section id="library-panel-artwork" role="tabpanel" aria-labelledby="library-tab-artwork" data-library-panel="artwork" hidden>
-        <p class="library-note">Change the decorative pattern while keeping your layout.</p>
+        <h3 class="library-section-title">Abstract studies</h3>
+        <p class="library-note">Change the artwork and keep your layout and colors. For a complete composition, explore Themes.</p>
+        <div id="abstract-pattern-choices" class="pattern-choices abstract-pattern-choices" role="group" aria-label="Choose abstract artwork"></div>
+        <h3 class="library-section-title library-section-divider">Graphic &amp; fantasy</h3>
         <div id="pattern-choices" class="pattern-choices" role="group" aria-label="Choose a graphic pattern"></div>
       </section>
     </div>

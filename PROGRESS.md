@@ -2,7 +2,19 @@
 
 Updated: 2026-09-07. Active scope: six new compositions, private smart portrait cropping, four fantasy themes, external-AI extension, selective imports, and a simpler editor. The user selected gauntlet-loop and expanded the team from six to eight agents. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
 
-## Active design-studio gauntlet
+## Abstract artwork extension — 7 September 2026
+
+The user requested a stronger MoMA/Kunsthaus-inspired abstract direction. Six original procedural studies now extend Artwork and Themes: Cut paper, Color field, Chromatic, Counterform, Overprint, and Gesture. Existing seven layout engines and saved session fields are unchanged. Six quiet curated palettes pair the studies with Orbit, Prism, or Studio. The Artwork dialog shows the new studies at full 76 × 182 size, in three desktop or two mobile columns, followed by the existing graphic/fantasy options. No permanent editor controls were added.
+
+An independent artwork builder, visual critic, and regression reviewer worked alongside lead integration. The critic reviewed real MoMA/Kunsthaus references, original PNG proofs at small sizes/light/dark, and actual desktop UI. Feedback improved the brush underpainting and color-field edges. References and descriptions are in README and the roadmap.
+
+Local verification: **170 tests, 169 pass, zero failures, one Windows symlink skip**. Nine new tests cover six explicit patterns and collections, 1,008 design/size/photo cases, 84 session round trips, AI contracts, real HTTP assets, actual app selection/history, and the 50-file public roster. All sixteen generated patterns pass deterministic raster checks; the original ten PNGs remain byte-identical. Runtime token: `cc27cc5e607b403d`.
+
+Root Codex browser checks: six abstract theme cards and six full-size artworks loaded; applying a collection preserved Avery details and returned focus; Cut paper and Overprint PNG exports decoded at 2648 × 832. At 390 × 844, the artwork dialog client and scroll width both measured 369 px, with two columns and 76 × 182 artwork. Private hosted data was not changed for these local tests. Publication and exact-commit CI for this extension are pending.
+
+Existing constraint: on some compact Contour/Editorial cards, a large portrait fills the artwork slot; the selected pattern remains in the draft and returns when the photo is removed. The supplied abstract themes use compositions with room for the artwork. Real Gmail send/receive remains the previously recorded external check; this artwork extension makes no new email-client compatibility claim.
+
+## Previous design-studio gauntlet
 
 - Working checkout: this repository, branch `codex/signature-design-studio`, starting at `3c46e99`. The original checkout and private backups are preserved.
 - Reference: real HubSpot Email Signature Generator, https://www.hubspot.com/email-signature-generator. Fresh paired captures have actual DOM viewports of 1280×720; mobile checks use 390×844. Earlier requested viewport sizes did not apply to the reference tab, so those earlier captures are not treated as a matched comparison.

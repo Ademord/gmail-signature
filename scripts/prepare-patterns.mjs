@@ -7,7 +7,7 @@ import {decodePNG, encodePNG} from './prepare-icons.mjs';
 // Coordinates are CSS pixels. Rasterize at 8×, then downsample in premultiplied
 // alpha to the 4× native asset size; transparent edges retain their real ink.
 const WIDTH = 76, HEIGHT = 182, NATIVE = 4, SAMPLE = 2, SCALE = NATIVE * SAMPLE;
-export const patternNames = Object.freeze(['orbit', 'studio', 'contour', 'prism', 'editorial', 'signal', 'galaxy', 'starlight', 'moonlight', 'frost']);
+export const patternNames = Object.freeze(['orbit', 'studio', 'contour', 'prism', 'editorial', 'signal', 'galaxy', 'starlight', 'moonlight', 'frost', 'cutpaper', 'colorfield', 'chromatic', 'counterform', 'overprint', 'gesture']);
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const rad = degrees => degrees * Math.PI / 180;
 
@@ -19,9 +19,11 @@ function canvas(width = WIDTH, height = HEIGHT, scale = SCALE) {
     const x0 = clamp(Math.floor(bounds[0] * scale), 0, w), y0 = clamp(Math.floor(bounds[1] * scale), 0, h);
     const x1 = clamp(Math.ceil(bounds[2] * scale), 0, w), y1 = clamp(Math.ceil(bounds[3] * scale), 0, h);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      if (!inside((x + 0.5) / scale, (y + 0.5) / scale)) continue;
-      const offset = (y * w + x) * 4, previous = pixels[offset + 3] / 255, combined = alpha + previous * (1 - alpha);
-      for (let c = 0; c < 3; c++) pixels[offset + c] = (rgb[c] * alpha + pixels[offset + c] * previous * (1 - alpha)) / combined;
+      const sample = inside((x + 0.5) / scale, (y + 0.5) / scale);
+      if (!sample) continue;
+      const opacity = typeof sample === 'number' ? alpha * clamp(sample, 0, 1) : alpha;
+      const offset = (y * w + x) * 4, previous = pixels[offset + 3] / 255, combined = opacity + previous * (1 - opacity);
+      for (let c = 0; c < 3; c++) pixels[offset + c] = (rgb[c] * opacity + pixels[offset + c] * previous * (1 - opacity)) / combined;
       pixels[offset + 3] = combined * 255;
     }
   }
@@ -56,6 +58,35 @@ function canvas(width = WIDTH, height = HEIGHT, scale = SCALE) {
     }
     path(points, thickness, ink);
   }
+  // Cubic contours keep broad cut edges and brush silhouettes editable. Each
+  // six-number segment contains two control points and its endpoint.
+  function shape(start, segments, ink) {
+    const points = [start];
+    let previous = start;
+    for (const [x1, y1, x2, y2, x3, y3] of segments) {
+      for (let i = 1; i <= 32; i++) {
+        const t = i / 32, u = 1 - t;
+        points.push([u ** 3 * previous[0] + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x3,
+          u ** 3 * previous[1] + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t ** 3 * y3]);
+      }
+      previous = [x3, y3];
+    }
+    poly(points, ink);
+  }
+  // An irregular pigment field: solid heart, softened edge, slight broad
+  // variation in the boundary. No random state or canvas rendering dependency.
+  function field(x, y, rx, ry, rotation, ink, softness = .36, phase = 0) {
+    const angle = rad(rotation), cos = Math.cos(angle), sin = Math.sin(angle);
+    const bx = Math.abs(rx * cos) + Math.abs(ry * sin), by = Math.abs(rx * sin) + Math.abs(ry * cos);
+    paint([x - bx * 1.1, y - by * 1.1, x + bx * 1.1, y + by * 1.1], ink, (a, b) => {
+      const u = ((a - x) * cos + (b - y) * sin) / rx, v = (-(a - x) * sin + (b - y) * cos) / ry;
+      const theta = Math.atan2(v, u), edge = 1 + .05 * Math.sin(theta * 3 + phase) + .025 * Math.cos(theta * 7 - phase);
+      const distance = Math.sqrt(u * u + v * v) / edge;
+      if (distance >= 1) return 0;
+      const feather = clamp((1 - distance) / softness, 0, 1);
+      return feather * feather * (3 - 2 * feather);
+    });
+  }
   function finish() {
     const outW = width * NATIVE, outH = height * NATIVE, rgba = Buffer.alloc(outW * outH * 4);
     for (let y = 0; y < outH; y++) for (let x = 0; x < outW; x++) {
@@ -70,10 +101,84 @@ function canvas(width = WIDTH, height = HEIGHT, scale = SCALE) {
     }
     return {width: outW, height: outH, rgba};
   }
-  return {rect, circle, line, poly, path, arc, finish};
+  return {rect, circle, line, poly, path, arc, shape, field, finish};
 }
 
 const painters = {
+  // Six original compositions study cut edges, pigment, cadence, counterform,
+  // print overlap, and brush weight. They are drawn for the 76×182 display size,
+  // with a single composition per strip and no borrowed artwork or UI symbols.
+  cutpaper(c) {
+    c.shape([-5, 17], [
+      [19, 3, 45, 5, 60, 14], [77, 25, 62, 39, 47, 40],
+      [34, 41, 37, 52, 51, 61], [69, 74, 56, 92, 41, 94],
+      [18, 96, 2, 76, 14, 62], [26, 49, -7, 36, -5, 17]
+    ], '#2348C7');
+    c.poly([[44, 72], [76, 61], [76, 111], [52, 123], [35, 106]], '#E6B83D');
+    c.shape([7, 111], [
+      [21, 96, 50, 108, 53, 124], [56, 138, 36, 137, 36, 149],
+      [36, 162, 58, 165, 61, 181], [39, 180, 14, 174, 9, 157],
+      [3, 140, 19, 133, 10, 128], [4, 124, 3, 116, 7, 111]
+    ], '#E3634A');
+  },
+  colorfield(c) {
+    c.field(17, 77, 33, 66, -8, '#477B9F', .16, .7);
+    c.field(52, 56, 23, 40, 8, '#C18572', .22, 2.1);
+    c.field(44, 128, 29, 43, 21, '#735568', .20, 1.2);
+    c.field(50, 99, 14, 31, -19, '#BA87763D', .65, 2.7);
+  },
+  chromatic(c) {
+    c.poly([[0, 15.125], [47, 15.125], [47, 46], [64, 46], [64, 104],
+      [40, 104], [40, 79], [19, 79], [19, 51], [0, 51]], '#244DD7');
+    c.poly([[55, 1], [76, 1], [76, 90], [55, 90]], '#DD5946');
+    c.poly([[7, 62], [27, 62], [27, 90], [48, 90], [48, 117],
+      [76, 117], [76, 142], [48, 142], [48, 178], [21, 178], [21, 114], [7, 114]], '#E3AE30');
+    c.poly([[0, 101], [13, 101], [13, 137], [36, 137], [36, 159], [0, 159]], '#DD5946');
+    c.poly([[48, 148], [64, 148], [64, 182], [48, 182]], '#244DD7');
+    c.rect(27, 90, 13, 27, '#F0E7CE');
+  },
+  counterform(c) {
+    c.shape([36, 13], [
+      [59, 15, 77, 36, 72, 61], [68, 82, 49, 88, 41, 108],
+      [33, 131, 63, 152, 75, 168], [58, 176, 22, 165, 17, 145],
+      [6, 110, 44, 91, 47, 69], [49, 47, 35, 34, 36, 13]
+    ], '#EEE5CE');
+    c.shape([0, 4], [
+      [27, -2, 56, 10, 56, 33], [58, 57, 29, 68, 27, 89],
+      [22, 115, 40, 129, 52, 149], [59, 161, 58, 174, 56, 182],
+      [34, 182, 13, 182, 0, 182], [0, 173, 0, 164, 0, 158],
+      [20, 164, 31, 162, 30, 145], [29, 127, 7, 112, 8, 88],
+      [9, 63, 34, 52, 33, 35], [33, 19, 13, 24, 0, 28],
+      [0, 20, 0, 12, 0, 4]
+    ], '#1D2021');
+    c.poly([[49, 105], [73, 99], [69, 111], [44, 117]], '#D4DE46');
+  },
+  overprint(c) {
+    c.poly([[1, 23], [57, 9], [66, 105], [11, 121]], '#DC4E37E6');
+    c.poly([[24, 66], [75, 51], [68, 169], [18, 181]], '#244EB8DB');
+    c.poly([[24, 66], [61, 55], [66, 105], [21, 118]], '#513960');
+    c.poly([[1, 23], [6, 22], [15, 116], [11, 121]], '#DC4E37');
+    c.poly([[68, 169], [63, 170], [70, 59], [75, 51]], '#244EB8');
+    c.poly([[9, 30], [60, 17], [60, 20], [9, 33]], '#F3B09270');
+  },
+  gesture(c) {
+    c.shape([49, 26], [
+      [37, 39, 12, 59, 12, 77], [10, 91, 20, 96, 20, 111],
+      [20, 128, 12, 144, 6, 156], [29, 139, 37, 119, 38, 105],
+      [40, 90, 33, 83, 33, 70], [32, 55, 47, 39, 53, 30],
+      [52, 29, 51, 27, 49, 26]
+    ], '#A8A093');
+    c.shape([61, 13], [
+      [64, 14, 63, 16, 70, 18], [61, 32, 49, 43, 43, 57],
+      [38, 69, 42, 76, 46, 88], [49, 101, 41, 118, 31, 134],
+      [23, 146, 15, 154, 10, 158], [22, 134, 31, 115, 31, 102],
+      [31, 91, 21, 82, 23, 69], [24, 47, 43, 29, 61, 13]
+    ], '#21262A');
+    // A blunt pressure break and a single offset red mark; the open lower-right
+    // interval carries as much weight as the sweep itself.
+    c.poly([[21, 72], [25, 68], [28, 82], [25, 89], [20, 81]], '#21262A');
+    c.poly([[52, 137], [70, 131], [68, 139], [51, 144]], '#C94836');
+  },
   galaxy(c) {
     for (let ring = 0; ring < 8; ring++) {
       c.arc(40, 86, 7 + ring * 3.3, 19 + ring * 6.2, -160 + ring * 12, 138 + ring * 12, 28, 1.7, ['#AD79F2','#777EF3','#E59BDD'][ring % 3]);
@@ -265,9 +370,10 @@ export function inspectPatterns(directory = new URL('../sig/', import.meta.url))
 export function prepareArtworkProof(target = new URL('../docs/design-artwork.png', import.meta.url)) {
   const width = patternNames.length * 180, height = 848, rgba = Buffer.alloc(width * height * 4);
   const backgrounds = [[247, 245, 239], [25, 28, 36]];
+  const sources = patternNames.map(renderPattern);
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) rgba.set([...backgrounds[y < 424 ? 0 : 1], 255], (y * width + x) * 4);
   for (let row = 0; row < 2; row++) for (let column = 0; column < patternNames.length; column++) {
-    const source = renderPattern(patternNames[column]), bg = backgrounds[row];
+    const source = sources[column], bg = backgrounds[row];
     const ox = column * 180 + 14, oy = row * 424 + 30;
     for (let y = 0; y < 364; y++) for (let x = 0; x < 152; x++) {
       const dst = ((oy + y) * width + ox + x) * 4, sum = [0, 0, 0];

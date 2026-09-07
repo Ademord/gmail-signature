@@ -36,7 +36,7 @@
     }
     const ideas = {
       design:['A midnight galaxy with tiny gold stars','A pastel moon with a magical girl feel','An icy throne with blue crystal accents'],
-      artwork:['A tiny constellation in pixel art','A crescent moon and a few stars','An icy crystal rising from the bottom'],
+      artwork:['Bold cut-paper shapes with generous negative space','Interlocking color bands in cobalt and ochre','Overlapping translucent planes in vermilion and blue'],
       layout:['A centered editorial layout','A compact technical layout','A bold serif name in a wide layout'],
       colors:['Midnight blue and pale gold','Lilac, blush and moonlight','Icy blue and deep indigo'],
       details:['Make the example role sound clear and concise','Give the example a friendly creative tone','Simplify the example subtitle and tags'],

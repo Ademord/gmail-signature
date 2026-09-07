@@ -24,7 +24,7 @@
   var sans = 'Arial,Helvetica,sans-serif', mono = "'Courier New',Courier,monospace";
   var roleMono = "'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace";
   var icons = Object.freeze({web:'Globe', mail:'Envelope', phone:'Phone', linkedin:'LinkedIn', pin:'Location pin', none:'None'});
-  var patterns = Object.freeze({auto:'Design default', dots:'Dots', orbit:'Orbits', studio:'Shapes', contour:'Contours', prism:'Ribbons', editorial:'Rules', signal:'Grid', galaxy:'Galaxy', starlight:'Starlight', moonlight:'Moonlight', frost:'Frost', custom:'Custom artwork', none:'None'});
+  var patterns = Object.freeze({auto:'Design default', cutpaper:'Cut paper', colorfield:'Color field', chromatic:'Chromatic', counterform:'Counterform', overprint:'Overprint', gesture:'Gesture', dots:'Dots', orbit:'Orbits', studio:'Shapes', contour:'Contours', prism:'Ribbons', editorial:'Rules', signal:'Grid', galaxy:'Galaxy', starlight:'Starlight', moonlight:'Moonlight', frost:'Frost', custom:'Custom artwork', none:'None'});
   var designs = Object.freeze([
     {id:'original', name:'Original', description:'The original two-card signature, with its quiet dot field.', frontBackground:'#f3f0ea', backBackground:'#1c1c1c', accent:'#c8362a', pattern:'auto'},
     {id:'orbit', name:'Orbit', description:'Open space, orbital arcs and a floating typographic composition.', frontBackground:'#edf2fb', backBackground:'#152849', accent:'#496aca', pattern:'auto'},

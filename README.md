@@ -1,6 +1,6 @@
 # Signature Studio
 
-A browser-local email signature editor with seven compositions, four fantasy themes, private photo cropping, and HTML or high-resolution PNG export. Customize each section directly or bring back a validated JSON proposal from your own AI. Start with the **Avery Morgan** example and keep the result in your browser.
+A browser-local email signature editor with seven compositions, six abstract studies, four fantasy themes, private photo cropping, and HTML or high-resolution PNG export. Customize each section directly or bring back a validated JSON proposal from your own AI. Start with the **Avery Morgan** example and keep the result in your browser.
 
 [Open the published demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml) · [Design roadmap](docs/DESIGN-ROADMAP.md)
 
@@ -40,7 +40,22 @@ The main workspace keeps the current signature in view. In **Design**, use the C
 
 A design applies its composition, palette, and default pattern while preserving personal details. Choose a different pattern independently, use **None** to remove it, or return to **Design default**. Six quick palettes and **Swap surface colors** are in **Colors**; **Edit colors** in Design opens that tab. **Surprise me** combines a design, palette, and pattern; **Undo** returns to the previous choice. **Reset design** restores the selected composition's default palette and pattern.
 
-The **Themes** tab in Browse designs combines those compositions with four additional palettes and PNG motifs:
+The **Themes** tab begins with six abstract studies. Each combines original artwork, a restrained palette, and a matching composition. In **Artwork**, choose the motif alone to keep your current layout and colors. Larger previews show these pieces at their full 76 × 182 display size.
+
+| Abstract study | Visual direction |
+| --- | --- |
+| Cut paper | Irregular cobalt, coral, and saffron forms on warm paper |
+| Color field | Atmospheric blue, clay, and plum with soft edges |
+| Chromatic | Interlocking bands of cobalt, ochre, and warm red |
+| Counterform | Sculptural ink, cream negative space, and acid yellow |
+| Overprint | Translucent vermilion and cobalt planes |
+| Gesture | A broad ink gesture, vermilion, and open space |
+
+![Six abstract signature studies in the design library](docs/abstract-studies.jpg)
+
+These are original procedural compositions, informed by the economy of cut forms and postwar abstraction. References: [MoMA’s Matisse cut-outs](https://www.moma.org/calendar/exhibitions/1429) and [Kunsthaus’s Art after 1945](https://kunsthaus.ch/en/sammlung/nachkriegskunst/).
+
+The four fantasy themes remain available below them:
 
 | Theme | Starting composition | Artwork |
 | --- | --- | --- |
@@ -104,11 +119,11 @@ The Colors tab includes six quick palettes and a saved-theme selector with Origi
 
 Saved themes contain **only a name and three colors**, not the design, pattern, photo, or contacts. They persist in this browser. Applying a theme preserves other signature details. Draft links include current choices but not the theme library; session JSON includes both.
 
-The ten generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
+The sixteen generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
 
 In **Icons**, select a globe, envelope, phone, LinkedIn mark, location pin, or **None** per contact row. None hides only the icon. The renderer chooses cream or charcoal artwork for the actual surface, using a calculated 3:1 contrast threshold. Custom icon uploads are planned.
 
-Publish all `sig/` assets, including five `*-dark.png` icons, the six composition motifs, and the four fantasy-theme motifs. Regenerate the icon variants and all ten motifs with:
+Publish all `sig/` assets, including five `*-dark.png` icons, the six composition motifs, six abstract studies, and four fantasy-theme motifs. Regenerate the icon variants and all sixteen motifs with:
 
 ```sh
 node scripts/prepare-icons.mjs
@@ -116,7 +131,7 @@ node scripts/prepare-patterns.mjs --proof
 node scripts/prepare-patterns.mjs --check
 ```
 
-The pattern check covers all ten generated motifs. It reads real PNGs and verifies dimensions, transparency, antialiased edges, uniqueness, and deterministic regeneration. Those motifs have 304 × 728 native pixels, equivalent to 4× detail at 76 × 182 px. The original `dots.png` is a separate bundled asset.
+The pattern check covers all sixteen generated motifs. It reads real PNGs and verifies dimensions, transparency, antialiased edges, uniqueness, and deterministic regeneration. Those motifs have 304 × 728 native pixels, equivalent to 4× detail at 76 × 182 px. The original `dots.png` is a separate bundled asset.
 
 ## Extend a section with your own AI
 
@@ -204,14 +219,14 @@ npm run build
 
 Tests cover validation and dimensions, design rendering, undo/redo, photo crop geometry and file limits, icons, PNG export, session restore, storage recovery, and the public-file boundary. The seven exported AI examples have also been checked through proposal validation and actual rendering. Detector checks have used a NASA portrait fixture and a multi-face composite; browser smart cropping has been observed. [PROGRESS.md](PROGRESS.md) records exact current evidence, test counts, failures, release status, and received-email coverage.
 
-The build replaces `dist` with the 44 files in `scripts/public-files.mjs`, including the design browser, collection module, three AI-helper files, four fantasy assets, and licensed detector. Documentation, test fixtures, and repository metadata are excluded.
+The build replaces `dist` with the 50 files in `scripts/public-files.mjs`, including the design browser, collection module, three AI-helper files, four fantasy assets, and licensed detector. Documentation, test fixtures, and repository metadata are excluded.
 
 | File | Purpose |
 | --- | --- |
 | `index.html`, `signature.html` | Editor entry points |
 | `app.js`, `editor.css` | Studio controls, gallery, preview, persistence |
 | `signature-core.js` | Validation, measured layouts, HTML and plain text |
-| `design-collections.js` | Four fantasy-theme starting points |
+| `design-collections.js` | Six abstract studies and four fantasy starting points |
 | `library-controls.js`, `library.css` | On-demand layout, theme, and artwork browser |
 | `ai-extension-core.js`, `ai-extension-controls.js`, `ai-extension.css` | Scoped prompts, JSON validation, proposal preview and apply |
 | `portrait-core.js`, `portrait-controls.js`, `portrait.css` | Photo preparation, crop UI, hosted-photo handoff |

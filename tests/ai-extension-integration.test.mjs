@@ -124,7 +124,7 @@ test('only a genuine unchanged preview can apply; forged, modified and stale pro
 
 test('all four independently expected fantasy themes retain portraits and produce hosted email artwork', () => {
   const expected = {galaxy:'orbit',starlight:'editorial',moonlight:'contour',frost:'signal'};
-  assert.deepEqual(collections.map(item=>item.id).sort(),Object.keys(expected).sort());
+  assert.deepEqual(collections.map(item=>item.id).sort(),['cutpaper','colorfield','chromatic','counterform','overprint','gesture','galaxy','starlight','moonlight','frost'].sort());
   for (const [id,design] of Object.entries(expected)) {
     const collection = collections.find(item=>item.id===id);
     assert.equal(collection.design,design); assert.equal(collection.pattern,id);

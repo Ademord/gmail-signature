@@ -188,7 +188,7 @@
     const caption = document.createElement('strong'); caption.className = 'design-caption'; caption.textContent = item.name; button.append(caption);
     const description = document.createElement('span'); description.className = 'design-caption-note'; description.textContent = item.description; button.append(description);
     button.addEventListener('click', () => applyStyle({ design:item.design, pattern:item.pattern, ...Object.fromEntries(colorKeys.map(key => [key,item[key]])) }, item.name + ' applied.'));
-    $('collection-gallery').append(button); collectionButtons.push({button,item,viewport,preview});
+    $(item.category === 'abstract' ? 'abstract-collection-gallery' : 'collection-gallery').append(button); collectionButtons.push({button,item,viewport,preview});
   }
   function patternAsset(id) { return id === 'dots' || id === 'original' ? 'sig/dots.png' : 'sig/pattern-' + id + '.png'; }
   for (const [id, label] of Object.entries(core.patterns || {})) {
@@ -199,7 +199,8 @@
     if (id === 'none' || id === 'custom') artwork.textContent = id === 'custom' ? '✦' : '—';
     else { const img = document.createElement('img'); img.alt = ''; img.src = patternAsset(id === 'auto' ? 'original' : id); artwork.append(img); }
     const caption = document.createElement('span'); caption.textContent = id === 'auto' ? 'Auto' : label;
-    button.append(artwork); button.append(caption); $('pattern-choices').append(button);
+    const study = (window.SignatureCollections || []).find(item => item.category === 'abstract' && item.pattern === id);
+    button.append(artwork); button.append(caption); $(study ? 'abstract-pattern-choices' : 'pattern-choices').append(button);
     button.addEventListener('click', () => { if (id === 'custom' && !draft.customPattern) aiControls?.open('artwork'); else applyStyle({ pattern: id }, label + ' pattern applied.'); });
     patternButtons.push({ button, id, artwork });
   }

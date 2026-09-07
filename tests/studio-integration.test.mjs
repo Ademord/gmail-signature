@@ -104,7 +104,9 @@ const expectedPublicFiles = [
   'sig/icon-linkedin-dark.png', 'sig/icon-pin-dark.png', 'sig/icon-web-dark.png',
   'sig/pattern-orbit.png', 'sig/pattern-studio.png', 'sig/pattern-contour.png',
   'sig/pattern-prism.png', 'sig/pattern-editorial.png', 'sig/pattern-signal.png',
-  'sig/pattern-galaxy.png', 'sig/pattern-starlight.png', 'sig/pattern-moonlight.png', 'sig/pattern-frost.png'
+  'sig/pattern-galaxy.png', 'sig/pattern-starlight.png', 'sig/pattern-moonlight.png', 'sig/pattern-frost.png',
+  'sig/pattern-cutpaper.png', 'sig/pattern-colorfield.png', 'sig/pattern-chromatic.png',
+  'sig/pattern-counterform.png', 'sig/pattern-overprint.png', 'sig/pattern-gesture.png'
 ];
 
 async function sourceFixture(t) {
@@ -128,6 +130,7 @@ async function sourceFixture(t) {
 }
 
 test('actual public build retains the complete reviewed runtime and excludes test photos, private files, and docs', async t => {
+  assert.equal(expectedPublicFiles.length, 50);
   assert.deepEqual([...PUBLIC_FILES].sort(), [...expectedPublicFiles].sort());
   const root = await sourceFixture(t), { output } = await buildSite(root), files = [];
   async function walk(directory) {

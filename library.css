@@ -29,5 +29,12 @@
 .design-library .pattern-choice{min-height:164px;padding:14px 7px 11px;gap:10px;font-size:12px;border-radius:7px;background:#f3f5ee}
 .design-library .pattern-artwork{width:76px;max-width:100%;height:112px;overflow:hidden;font-size:30px}
 .design-library .pattern-artwork img{width:47px;height:112px;object-fit:contain}
+.library-section-title{font:600 16px/1.4 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:-.25px;margin:0 0 8px}
+.library-section-divider{margin-top:30px;padding-top:24px;border-top:1px solid #e0e4dc}
+.design-library .abstract-pattern-choices{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.design-library .abstract-pattern-choices .pattern-choice{min-height:242px;gap:18px;padding:18px 14px 14px;background:#f2eee5}
+.design-library .abstract-pattern-choices .pattern-artwork{width:76px;height:182px}
+.design-library .abstract-pattern-choices .pattern-artwork img{width:76px;height:182px}
 @media(max-width:780px){.design-library{width:calc(100vw - 32px);max-height:calc(100dvh - 32px)}.library-heading{padding:21px 20px 17px}.library-tabs{padding:0 20px}.library-content{padding:20px}.design-library .design-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.design-library .pattern-choices{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.design-library .pattern-choice{min-height:148px}.design-library .pattern-artwork{height:96px}.design-library .pattern-artwork img{height:96px;width:40px}}
 @media(max-width:480px){.design-library{width:calc(100vw - 20px);max-height:calc(100dvh - 20px);border-radius:10px}.library-heading{padding:19px 17px 16px;gap:12px}.library-heading h2{font-size:21px}.library-heading p{font-size:12px}.library-tabs{padding:0 17px}.library-tabs button{font-size:12px;padding-inline:13px}.library-content{padding:17px}.design-library .design-gallery{grid-template-columns:1fr;gap:14px}.design-library .design-caption,.design-library .design-caption strong{font-size:14px}.design-library .design-caption-note{font-size:12px}.design-library .pattern-choices{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.design-library .pattern-choice{font-size:11px}}
+@media(max-width:780px){.design-library .abstract-pattern-choices{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}

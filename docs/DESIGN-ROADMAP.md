@@ -1,6 +1,6 @@
 # Signature Studio roadmap
 
-The current source adds six full-canvas compositions, four fantasy themes, private photo cropping, and scoped AI proposals. Original retains its two-card arrangement. The immediate task is to finish reviewing the integrated editor and exports, then improve compact email formats. This document describes implementation and plans; it does **not** declare every release, deployment, or received-email check passed. [PROGRESS.md](../PROGRESS.md) holds the latest evidence from the expanded eight-agent work.
+The current source adds six full-canvas compositions, six abstract studies, four fantasy themes, private photo cropping, and scoped AI proposals. Original retains its two-card arrangement. The immediate task is to finish reviewing the integrated editor and exports, then improve compact email formats. This document describes implementation and plans; it does **not** declare every release, deployment, or received-email check passed. [PROGRESS.md](../PROGRESS.md) holds the latest evidence from the expanded eight-agent work.
 
 ## Implemented collection
 
@@ -19,6 +19,12 @@ The six new designs use the full Wide or Tall canvas. Their name placement, artw
 The workspace now focuses on the current canvas. **Browse designs** opens Layouts, Themes, and Artwork tabs in a separate dialog; **Browse artwork** opens the same browser directly to patterns. The sidebar keeps simple selectors, palettes live in Colors, and section AI tools are small text links. A selection returns to the preview. Further features should fit these existing surfaces before adding permanent panels or another gallery to the main page.
 
 The fantasy gallery now contains **Galaxy** (Orbit, violet spirals), **Starlight** (Editorial, gold constellations), **Moonlight** (Contour, Sailor Moon-inspired crescent and ribbons), and **Frost Crown** (Signal, Frozen Throne-inspired ice crown and runes). Each applies a composition, palette, and pattern that can then be mixed independently. These are four starting themes using the seven compositions.
+
+## Abstract artwork
+
+Cut paper, Color field, Chromatic, Counterform, Overprint, and Gesture add six original compositions with broad shapes, material differences, and deliberate negative space. The Artwork tab shows large previews; Themes pairs each study with an existing composition and a quiet palette. Both use the existing import, undo, AI, and export paths. The seven layout engines remain unchanged.
+
+Reference directions come from [MoMA’s cut-out collection](https://www.moma.org/calendar/exhibitions/1429) and [Kunsthaus’s postwar abstraction](https://kunsthaus.ch/en/sammlung/nachkriegskunst/). The criterion is a stronger signature-sized composition, not an assertion of museum equivalence. Each artwork must remain distinguishable at small sizes and leave names and contact text readable.
 
 ## Implemented photo workflow
 
@@ -44,11 +50,11 @@ Custom layout recipes choose six base compositions, three name-font families, an
 
 ## Artwork
 
-All ten transparent antialiased **304 × 728 RGBA PNGs**, including the four fantasy motifs, provide 4× native detail at 76 × 182 px. Geometry is editable in [`scripts/prepare-patterns.mjs`](../scripts/prepare-patterns.mjs) and regenerates without additional packages. PNG motif inks are fixed independently of card colors and accent; custom pixel artwork has its own editable palette.
+All sixteen transparent antialiased **304 × 728 RGBA PNGs**, including six abstract studies and four fantasy motifs, provide 4× native detail at 76 × 182 px. Geometry is editable in [`scripts/prepare-patterns.mjs`](../scripts/prepare-patterns.mjs) and regenerates without additional packages. PNG motif inks are fixed independently of card colors and accent; custom pixel artwork has its own editable palette.
 
-![The six design motifs plus Galaxy, Starlight, Moonlight, and Frost on light and dark backgrounds](design-artwork.png)
+![Six design motifs, four fantasy motifs, and six abstract studies on light and dark backgrounds](design-artwork.png)
 
-This is an artwork proof at twice nominal display size, not an editor screenshot or received-email test. The motifs range from 3.3 KB to 21.3 KB. They carry no essential contact information and use empty alt text. Arbitrary backgrounds can obscure some decorative strokes.
+This is an artwork proof at twice nominal display size, not an editor screenshot or received-email test. They carry no essential contact information and use empty alt text. Arbitrary backgrounds can obscure some decorative strokes.
 
 ```sh
 node scripts/prepare-patterns.mjs --proof

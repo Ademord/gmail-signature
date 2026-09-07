@@ -200,6 +200,46 @@ test('fantasy collections change composition, palette and artwork together witho
   assert.equal(app.node('pattern').value,'frost'); assert.equal(app.node('portraitData').value,localPortrait);
 });
 
+test('all six abstract collections are usable in their gallery and preserve identity and uploaded photos', async () => {
+  const app = harness({initialDraft:{...core.defaults,nameLine1:'Jordan',portraitData:localPortrait}});
+  const expected = [
+    ['cutpaper','orbit','#f5f0e6'], ['colorfield','prism','#efe9e1'], ['chromatic','studio','#f0e7ce'],
+    ['counterform','orbit','#eee5ce'], ['overprint','prism','#f4e8dd'], ['gesture','orbit','#f3efe8']
+  ];
+  assert.deepEqual(app.node('abstract-collection-gallery').children.map(button=>button.id),expected.map(([id])=>'choose-collection-'+id));
+  for (const [id,design,background] of expected) {
+    await app.click('choose-collection-' + id);
+    const saved = JSON.parse(app.storage.get(storageKey));
+    assert.equal(saved.design,design); assert.equal(saved.pattern,id); assert.equal(saved.frontBackground,background);
+    assert.equal(saved.nameLine1,'Jordan'); assert.equal(saved.portraitData,localPortrait);
+    assert.equal(app.node('choose-collection-'+id).getAttribute('aria-pressed'),'true');
+    assert.match(app.node('signature-preview').innerHTML,new RegExp('pattern-'+id+'\\.png'));
+  }
+  await app.click('undo-change'); assert.equal(app.node('pattern').value,'overprint');
+  await app.click('redo-change'); assert.equal(app.node('pattern').value,'gesture');
+  await app.click('export-data'); const saved = app.node('session-json').value;
+  await app.click('close-session'); await app.click('reset-draft');
+  await app.click('import-data'); await app.pasteSession(saved); await app.click('session-restore');
+  assert.equal(app.node('pattern').value,'gesture'); assert.equal(app.node('portraitData').value,localPortrait);
+});
+
+test('six independent abstract pattern controls preserve the chosen layout, palette, identity and photo', async () => {
+  const initial = {...core.defaults,design:'signal',layout:'stacked',nameLine1:'Jordan',portraitData:localPortrait,
+    frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341'};
+  const app = harness({initialDraft:initial});
+  const expected = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
+  assert.deepEqual(app.node('abstract-pattern-choices').children.map(button=>button.id),expected.map(id=>'choose-pattern-'+id));
+  for (const pattern of expected) {
+    await app.click('choose-pattern-'+pattern);
+    const saved = JSON.parse(app.storage.get(storageKey));
+    assert.deepEqual(saved,{...initial,pattern});
+    assert.equal(app.node('choose-pattern-'+pattern).getAttribute('aria-pressed'),'true');
+    assert.match(app.node('signature-preview').innerHTML,new RegExp('pattern-'+pattern+'\\.png'));
+  }
+  await app.click('undo-change'); assert.equal(app.node('pattern').value,'overprint');
+  await app.click('redo-change'); assert.equal(app.node('pattern').value,'gesture');
+});
+
 test('all seven design choices preserve identity and can be undone', async () => {
   const app = harness();
   await app.input('nameLine1', 'Jordan'); await app.input('website', 'https://example.org/work');
