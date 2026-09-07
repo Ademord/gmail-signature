@@ -5,6 +5,7 @@
   if (root) root.PortraitCore = api;
 }(typeof window === 'undefined' ? null : window, function () {
   'use strict';
+  const assetVersion = typeof document !== 'undefined' && document.currentScript?.src ? new URL(document.currentScript.src).search : '';
   const MAX_FILE_BYTES = 12 * 1024 * 1024;
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   function dimensions(width, height) {
@@ -60,7 +61,7 @@
     const pixels = new Uint8Array(canvas.width * canvas.height);
     for (let i = 0; i < pixels.length; i++) pixels[i] = Math.round(0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2]);
     return new Promise((resolve, reject) => {
-      const worker = new Worker('portrait-worker.js');
+      const worker = new Worker('portrait-worker.js' + assetVersion);
       const finish = (error, faces) => { clearTimeout(timer); worker.terminate(); error ? reject(error) : resolve(faces); };
       const timer = setTimeout(() => finish(new Error('Face detection timed out. You can adjust the crop yourself.')), 12000);
       worker.onerror = () => finish(new Error('Face detection is unavailable. You can adjust the crop yourself.'));

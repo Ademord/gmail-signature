@@ -142,7 +142,7 @@ test('actual public build retains the complete reviewed runtime and excludes tes
   for (const name of files) assert.deepEqual(await readFile(join(output, name)), await read(name), name);
   const html = await readFile(join(output, 'index.html'), 'utf8');
   assert.equal(html, await readFile(join(output, 'signature.html'), 'utf8'));
-  for (const [, source] of html.matchAll(/(?:src|href)="((?:\.\/)?[^"#?:]+\.(?:js|css))"/g)) {
+  for (const [, source] of html.matchAll(/(?:src|href)="((?:\.\/)?[^"#?:]+\.(?:js|css))(?:\?[^"#]*)?"/g)) {
     assert.ok(files.includes(source.replace(/^\.\//, '')), source + ' is in the downloadable site');
   }
   const model = await readFile(join(output, 'vendor/facefinder.bin'));

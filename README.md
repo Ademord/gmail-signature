@@ -179,6 +179,8 @@ A site at `https://YOUR-USERNAME.github.io/YOUR-REPOSITORY/` uses `https://YOUR-
 
 For updates, export your session, pull the latest source, run the checks below, and restart the server. After Pages deploys, refresh the hosted editor; hard-refresh if old controls remain. Import JSON when moving between site addresses. If storage is blocked or full, export the current session before closing.
 
+After editing runtime code, styles, or bundled assets, run `node scripts/version-assets.mjs` and commit both HTML entry points. Their script and stylesheet URLs include a content-derived version, so a refreshed editor loads a consistent release instead of reusing older cached code. The portrait worker, detector, and model carry the same version. CI checks these committed versions before building; line endings produce the same version on Windows and Linux.
+
 The workflow follows [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). Local build commands do not push changes, change visibility, or rewrite history.
 
 ## Privacy and existing history
@@ -196,6 +198,7 @@ The build publishes only its explicit allowlist. Keep private notes, original ph
 ```sh
 npm test
 node scripts/prepare-patterns.mjs --check
+node scripts/version-assets.mjs --check
 npm run build
 ```
 

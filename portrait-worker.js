@@ -1,12 +1,13 @@
 /* The bundled detector sees only downsampled pixels, on this device. */
-importScripts('vendor/pico.js');
+const assetVersion = self.location?.search || '';
+importScripts('vendor/pico.js' + assetVersion);
 let classifier;
 self.onmessage = async function (event) {
   const { pixels, width, height } = event.data;
   try {
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 640 || height > 640 || pixels.length !== width * height) throw new Error('Invalid detection image.');
     if (!classifier) {
-      const response = await fetch('vendor/facefinder.bin', { credentials: 'omit', signal: AbortSignal.timeout(8000) });
+      const response = await fetch('vendor/facefinder.bin' + assetVersion, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
       if (!response.ok) throw new Error('Detector model unavailable.');
       const bytes = new Int8Array(await response.arrayBuffer());
       if (bytes.length !== 239632) throw new Error('Detector model is incomplete.');
