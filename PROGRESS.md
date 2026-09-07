@@ -4,9 +4,9 @@ Updated: 2026-09-07. Active scope: six new compositions, private smart portrait 
 
 ## Active design-studio gauntlet
 
-- Working checkout: `C:\Users\Franco\Documents\ChatGPT\mvp\gmail-signature`, branch `codex/signature-design-studio`, starting at `3c46e99`. The original Downloads checkout and private backups are preserved.
+- Working checkout: this repository, branch `codex/signature-design-studio`, starting at `3c46e99`. The original checkout and private backups are preserved.
 - Reference: real HubSpot Email Signature Generator, https://www.hubspot.com/email-signature-generator. Fresh paired captures have actual DOM viewports of 1280×720; mobile checks use 390×844. Earlier requested viewport sizes did not apply to the reference tab, so those earlier captures are not treated as a matched comparison.
-- Eight agents across waves: renderer, studio UI, artwork/roadmap, portrait critic, studio critic, release critic, AI builder and extension critic. Lead implements portraits, collections, selective imports, integration and release. Current decluttering is assigned to the artwork/UI builder with a separate critic recheck.
+- Eight agents built and reviewed the studio across waves: renderer, studio UI, artwork/roadmap, portrait critic, studio critic, release critic, AI builder and extension critic. The resumed release uses six independent roles: regressions, public boundary, GUI, documentation, photo/AI contracts, and final release. Lead integrates fixes and deployment.
 - Six new designs: Orbit, Studio, Contour, Prism, Editorial, Signal. Original remains available. Designs change composition, artwork and palette. Fields, dimensions, themes, icon choices, HTML/PNG, history and session backups must remain usable.
 - Portraits: local JPG/PNG/WebP upload; bundled Pico worker detects face regions; manual pan/zoom, multi-face choice, brightness, monochrome, mirror, shape/size, square crop download and removal. Uploaded crop stays in local storage/JSON/PNG. Clickable HTML needs a hosted square photo URL; do not silently embed unsupported local data in email HTML or upload a photo to a service.
 - Galaxy, Starlight, Moonlight (Sailor Moon inspired) and Frost Crown (Frozen Throne inspired) collections add four sets of procedural artwork and palettes. Original and all six new geometries remain available.
@@ -16,10 +16,11 @@ Updated: 2026-09-07. Active scope: six new compositions, private smart portrait 
 - Selective imports now have Information and Design checkboxes. Unselected fields stay; Design includes saved themes and photo formatting, Information includes the photo itself. Copy cleanup supports email escape artifacts and identical Markdown URL wrappers and reports each cleanup. User's exact pasted example validates with three cleanups; its contents are only in ignored `.private/`.
 - Gmail check attempted: available browser redirects to Google sign-in. No authenticated Gmail session is available and no test email has been sent. Finish other work; a real send/receive check needs user sign-in and explicit test-send authorization.
 - User explicitly chose Codex's browser instead of personal Edge. Actual Codex downloads were found in the OS Downloads folder: JSON 34,132 bytes, SHA256 `632126046560D79BB6247A84C31C8483DF0FB56B68A202A60EBABE3C9A804A49`; portrait PNG 2648×832, 272,069 bytes, SHA256 `BAB63A2B0A2DF3E32C556CDFC97826550160C4459E6589909D5CBCA4C49FE0D8`. Native Edge automation was stopped by its URL-confidence safety check and is no longer the selected browser path.
-- Hosted personal-session restoration remains pending. Back up the existing hosted session before importing; preserve both original private backup hashes. Public screenshots use generic details and the licensed NASA test photo.
+- Resumed hosted check found the personal session already restored on the older release. Its 23 fields and one theme were exported to an ignored private backup before publication; verify them again after the upgrade. Public screenshots use generic details and the licensed NASA test photo.
 - Final complete local run: **155 tests, 154 pass, 0 fail, 1 Windows symlink skip**. All ten generated PNG assets pass deterministic checks; production build has **44 allowlisted files**, with matching HTML entry points and no private profile matches in publishable source. Original backup copies still match `4A43FCDFFDB2A05ACDEF378626AA50BE61368E651BE60D4CD4C5FC3B7CBE11ED`.
 - Final Signal PNG from Codex downloaded to the OS Downloads folder: 2648×832, 260,417 bytes, SHA256 `A53BB2E3C9A6709D2EC65EE0EF4C70C0442C6482160D67B2C1F0DD49CD0FCA4A`. Its frame and portrait were checked in the real preview; earlier renderer browser matrices tested 674 fitting cases and 68 decoded PNG cases.
 - Root browser: Design-only import retained Avery and the portrait while applying Signal/Frost; Undo restored Orbit/Galaxy. Information-only imported Jordan while keeping Galaxy; Undo restored the photo. Mobile import and library dialogs have equal client/scroll widths (335 and 369 px at a 390×844 viewport). Library keyboard tabs, selection close/focus return, and Custom artwork → AI dialog transition work. See the independent follow-up in `docs/reviews/ai-extension-2026-09-07.md`.
+- Resumed GUI critic found focus was lost after closing AI launched from the artwork library. The library now returns focus to its original workspace launcher when the next dialog closes. Root Codex browser verified Escape, Close, and Apply; all three returned focus correctly. Fresh regression review reconfirmed 154 passes / one Windows skip and byte-for-byte 44-file build parity. Public boundary review found no private contact payloads, backups, secrets, or personal photos in the current release files.
 
 | Current gate | Expected evidence | Status |
 | --- | --- | --- |
@@ -63,7 +64,7 @@ The following sections retain the prior released baseline; they do not claim ver
 | Real sent/received Gmail rendering | Gmail preserves pasted markup on desktop and mobile | No real Gmail message has been sent | Not performed; compatibility check remains |
 | Portable offline bundle | Run without a local server or network | Clean source ZIP is provided for development, not claimed as an offline app | Not selected |
 
-## Current implementation
+## Historical implementation notes
 
 - `index.html` and `signature.html` are identical editor entry points. Keep both synchronized.
 - `signature-core.js` owns generic defaults, normalization, validation, HTML and plain-text rendering. All preview/export paths use this renderer. Optional empty contact rows disappear. Titles use the original regular monospace styling.

@@ -44,9 +44,9 @@ Custom layout recipes choose six base compositions, three name-font families, an
 
 ## Artwork
 
-The initial six transparent antialiased **304 × 728 RGBA PNGs** provide 4× native detail at 76 × 182 px. Geometry is editable in [`scripts/prepare-patterns.mjs`](../scripts/prepare-patterns.mjs) and regenerates without additional packages. Four additional fantasy PNGs are bundled separately. PNG motif inks are fixed independently of card colors and accent; custom pixel artwork has its own editable palette.
+All ten transparent antialiased **304 × 728 RGBA PNGs**, including the four fantasy motifs, provide 4× native detail at 76 × 182 px. Geometry is editable in [`scripts/prepare-patterns.mjs`](../scripts/prepare-patterns.mjs) and regenerates without additional packages. PNG motif inks are fixed independently of card colors and accent; custom pixel artwork has its own editable palette.
 
-![Orbit, Studio, Contour, Prism, Editorial, and Signal on light and dark backgrounds](design-artwork.png)
+![The six design motifs plus Galaxy, Starlight, Moonlight, and Frost on light and dark backgrounds](design-artwork.png)
 
 This is an artwork proof at twice nominal display size, not an editor screenshot or received-email test. The motifs range from 3.3 KB to 21.3 KB. They carry no essential contact information and use empty alt text. Arbitrary backgrounds can obscure some decorative strokes.
 

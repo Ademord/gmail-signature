@@ -144,7 +144,7 @@
       $('portrait-size-control').value = draft.portraitSize;
       $('portrait-size-value').textContent = draft.portraitSize + ' px';
       if (document.activeElement !== $('portrait-public-url')) $('portrait-public-url').value = draft.portraitUrl;
-      const radius = draft.portraitShape === 'circle' ? '50%' : draft.portraitShape === 'rounded' ? '18%' : '0';
+      const radius = draft.portraitShape === 'circle' ? '50%' : draft.portraitShape === 'rounded' ? (12 / draft.portraitSize * 100) + '%' : '0';
       $('portrait-current-image').style.borderRadius = radius; canvas.style.borderRadius = radius;
     }
     sync(); return { sync };

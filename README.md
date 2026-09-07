@@ -38,7 +38,7 @@ The main workspace keeps the current signature in view. In **Design**, use the C
 | Editorial | Full-width serif masthead, fine rule, contact columns |
 | Signal | Framed terminal-style header and labeled contact grid |
 
-A design applies its composition, palette, and default pattern while preserving personal details. Choose a different pattern independently, use **None** to remove it, or return to **Design default**. Six quick palettes and **Swap surface colors** are in **Colors**; **Edit colors** in Design opens that tab. **Surprise me** combines a design, palette, and pattern; **Undo** returns to the previous choice. **Reset design** restores the selected palette and pattern.
+A design applies its composition, palette, and default pattern while preserving personal details. Choose a different pattern independently, use **None** to remove it, or return to **Design default**. Six quick palettes and **Swap surface colors** are in **Colors**; **Edit colors** in Design opens that tab. **Surprise me** combines a design, palette, and pattern; **Undo** returns to the previous choice. **Reset design** restores the selected composition's default palette and pattern.
 
 The **Themes** tab in Browse designs combines those compositions with four additional palettes and PNG motifs:
 
@@ -104,11 +104,11 @@ The Colors tab includes six quick palettes and a saved-theme selector with Origi
 
 Saved themes contain **only a name and three colors**, not the design, pattern, photo, or contacts. They persist in this browser. Applying a theme preserves other signature details. Draft links include current choices but not the theme library; session JSON includes both.
 
-The ten bundled decorative patterns use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
+The ten generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
 
 In **Icons**, select a globe, envelope, phone, LinkedIn mark, location pin, or **None** per contact row. None hides only the icon. The renderer chooses cream or charcoal artwork for the actual surface, using a calculated 3:1 contrast threshold. Custom icon uploads are planned.
 
-Publish all `sig/` assets, including five `*-dark.png` icons, the six original procedural motifs, and the four fantasy-theme motifs. Regenerate the original icon variants and six procedural motifs with:
+Publish all `sig/` assets, including five `*-dark.png` icons, the six composition motifs, and the four fantasy-theme motifs. Regenerate the icon variants and all ten motifs with:
 
 ```sh
 node scripts/prepare-icons.mjs
@@ -116,7 +116,7 @@ node scripts/prepare-patterns.mjs --proof
 node scripts/prepare-patterns.mjs --check
 ```
 
-The pattern check covers the six procedural motifs. It reads real PNGs and verifies dimensions, transparency, antialiased edges, uniqueness, and deterministic regeneration. Those motifs have 304 × 728 native pixels, equivalent to 4× detail at 76 × 182 px. The four fantasy-theme PNGs are separate bundled assets.
+The pattern check covers all ten generated motifs. It reads real PNGs and verifies dimensions, transparency, antialiased edges, uniqueness, and deterministic regeneration. Those motifs have 304 × 728 native pixels, equivalent to 4× detail at 76 × 182 px. The original `dots.png` is a separate bundled asset.
 
 ## Extend a section with your own AI
 

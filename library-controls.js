@@ -57,7 +57,13 @@
     function closed() {
       cancelAnimationFrame(frame);
       // A Custom artwork selection can open the AI dialog before this closes.
-      if (!document.querySelector('dialog[open]') && opener?.isConnected) opener.focus();
+      const nextDialog = document.querySelector('dialog[open]');
+      const returnTarget = opener;
+      const restoreFocus = () => {
+        if (!document.querySelector('dialog[open]') && returnTarget?.isConnected) returnTarget.focus();
+      };
+      if (nextDialog) nextDialog.addEventListener('close', restoreFocus, {once:true});
+      else restoreFocus();
     }
     document.addEventListener('click', launch);
     dialog.addEventListener('click', click);
