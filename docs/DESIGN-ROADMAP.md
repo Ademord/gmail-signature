@@ -1,6 +1,6 @@
 # Signature Studio roadmap
 
-The current extension adds abstract artwork across the full card, direct editing of side details, seventeen color palettes, and simpler layout controls. The seven existing compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) distinguishes completed checks from the pending current release and Gmail received-message gate.
+The published extension adds abstract artwork across the full card, direct editing of side details, seventeen color palettes, and simpler layout controls. The seven existing compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) records the completed release checks and the remaining Gmail received-message gate.
 
 ## Implemented collection
 
@@ -68,7 +68,7 @@ Checks inspect real PNG bytes and deterministic regeneration. Flow-aware PNG exp
 
 ## Acceptance coverage
 
-Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The current work adds independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles work in waves. Final runtime-version checks, exact-commit CI, and live deployment acceptance are pending; prior releases do not certify this revision.
+Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The current release adds independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles contributed in waves. Runtime-version checks, exact-commit CI, and live deployment acceptance passed on app commit d64ce06. Received Gmail testing remains separate and unverified.
 
 The seven exported AI examples have passed proposal validation and actual rendering with the default signature. Further checks cover field scope, default prompt privacy, stale proposals, one-step Undo, custom recipe limits, and HTML budget errors. Codex in-app browser evidence includes verified downloaded JSON/PNG files and the corrected Signal layout. Gmail paste/send verification remains blocked on an authenticated send test; these browser checks do not close it.
 
