@@ -1,6 +1,6 @@
 # Signature Studio roadmap
 
-The published extension adds abstract artwork across the full card, direct editing of side details, seventeen color palettes, and simpler layout controls. The seven existing compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) records the completed release checks and the remaining Gmail received-message gate.
+The current source adds a Plum starting palette, eighteen color palettes, a warm stone editor, and Desktop/Mobile Email preview widths to the previously released flowing artwork and side-detail editor. The seven compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) records release evidence and the remaining Gmail received-message gate. The [scoped visual review](reviews/plum-editor-2026-09-09.md) approves the palette/editor refinement and identifies compact signature typography as a remaining readability gap.
 
 ## Implemented collection
 
@@ -16,13 +16,17 @@ The published extension adds abstract artwork across the full card, direct editi
 
 The six new designs use the full Wide or Tall canvas. Their name placement and contact arrangement differ. Selecting a layout preserves the current colors, pattern, and personal details. Artwork and palettes are separate choices; Reset design explicitly restores the composition's default palette and pattern. Signature edits use Undo/Redo and draft/session persistence. Saved palettes contain only a name and three colors; complete presets remain future work.
 
-**Browse designs** has Layouts and Artwork tabs. The main Design panel's Layout section collapses; the separate Layout tab provides synchronized width and height sliders and number fields. **Colors → Palettes** groups six quick choices with eleven more: Midnight, six abstract palettes, and four fantasy palettes. Palette selection changes colors only. Further features should fit these surfaces before adding permanent panels.
+**Browse designs** has Layouts and Artwork tabs. The main Design panel's Layout section collapses; the separate Layout tab provides synchronized width and height sliders and number fields. **Colors → Palettes** groups six quick choices with twelve more: Saffron, Midnight, six abstract palettes, and four fantasy palettes. Palette selection changes colors only. Further features should fit these surfaces before adding permanent panels.
+
+**Plum**, marked Default, uses white and warm cream surfaces with a purple accent. Fresh browser drafts and **Load example** use it. Existing saved drafts preserve their colors; legacy imports that omit color fields keep the same fallback behavior. The editor itself uses warm stone surfaces, a light preview, white paper, serif headings, and a fixed plum control accent independent of signature colors. The supplied form-and-preview reference informs this refinement; no bundled external fonts or runtime are required.
+
+The **Email** preview offers **Desktop** and **Mobile** widths, fitting within message surfaces up to 780 px and 390 px respectively. These are view-only controls: they scale the displayed signature within the available space and leave draft fields, export dimensions, draft links, and session backups unchanged. Actual compact signature layouts remain a separate planned feature; simulated message widths do not establish received-email behavior.
 
 Galaxy, Starlight, Moonlight, and Frost Crown remain available as separate artwork and palette choices. Their earlier combined Themes gallery has been removed. Existing saved colors and session backups remain compatible.
 
 ## Abstract artwork
 
-Cut paper, Color field, Chromatic, Counterform, Overprint, and Gesture have twelve dedicated Wide/Tall PNG backgrounds. Automatic placement lets these six studies flow across the signature. Side detail retains the smaller motif; Across signature selects flow explicitly. Scale is 75–150%, with horizontal and vertical positions from 0–100%; an axis enables when its scaled image can move. Text and contacts remain separate content, with the final visual treatment still under review. Placement settings travel through history, draft links, AI proposals, and session imports.
+Cut paper, Color field, Chromatic, Counterform, Overprint, and Gesture have twelve dedicated Wide/Tall PNG backgrounds. Automatic placement lets these six studies flow across the signature. Side detail retains the smaller motif; Across signature selects flow explicitly. Scale is 75–150%, with horizontal and vertical positions from 0–100%; an axis enables when its scaled image can move. Text and contacts remain separate content in compact information blocks. Placement settings travel through history, draft links, AI proposals, and session imports.
 
 **Edit artwork** creates editable side details: Cut forms, Interlock, Color blocks, Counterspace, Offset planes, and Rhythm. It changes inks and cells, mirrors shapes, and makes repeatable variations using the existing custom-pattern recipe. Custom grids remain side details; the drawing dialog does not modify a flowing PNG background. Unfinished edits remain local until Apply, and existing recipes reopen exactly. Flow adds four placement/scale/position fields with backward-compatible defaults; drawn recipes need no new image host.
 
@@ -68,7 +72,7 @@ Checks inspect real PNG bytes and deterministic regeneration. Flow-aware PNG exp
 
 ## Acceptance coverage
 
-Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The current release adds independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles contributed in waves. Runtime-version checks, exact-commit CI, and live deployment acceptance passed on app commit d64ce06. Received Gmail testing remains separate and unverified.
+Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The 8 September flow release added independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles contributed in waves. Runtime-version checks, exact-commit CI, and live deployment acceptance passed on app commit d64ce06. That historical result does not certify the later Plum, editor-appearance, or Email preview changes. Received Gmail testing remains separate and unverified.
 
 The seven exported AI examples have passed proposal validation and actual rendering with the default signature. Further checks cover field scope, default prompt privacy, stale proposals, one-step Undo, custom recipe limits, and HTML budget errors. Codex in-app browser evidence includes verified downloaded JSON/PNG files and the corrected Signal layout. Gmail paste/send verification remains blocked on an authenticated send test; these browser checks do not close it.
 

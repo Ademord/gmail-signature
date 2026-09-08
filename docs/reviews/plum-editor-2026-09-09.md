@@ -1,0 +1,13 @@
+# Plum editor review — 9 September 2026
+
+**Passed for the requested palette and editor appearance scope.** This is a nonblind comparison with the user's supplied Email Signature Editor concept 1a, rendered locally in the Codex browser. It is not a claim that the product beats that reference overall.
+
+The independent visual critic inspected actual reference and product captures at the same 1707 × 960 CSS viewport, desktop/narrow email views, and a phone layout at 391 × 844. Phone screenshots included exterior blank compositor space; the review considered only the rendered application. The critic inspected source type sizes as well. Functional testing was performed separately by the regression reviewer and lead.
+
+The white signature, warm neutral editor surfaces, dark labels, serif headings, and consistent plum controls carry the useful reference choices into this product. The palette is selectable and clearly marked Default. Its warm contact panel is an adaptation to the existing two-panel signature. Existing palettes remain available. The reference's bundled runtime, fonts, and unrelated electronic-signing concept were not imported.
+
+The final [actual workspace screenshot](../plum-studio.jpg) shows fictional Avery data. Desktop message and signature frames align at 780 px; Mobile preview aligns at 390 px. On the phone breakpoint both shrink to approximately 303 px, without horizontal page overflow. Device buttons affect preview fitting only. Independent tests verify identical exported HTML, session data, links, and undo history before and after device switching.
+
+The largest remaining difference is email readability. Original uses compact card typography, including a 9 px role line; fitting its 662 px wide signature into a narrow message reduces text further. The reference's conventional signature uses larger contact type. This inherited limitation does not fail the palette change, but prevents an overall readability win. Following critic feedback, the narrow-preview hint directs users to **Layout → Tall** for larger text and states that preview width does not change export size. The lead verified Tall at 321 × 436 px, fitted to 92% on the phone, compared with the much smaller Wide preview. Received-email behavior still depends on the actual client and remains unverified.
+
+Local results: 221 tests, 220 passed, zero failed, one expected Windows symlink skip. Legacy HTML hashes and normalization remain unchanged. The independent publication audit found only the intended source, documentation, and generic screenshot; the site build retains its strict 65-file allowlist. See [PROGRESS.md](../../PROGRESS.md) for final token, exact-commit CI, and deployment evidence.

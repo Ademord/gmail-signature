@@ -3,28 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f7f8">
+  <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=4b21b60415b81f8c">
-  <link rel="stylesheet" href="portrait.css?v=4b21b60415b81f8c">
-  <link rel="stylesheet" href="ai-extension.css?v=4b21b60415b81f8c">
-  <link rel="stylesheet" href="library.css?v=4b21b60415b81f8c">
-  <link rel="stylesheet" href="artwork.css?v=4b21b60415b81f8c">
-  <script src="portrait-core.js?v=4b21b60415b81f8c" defer></script>
-  <script src="signature-core.js?v=4b21b60415b81f8c" defer></script>
-  <script src="editor-history.js?v=4b21b60415b81f8c" defer></script>
-  <script src="signature-image.js?v=4b21b60415b81f8c" defer></script>
-  <script src="session-data.js?v=4b21b60415b81f8c" defer></script>
-  <script src="session-controls.js?v=4b21b60415b81f8c" defer></script>
-  <script src="portrait-controls.js?v=4b21b60415b81f8c" defer></script>
-  <script src="design-collections.js?v=4b21b60415b81f8c" defer></script>
-  <script src="ai-extension-core.js?v=4b21b60415b81f8c" defer></script>
-  <script src="ai-extension-controls.js?v=4b21b60415b81f8c" defer></script>
-  <script src="library-controls.js?v=4b21b60415b81f8c" defer></script>
-  <script src="artwork-core.js?v=4b21b60415b81f8c" defer></script>
-  <script src="artwork-controls.js?v=4b21b60415b81f8c" defer></script>
-  <script src="app.js?v=4b21b60415b81f8c" defer></script>
+  <link rel="stylesheet" href="editor.css?v=ab570e96e3452b6e">
+  <link rel="stylesheet" href="portrait.css?v=ab570e96e3452b6e">
+  <link rel="stylesheet" href="ai-extension.css?v=ab570e96e3452b6e">
+  <link rel="stylesheet" href="library.css?v=ab570e96e3452b6e">
+  <link rel="stylesheet" href="artwork.css?v=ab570e96e3452b6e">
+  <script src="portrait-core.js?v=ab570e96e3452b6e" defer></script>
+  <script src="signature-core.js?v=ab570e96e3452b6e" defer></script>
+  <script src="editor-history.js?v=ab570e96e3452b6e" defer></script>
+  <script src="signature-image.js?v=ab570e96e3452b6e" defer></script>
+  <script src="session-data.js?v=ab570e96e3452b6e" defer></script>
+  <script src="session-controls.js?v=ab570e96e3452b6e" defer></script>
+  <script src="portrait-controls.js?v=ab570e96e3452b6e" defer></script>
+  <script src="design-collections.js?v=ab570e96e3452b6e" defer></script>
+  <script src="ai-extension-core.js?v=ab570e96e3452b6e" defer></script>
+  <script src="ai-extension-controls.js?v=ab570e96e3452b6e" defer></script>
+  <script src="library-controls.js?v=ab570e96e3452b6e" defer></script>
+  <script src="artwork-core.js?v=ab570e96e3452b6e" defer></script>
+  <script src="artwork-controls.js?v=ab570e96e3452b6e" defer></script>
+  <script src="app.js?v=ab570e96e3452b6e" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -46,7 +46,7 @@
     </div>
   </header>
 
-  <main class="workspace" data-preview-view="card">
+  <main class="workspace" data-preview-view="card" data-email-device="desktop">
     <aside id="signature-settings" class="editor-rail" aria-label="Signature settings">
       <div class="rail-heading">
         <div><h1>Edit signature</h1></div>
@@ -168,7 +168,8 @@
             <summary>Palettes</summary>
             <div class="disclosure-content">
             <div id="palette-choices" class="palette-choices" role="group" aria-label="Color palettes"></div>
-            <details id="more-palettes" class="nested-disclosure"><summary>More palettes <span>11</span></summary><div id="extra-palette-choices" class="palette-choices" role="group" aria-label="More color palettes"></div></details>
+            <p class="field-note">Plum is the starting palette for new signatures. Choose any palette to change colors.</p>
+            <details id="more-palettes" class="nested-disclosure"><summary>More palettes <span>12</span></summary><div id="extra-palette-choices" class="palette-choices" role="group" aria-label="More color palettes"></div></details>
             <div class="studio-small-actions"><button id="swap-colors" class="text-button" type="button">Swap surface colors</button></div>
             </div>
           </details>
@@ -199,6 +200,7 @@
     <section class="preview-column" aria-labelledby="preview-heading">
       <a class="mobile-edit-link" href="#signature-settings">Edit signature <span aria-hidden="true">↓</span></a>
       <div class="preview-heading"><div class="preview-title"><span class="live-dot" aria-hidden="true"></span><h2 id="preview-heading">Live preview</h2></div><div class="view-switch" role="group" aria-label="Preview view"><button type="button" class="is-active" data-view="card" aria-pressed="true"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M5 7h3M5 10h5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>Card</button><button type="button" data-view="email" aria-pressed="false"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="m3 5 6 4.5L15 5" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>Email</button></div></div>
+      <div id="email-device-controls" class="email-device-controls" hidden><div class="view-switch" role="group" aria-label="Email preview width"><button type="button" data-email-device="desktop" aria-pressed="true">Desktop</button><button type="button" data-email-device="mobile" aria-pressed="false">Mobile</button></div><p id="preview-size-note">Preview your signature in a message. Export dimensions stay the same.</p></div>
       <div class="preview-frame">
         <div class="canvas-topline"><span class="canvas-label" id="canvas-design-label">ORIGINAL / LIVE CANVAS</span><span class="canvas-customized" id="canvas-customized"></span></div>
         <div id="preview-viewport" class="preview-viewport">

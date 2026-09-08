@@ -1,10 +1,10 @@
 # Signature Studio
 
-A browser-local email signature editor with seven layouts, flowing abstract artwork, seventeen color palettes, private photo cropping, and HTML or high-resolution PNG export. Adjust artwork placement or draw an editable side detail, then export the result. Start with the **Avery Morgan** example and keep the draft in your browser.
+A browser-local email signature editor with seven layouts, flowing abstract artwork, eighteen color palettes, private photo cropping, and HTML or high-resolution PNG export. Adjust artwork placement or draw an editable side detail, then export the result. New drafts start with the **Avery Morgan** example in **Plum** and stay in your browser.
 
 [Open the published demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml) · [Design roadmap](docs/DESIGN-ROADMAP.md)
 
-![Signature Studio with abstract artwork flowing across the card](docs/flow-studio.jpg)
+![Signature Studio with the selectable Plum default and warm stone editor](docs/plum-studio.jpg)
 
 This README describes the implemented source. See [PROGRESS.md](PROGRESS.md) for the latest browser, release, and email checks; feature availability does not imply that every release check has passed. Browser verification uses the Codex in-app browser. Gmail paste/send verification remains blocked on an authenticated send test.
 
@@ -24,7 +24,7 @@ The server serves only the app, artwork, and detector files listed in `scripts/p
 
 ## Choose a design
 
-The main workspace keeps the signature in view. Expand **Design → Layout** to choose a Composition, or click **Browse designs** for the **Layouts** and **Artwork** library. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
+The main workspace keeps the signature in view, with warm stone surfaces, a light preview and white paper, serif headings, and readable controls. Plum buttons and selection states stay independent of your signature's palette. Expand **Design → Layout** to choose a Composition, or click **Browse designs** for the **Layouts** and **Artwork** library. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
 
 | Design | Composition |
 | --- | --- |
@@ -74,6 +74,8 @@ Selecting a fantasy palette changes colors only. Choose its artwork and layout i
 
 In the **Layout** tab, choose **Wide** or **Tall** and use the matching number fields or sliders for panel width (280–420 px) and height (180–320 px). The default total size is 662 × 208 px in Wide and 321 × 436 px in Tall. These are panel dimensions: Wide totals two widths plus a 20 px gap; Tall totals two heights plus that gap. Preview scaling fits the editor to the screen without changing the exported dimensions.
 
+Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from Layout, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
+
 ## Add details and a photo
 
 In **Details**, replace the example name, role, subtitle, contacts, and tags. A portfolio website can replace an email address. Empty optional fields remove their contact rows.
@@ -107,7 +109,7 @@ The editor checks that the URL loads a square image. It does not upload or publi
 
 ## Copy into Gmail
 
-1. Check the **Card** and **Email** previews.
+1. Check the **Card** preview and both **Desktop** and **Mobile** widths in **Email**.
 2. If needed, open **Layout → Advanced settings** and set the image base to a public HTTPS folder containing the bundled `sig/` assets. Local preview uses bundled artwork for the default base. A portrait uses its separate photo URL.
 3. Click **Copy signature**, then paste the formatted signature into Gmail. If clipboard access is denied, follow the manual-copy fallback. **Download HTML** provides a file you can open to select and copy.
 4. In Gmail, go to **Settings → See all settings → Signature**, choose defaults for new messages and replies, then **Save Changes**.
@@ -123,7 +125,9 @@ Flowing artwork uses CSS background images. Google lists `background-image`, `ba
 
 Open **Colors** to edit the two surface colors and accent with pickers or six-digit hex codes. Their positions depend on the design. Text switches to a readable ink when necessary, including when the accent is too close to its background.
 
-**Palettes** contains six quick choices. **More palettes** adds Midnight, six abstract palettes, and four fantasy palettes, for seventeen distinct choices in total. Each changes only the two surface colors and accent. **Swap surface colors** reverses the surfaces.
+**Palettes** contains six quick choices, led by **Plum**, marked **Default**. **More palettes** adds Saffron, Midnight, six abstract palettes, and four fantasy palettes, for eighteen distinct choices in total. Each changes only the two surface colors and accent. **Swap surface colors** reverses the surfaces.
+
+Plum combines white and warm cream surfaces with a purple accent. It is used for a fresh browser draft and **Load example**. Existing saved drafts retain their colors, and older imports that omit color fields keep their established fallback colors. Choosing another palette remains an explicit, undoable edit.
 
 Expand **Saved palettes** to choose your own saved colors. Older Spruce sessions remain supported; its colors are available as Forest in the palette collection. Enter a unique name and click **Save new**; **Update selected** revises a saved palette. **Delete** leaves the current colors in place, and its Undo action restores the saved palette.
 

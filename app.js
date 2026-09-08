@@ -22,6 +22,9 @@
   const storageKey = 'signature-studio:draft:v1';
   const themeStorageKey = 'signature-studio:themes:v1';
   const colorKeys = ['frontBackground', 'backBackground', 'accent'];
+  const plumPalette = Object.freeze({name:'Plum',frontBackground:'#ffffff',backBackground:'#faf8f4',accent:'#583da6'});
+  // Fresh drafts use the new palette; legacy normalization keeps its original defaults.
+  const newDraft = () => ({...core.defaults,...Object.fromEntries(colorKeys.map(key => [key,plumPalette[key]]))});
   const flowingPatterns = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
   const artworkNumbers = ['artworkScale','artworkPositionX','artworkPositionY'];
   const hexColor = /^#[0-9a-f]{6}$/i;
@@ -68,7 +71,7 @@
   imageButton.id = 'export-image'; imageButton.type = 'button'; imageButton.className = 'button button-secondary image-export-button';
   imageButton.innerHTML = '<svg viewBox="0 0 18 18" width="17" height="17" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6.5" r="1.2" stroke="currentColor" stroke-width="1.2"/><path d="m3 14 4-4 2.5 2 3-4 2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Export image</span><span class="format-badge">HD</span>';
   document.querySelector('.preview-actions > div').append(imageButton);
-  let draft = { ...core.defaults }, lastValid = null, view = 'card', activeTab = 'design', undoDraft = null;
+  let draft = newDraft(), lastValid = null, view = 'card', emailDevice = 'desktop', activeTab = 'design', undoDraft = null;
   let portraitControls = null;
   let aiControls = null;
   let artworkControls = null;
@@ -144,15 +147,16 @@
   const designs = core.designs || [];
   const designButtons = [], patternButtons = [], paletteButtons = [];
   const studioPalettes = [
+    plumPalette,
     { name: 'Vermilion', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
     { name: 'Cobalt', frontBackground: '#eef2ff', backBackground: '#182d59', accent: '#3659d9' },
     { name: 'Forest', frontBackground: '#edf2ea', backBackground: '#1d392f', accent: '#a64435' },
     { name: 'Lilac', frontBackground: '#eee6f7', backBackground: '#32263d', accent: '#8049a7' },
-    { name: 'Saffron', frontBackground: '#fff2d8', backBackground: '#353027', accent: '#a7620c' },
     { name: 'Rose', frontBackground: '#f9e7e7', backBackground: '#462c39', accent: '#ad3e66' }
   ];
   // Legacy collections still supply their colors; composition and artwork are separate choices.
   const extraPalettes = [
+    { name: 'Saffron', frontBackground: '#fff2d8', backBackground: '#353027', accent: '#a7620c' },
     ...presets.filter(item => !studioPalettes.some(palette => colorKeys.every(key => palette[key] === item[key]))),
     ...(window.SignatureCollections || [])
   ];
@@ -209,6 +213,7 @@
     const swatches = document.createElement('span'); swatches.className = 'palette-swatches'; swatches.setAttribute('aria-hidden', 'true');
     for (const key of colorKeys) { const swatch = document.createElement('span'); swatch.style.backgroundColor = item[key]; swatches.append(swatch); }
     button.append(swatches); const caption = document.createElement('span'); caption.textContent = item.name; button.append(caption);
+    if (item === plumPalette) { const badge = document.createElement('small'); badge.className = 'palette-default'; badge.textContent = 'Default'; button.append(badge); }
     button.addEventListener('click', () => applyStyle(Object.fromEntries(colorKeys.map(key => [key, item[key]])), item.name + ' colors applied.'));
     $(studioPalettes.includes(item) ? 'palette-choices' : 'extra-palette-choices').append(button); paletteButtons.push({ button, item });
   }
@@ -239,7 +244,8 @@
     $('design-description').textContent = selected.description;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';
     const customized = !colorKeys.every(key => selected[key] === draft[key]) || draft.pattern !== 'auto';
-    $('canvas-customized').textContent = customized ? 'CUSTOMIZED' : 'DESIGN DEFAULTS';
+    const activePalette = [...studioPalettes,...extraPalettes].find(matchesColors);
+    $('canvas-customized').textContent = activePalette ? activePalette.name.toUpperCase() + ' PALETTE' : customized ? 'CUSTOM COLORS' : 'DESIGN DEFAULTS';
     if ($('custom-design-option')) $('custom-design-option').disabled = !draft.customLayout;
     if ($('custom-pattern-option')) $('custom-pattern-option').disabled = !draft.customPattern;
     for (const { button, item } of designButtons) { const active = item.id === draft.design; button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-selected', active); }
@@ -465,9 +471,9 @@
     const viewport = $('preview-viewport');
     const style = getComputedStyle(viewport);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-    const emailPadding = view === 'email' ? (innerWidth <= 740 ? 24 : 40) : 0;
+    const emailPadding = view === 'email' ? (emailDevice === 'mobile' || innerWidth <= 740 ? 24 : 40) : 0;
     const inner = viewport.clientWidth - padding;
-    const available = Math.max(1, (view === 'email' ? Math.min(780, inner) : inner) - emailPadding);
+    const available = Math.max(1, (view === 'email' ? Math.min(emailDevice === 'mobile' ? 390 : 780, inner) : inner) - emailPadding);
     const scale = Math.min(1, available / width);
     $('signature-preview').style.width = width + 'px';
     $('signature-preview').style.transform = `scale(${scale})`;
@@ -476,6 +482,9 @@
     $('preview-sizer').style.height = (height * scale) + 'px';
     $('dimension-label').textContent = `${width} × ${height} px`;
     $('scale-label').textContent = scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%';
+    $('preview-size-note').textContent = emailDevice === 'mobile'
+      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Try Layout → Tall for larger text.')
+      : 'Preview your signature in a message. Export dimensions stay the same.';
     const column = document.querySelector('.preview-column');
     column.classList.toggle('is-tall', column.scrollHeight > innerHeight - 56);
     fitMiniatures();
@@ -538,10 +547,17 @@
     view = name;
     document.querySelectorAll('[data-view]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.view === view)); b.classList.toggle('is-active', b.dataset.view === view); });
     document.querySelector('[data-preview-view]').dataset.previewView = view;
+    $('email-device-controls').hidden = view !== 'email';
     $('email-context').hidden = view !== 'email';
     fitPreview();
   }
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
+  document.querySelectorAll('button[data-email-device]').forEach(button => button.addEventListener('click', () => {
+    emailDevice = button.dataset.emailDevice === 'mobile' ? 'mobile' : 'desktop';
+    document.querySelector('[data-preview-view]').dataset.emailDevice = emailDevice;
+    document.querySelectorAll('button[data-email-device]').forEach(item => item.setAttribute('aria-pressed',String(item.dataset.emailDevice === emailDevice)));
+    fitPreview();
+  }));
   function legacyCopy(html, text) {
     const active = document.activeElement;
     const holder = document.createElement('div');
@@ -614,7 +630,7 @@
   });
   $('reset-draft').addEventListener('click', () => {
     preserveUnreadableDraft = false;
-    undoDraft = { ...draft }; draft = { ...core.defaults }; recordEdit(undoDraft); fill(); render(); save();
+    undoDraft = { ...draft }; draft = newDraft(); recordEdit(undoDraft); fill(); render(); save();
     announce('Example restored. ');
     const undo = document.createElement('button'); undo.type = 'button'; undo.textContent = 'Undo'; undo.className = 'text-button';
     undo.addEventListener('click', () => { travelHistory('undo'); undoDraft = null; });

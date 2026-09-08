@@ -1,6 +1,29 @@
 # Signature editor — progress and handoff
 
-Updated: 2026-09-08. Published scope: artwork across the full signature, editable side details, unified color palettes, collapsible layouts, width/height controls, and two reproduced input races. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+Updated: 2026-09-09. Current extension: selectable Plum default, warm stone editor, and desktop/mobile email preview widths. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+
+## Reference-inspired Plum editor — 9 September 2026
+
+The supplied Email Signature Editor.html contains four design concepts. The comparable reference is its 1a form and live email preview: white signature, warm neutral controls, restrained violet accents, and a serif heading. The reference was rendered locally in Codex with external network requests constrained. Its bundle, fonts, example identities, and unrelated electronic-signing concept remain private and are not copied into this project.
+
+Plum is a selectable color-only palette: white `#ffffff`, warm white `#faf8f4`, and violet `#583da6`. Fresh browser drafts and **Load example** start with it. The editor now offers eighteen unique palettes, six primary and twelve in More palettes. Saved drafts, personal palettes, and incomplete legacy imports keep their previous normalization behavior; core defaults and the legacy renderer hashes are unchanged. The warm stone workspace, paper preview, serif headings, and fixed plum UI accents adopt the reference's useful visual choices while retaining existing keyboard controls and editing flows.
+
+**Email → Desktop / Mobile** changes preview width only. The desktop message is capped at 780 px and mobile at 390 px; both shrink to the available viewport. No exported dimensions, signature HTML, draft links, session fields, or undo history change when switching. The note explicitly describes a width preview rather than email-client emulation.
+
+Independent roles: reference/visual critic, regression reviewer, CSS builder/release auditor, plus lead integration and actual Codex browser checks. Local verification: **221 tests, 220 passed, zero failures, one expected Windows symlink skip**. New regressions independently cover the exact palette values and roster, fresh/reset behavior, saved data and legacy compatibility, Reset/Undo, and view-only device controls. A workspace/button selector collision was caught and fixed; the regression proves content clicks do not trigger unnecessary fitting or add button semantics to the workspace. Asset token: `ab570e96e3452b6e`; matching HTML entry points; 65-file build.
+
+Lead browser evidence: a fresh origin starts with Plum; Forest changes the signature while UI buttons remain violet; Undo restores Plum. Desktop email context and signature frame both measure 780 px. The narrow preview measures 390 px with 366 px of signature content. At an actual 391 × 844 CSS viewport, document client/scroll widths both measure 371 px; email context and frame both fit within approximately 303 px. The reference and final desktop capture use the same actual 1707 × 960 viewport. Screenshots contain fictional Avery details only.
+
+| Check | Scope and expected evidence | Status |
+| --- | --- | --- |
+| Palette/default compatibility | New drafts use Plum; saved and legacy data preserved; reversible selection/reset | Passed independent regressions and local controls |
+| Preview width | Aligned message/signature frames; no export/session changes; no page overflow | Passed browser geometry and independent tests |
+| Source, assets, public boundary | Fresh runtime hash; matching entry points; strict 65-file build | Passed local checks and independent audit |
+| Reference comparison | Actual reference versus refreshed desktop/mobile UI | Passed scoped nonblind review; inherited Original small text remains a readability gap |
+| Exact-commit CI and Pages | Reviewed commit passes and matches hosted bytes | Pending publication |
+| Real Gmail send/receive | Received messages on actual clients | Remains unverified from the prior release; no send was attempted in this UI-only extension |
+
+The sections below preserve previous release evidence.
 
 ## Flowing artwork and editor controls — 8 September 2026
 

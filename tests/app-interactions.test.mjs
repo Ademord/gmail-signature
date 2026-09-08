@@ -27,13 +27,16 @@ const core = coreContext.module.exports;
 const storageKey = 'signature-studio:draft:v1';
 const draftHash = draft => '#v=' + Buffer.from(JSON.stringify(draft), 'utf8').toString('base64url');
 const localPortrait = 'data:image/png;base64,' + readFileSync(resolve(projectRoot, 'sig/icon-web.png')).toString('base64');
+// Fresh editor seeds are independent of the legacy renderer/migration defaults.
+const plumColors = {frontBackground:'#ffffff',backBackground:'#faf8f4',accent:'#583da6'};
+const freshDraft = {...core.defaults,...plumColors};
 
-function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, expectPreview = true, clipboardSucceeds = false } = {}) {
+function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
   const nodes = new Map(), downloads = [], objectURLs = new Map(), revoked = [], timers = [], clipboardTexts = [], clipboardItems = [];
   const storage = new Map(initialDraft ? [[storageKey, JSON.stringify(initialDraft)]] : []);
   if (initialThemes) storage.set('signature-studio:themes:v1', JSON.stringify(initialThemes));
   const globalEvents = new Map(), documentEvents = new Map();
-  let selectedRanges = [], clipboardAttempts = 0, legacyAttempts = 0, nextWriteFailure = null;
+  let selectedRanges = [], clipboardAttempts = 0, legacyAttempts = 0, nextWriteFailure = null, previewTransformWrites=0;
   const on = (events, type, listener) => events.set(type, [...(events.get(type) || []), listener]);
   const emit = async (events, type, event = {}) => {
     for (const listener of events.get(type) || []) await listener({ preventDefault() {}, ...event });
@@ -42,7 +45,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   class Element {
     constructor(tag = 'div', id = '') {
       this.tagName = tag.toUpperCase(); this.id = id; this.name = '';
-      this.dataset = {}; this.style = {}; this.attributes = new Map(); this.events = new Map();
+      this.dataset = {}; this.style = new Proxy({}, {set:(target,key,value)=>{if(this.id==='signature-preview'&&key==='transform')previewTransformWrites++;target[key]=value;return true;}}); this.attributes = new Map(); this.events = new Map();
       this.children = []; this.parentElement = null; this.value = ''; this.hidden = false;
       this.clientWidth = 800; this.scrollHeight = 500; this._text = ''; this._html = '';
       const classes = new Set();
@@ -97,8 +100,11 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   }
 
   // Derive IDs from the real page so removed or renamed controls fail loudly.
-  for (const match of pageSource.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)) new Element(match[1], match[2]);
+  for (const match of pageSource.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)) {
+    const element=new Element(match[1],match[2]);element.hidden=/\shidden(?:\s|>|=)/.test(match[0]);
+  }
   const node = id => { assert.ok(nodes.has(id), `Required app element #${id} exists`); return nodes.get(id); };
+  node('preview-viewport').clientWidth=viewportWidth;
   const panelNames = ['details', 'layout', 'colors', 'icons', 'design', 'photo'];
   const tabs = panelNames.map(name => node(name + '-tab'));
   const panels = panelNames.map(name => node(name + '-panel'));
@@ -115,11 +121,17 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   node('image-scale').value = '4'; node('image-background').value = 'transparent';
   node('editor-form').elements = { namedItem: key => inputs[key] || null };
   const footer = new Element(), actionGroup = new Element(), workspace = new Element(), column = new Element();
+  workspace.dataset.emailDevice='desktop';
   const views = ['card', 'email'].map(view => { const element = new Element('button'); element.dataset.view = view; return element; });
+  const emailDevices=[...pageSource.matchAll(/<button\b[^>]*\bdata-email-device="([^"]+)"[^>]*>/g)].map(([tag,device])=>{
+    const id=tag.match(/\bid="([^"]+)"/)?.[1],element=id?node(id):new Element('button');element.dataset.emailDevice=device;return element;
+  });
   const artworkEditButtons=[...pageSource.matchAll(/<button\b[^>]*\bdata-edit-artwork\b[^>]*>/g)].map(()=>new Element('button'));
   assert.ok(artworkEditButtons.length>0,'the real page has a manual artwork entry point');
   const one = new Map([['.rail-footer > span', footer], ['.preview-actions > div', actionGroup], ['[data-preview-view]', workspace], ['.preview-column', column]]);
-  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons]]);
+  // The workspace carries the same data attribute for CSS. It is deliberately
+  // included in the generic selector so confusing it with buttons fails here.
+  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices]]);
   const location = new URL('http://127.0.0.1:4173/?source=regression' + initialHash);
   const document = {
     activeElement: null, body: new Element('body'),
@@ -158,7 +170,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
       async writeText(value) { clipboardAttempts++; clipboardTexts.push(value); throw new Error('Clipboard blocked'); },
     } },
     URL: HarnessURL, Blob, ClipboardItem, TextEncoder, TextDecoder, Uint8Array, atob, btoa,
-    innerWidth: 390, innerHeight: 844, getComputedStyle: () => ({ paddingLeft: '16', paddingRight: '16' }),
+    innerWidth: screenWidth, innerHeight: 844, getComputedStyle: () => ({ paddingLeft: '16', paddingRight: '16' }),
     ResizeObserver: class { observe() {} }, getSelection: () => selection,
     addEventListener: (type, listener) => on(globalEvents, type, listener),
     setTimeout(callback) { timers.push(callback); return timers.length; },
@@ -170,13 +182,17 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   vm.runInNewContext(appSource, context, { filename: 'app.js' });
   if (expectPreview) assert.ok(node('signature-preview').innerHTML.includes('<table'), 'Startup must render successfully; swallowed runtime errors are not a pass.');
   return {
-    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,
+    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,
     hasNode: id => nodes.has(id),
     failNextWrite(key) { nextWriteFailure = key; },
     get imageSettings() { return imageSettings; },
     get artworkSettings() { return artworkSettings; },
     get artworkOpened() { return artworkOpened; },
     click: id => node(id).click(),
+    async previewView(view) { const button=views.find(item=>item.dataset.view===view);assert.ok(button);await button.click(); },
+    async emailDevice(device) { const button=emailDevices.find(item=>item.dataset.emailDevice===device);assert.ok(button,'email device '+device+' exists');await button.click(); },
+    async bubbleWorkspaceClick(id) { await emit(workspace.events,'click',{target:node(id)}); },
+    get previewTransformWrites() { return previewTransformWrites; },
     async input(key, value) { const field = inputs[key] || node(key); field.value = String(value); await emit(node('editor-form').events, 'input', { target: field }); },
     async finishEdit() { await emit(node('editor-form').events, 'change'); },
     async selectTheme(id) { node('theme-select').value = id; await emit(node('theme-select').events, 'change'); },
@@ -193,9 +209,10 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
 // These expected colors are independent of runtime catalog metadata. A palette
 // must never smuggle the legacy collection's composition or pattern into a draft.
 const expectedPalettes = [
+  ['plum','#ffffff','#faf8f4','#583da6'],
   ['vermilion','#f3f0ea','#1c1c1c','#c8362a'], ['cobalt','#eef2ff','#182d59','#3659d9'],
   ['forest','#edf2ea','#1d392f','#a64435'], ['lilac','#eee6f7','#32263d','#8049a7'],
-  ['saffron','#fff2d8','#353027','#a7620c'], ['rose','#f9e7e7','#462c39','#ad3e66'],
+  ['rose','#f9e7e7','#462c39','#ad3e66'], ['saffron','#fff2d8','#353027','#a7620c'],
   ['midnight','#172333','#edf1f5','#d66942'],
   ['cutpaper','#f5f0e6','#f5f0e6','#2348c7'], ['colorfield','#efe9e1','#d8cbc3','#735568'],
   ['chromatic','#f0e7ce','#ece8df','#244dd7'], ['counterform','#eee5ce','#eee5ce','#575b29'],
@@ -204,7 +221,7 @@ const expectedPalettes = [
   ['moonlight','#f1e7fa','#402e63','#b95689'], ['frost','#d7eef6','#102d47','#4489b3']
 ];
 
-test('the simplified browser has two sections, collapsible layouts and seventeen distinct color palettes', () => {
+test('the simplified browser has two sections, collapsible layouts and eighteen distinct color palettes', () => {
   const app=harness();
   assert.deepEqual([...pageSource.matchAll(/data-library-tab="([^"]+)"/g)].map(match=>match[1]),['layouts','artwork']);
   for(const id of ['library-tab-themes','library-panel-themes','collection-gallery','abstract-collection-gallery']) assert.equal(app.hasNode(id),false,id+' is removed');
@@ -215,14 +232,14 @@ test('the simplified browser has two sections, collapsible layouts and seventeen
   assert.deepEqual(app.node('palette-choices').children.map(button=>button.id),expectedPalettes.slice(0,6).map(([id])=>'choose-palette-'+id));
   assert.deepEqual(app.node('extra-palette-choices').children.map(button=>button.id),expectedPalettes.slice(6).map(([id])=>'choose-palette-'+id));
   const buttons=[...app.node('palette-choices').children,...app.node('extra-palette-choices').children];
-  assert.equal(buttons.length,17,'six common palettes plus eleven additional palettes');
+  assert.equal(buttons.length,18,'six common palettes plus twelve additional palettes');
   const actualColors=buttons.map(button=>button.children[0].children.map(swatch=>swatch.style.backgroundColor.toLowerCase()).join('|'));
-  assert.equal(new Set(actualColors).size,17,'every visible palette has a unique three-color combination');
+  assert.equal(new Set(actualColors).size,18,'every visible palette has a unique three-color combination');
   assert.deepEqual(actualColors,expectedPalettes.map(([,front,back,accent])=>[front,back,accent].join('|')));
   assert.equal(app.hasNode('choose-palette-spruce'),false,'the duplicate remains a legacy data identity, not another palette choice');
 });
 
-test('all seventeen palettes change only three colors and survive undo, reload and selective import', async () => {
+test('all eighteen palettes change only three colors and survive undo, reload and selective import', async () => {
   const initial={...core.defaults,design:'signal',pattern:'counterform',layout:'stacked',nameLine1:'Jordan',
     width:400,height:300,portraitData:localPortrait,artworkPlacement:'flow',artworkScale:125,artworkPositionX:19,artworkPositionY:83};
   const app=harness({initialDraft:initial});
@@ -240,6 +257,105 @@ test('all seventeen palettes change only three colors and survive undo, reload a
   assert.equal(restored.design,'signal'); assert.equal(restored.pattern,'counterform'); assert.equal(restored.artworkPositionY,83);
   assert.equal(restored.nameLine1,core.defaults.nameLine1); assert.equal(restored.portraitData,'');
   assert.equal(harness({initialDraft:restored}).node('frontBackground').value,'#d7eef6');
+});
+
+test('fresh drafts use the reference Plum colors while renderer and migration defaults remain original',async()=>{
+  assert.deepEqual(['frontBackground','backBackground','accent'].map(key=>core.defaults[key]),['#f3f0ea','#1c1c1c','#c8362a']);
+  const app=harness();
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),freshDraft);
+  assert.equal(app.node('choose-palette-plum').getAttribute('aria-pressed'),'true');
+  assert.equal(app.node('signature-preview').innerHTML,core.render(freshDraft,{preview:true,assetBase:'./sig'}));
+  await app.click('export-data');const backup=app.node('session-json').value;
+  assert.deepEqual(JSON.parse(backup).draft,freshDraft,'a new session records its explicit palette');
+  const reloaded=harness({initialDraft:JSON.parse(backup).draft});
+  assert.deepEqual(JSON.parse(reloaded.storage.get(storageKey)),freshDraft);
+  const broken=harness({initialDraft:'unreadable stored draft'});
+  assert.equal(broken.storage.get(storageKey),JSON.stringify('unreadable stored draft'),'failed reads never overwrite saved data with the new seed');
+  assert.equal(broken.node('signature-preview').innerHTML,core.render(freshDraft,{preview:true,assetBase:'./sig'}));
+});
+
+test('new palette defaults never replace a saved personal draft or a user palette named Plum',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',title:'Designer',design:'signal',pattern:'counterform',width:400,height:300,
+    frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341',portraitData:localPortrait,portraitSize:80,
+    artworkPlacement:'flow',artworkScale:125,artworkPositionX:19,artworkPositionY:83};
+  const themes={version:1,themes:[{id:'theme-my-plum',name:'Plum',frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341'}]};
+  const app=harness({initialDraft:initial,initialThemes:themes});
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.deepEqual(JSON.parse(app.storage.get('signature-studio:themes:v1')),themes);
+  await app.click('export-data');const saved=JSON.parse(app.node('session-json').value);await app.click('close-session');
+  assert.deepEqual(saved.draft,initial);assert.deepEqual(saved.themes,themes.themes);
+  await app.click('choose-palette-plum');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,...plumColors});
+  assert.deepEqual(JSON.parse(app.storage.get('signature-studio:themes:v1')),themes,'selecting a built-in palette leaves the user palette library intact');
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'the palette application is one undo step');
+});
+
+test('legacy partial stored drafts, links and JSON keep omitted-color semantics instead of the new seed',async()=>{
+  for(const overrides of [{},{frontBackground:'#eeddcc'},{accent:'#294675'}]) {
+    const legacy={nameLine1:'Jordan',height:240,...overrides},expected={...core.defaults,...legacy};
+    const stored=harness({initialDraft:legacy});
+    assert.deepEqual(JSON.parse(stored.storage.get(storageKey)),expected,'stored partial fields inherit original values');
+    const linked=harness({initialHash:draftHash(legacy)});
+    assert.deepEqual(JSON.parse(linked.storage.get(storageKey)),expected,'old links inherit original values');
+    const imported=harness();
+    await imported.click('import-data');await imported.pasteSession(JSON.stringify(legacy));await imported.click('session-restore');
+    assert.deepEqual(JSON.parse(imported.storage.get(storageKey)),expected,'legacy bare JSON inherits original values');
+    const envelope={format:'signature-editor-session',version:1,exportedAt:'2026-09-09T12:00:00.000Z',draft:legacy,themes:[],ui:{}};
+    await imported.click('reset-draft');await imported.click('import-data');await imported.pasteSession(JSON.stringify(envelope));await imported.click('session-restore');
+    assert.deepEqual(JSON.parse(imported.storage.get(storageKey)),expected,'versioned sessions with missing fields retain original semantics');
+  }
+});
+
+test('Reset uses the new reference palette and Undo restores the complete prior draft and photo',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',email:'jordan@example.com',design:'prism',pattern:'gesture',layout:'stacked',width:400,height:300,
+    frontBackground:'#eeeeff',backBackground:'#181d2b',accent:'#a23567',portraitData:localPortrait,portraitShape:'rounded',portraitSize:80,
+    artworkPlacement:'flow',artworkScale:140,artworkPositionX:15,artworkPositionY:89};
+  const themes={version:1,themes:[{id:'theme-saved',name:'Personal',frontBackground:'#eeeeff',backBackground:'#181d2b',accent:'#a23567'}]};
+  const app=harness({initialDraft:initial,initialThemes:themes});
+  await app.click('reset-draft');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),freshDraft);
+  assert.equal(app.node('choose-palette-plum').getAttribute('aria-pressed'),'true');
+  assert.deepEqual(JSON.parse(app.storage.get('signature-studio:themes:v1')),themes);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'Reset is one undo action');
+  assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait));
+  await app.click('redo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),freshDraft);
+  await app.click('undo-change');await app.click('export-data');const backup=JSON.parse(app.node('session-json').value);
+  assert.deepEqual(backup.draft,initial);assert.deepEqual(backup.themes,themes.themes);
+});
+
+test('desktop and mobile email previews change only the viewing frame, leaving saved and exported signatures identical',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',pattern:'gesture',design:'signal',artworkScale:125};
+  const app=harness({initialDraft:initial,viewportWidth:1000,screenWidth:1280});
+  assert.deepEqual(app.emailDevices.map(button=>button.dataset.emailDevice),['desktop','mobile']);
+  assert.equal(app.previewWorkspace.events.get('click')?.length||0,0,'CSS device state on the workspace does not make the whole page a device button');
+  assert.equal(app.previewWorkspace.getAttribute('aria-pressed'),null,'only actual device buttons have pressed state');
+  assert.equal(app.node('email-device-controls').hidden,true,'device controls belong to Email view');
+  const stored=app.storage.get(storageKey),signature=app.node('signature-preview').innerHTML;
+  await app.previewView('email');assert.equal(app.node('email-device-controls').hidden,false);
+  assert.equal(parseFloat(app.node('preview-sizer').style.width),740,'desktop email uses 780px minus 40px padding');
+  await app.click('export-data');const desktopSession=JSON.parse(app.node('session-json').value);await app.click('close-session');
+  await app.click('download-html');const desktopHTML=await app.objectURLs.get(app.downloads.at(-1).href).text();
+  await app.click('share-link');const desktopLink=app.clipboardTexts.at(-1);
+  await app.emailDevice('mobile');
+  assert.equal(parseFloat(app.node('preview-sizer').style.width),366,'mobile email uses 390px minus 24px padding');
+  assert.equal(app.node('signature-preview').style.width,'662px','device choice does not change exported card dimensions');
+  assert.equal(app.node('signature-preview').innerHTML,signature,'links and signature markup are unchanged');
+  assert.equal(app.storage.get(storageKey),stored);assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),initial);
+  assert.equal(app.node('undo-change').disabled,true,'view controls do not enter design history');
+  for(const button of app.emailDevices) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.emailDevice==='mobile'));
+  assert.equal(app.previewWorkspace.getAttribute('aria-pressed'),null,'changing device never adds button semantics to the workspace');
+  const fitsBeforeContentClick=app.previewTransformWrites;
+  await app.bubbleWorkspaceClick('signature-preview');
+  assert.equal(app.previewTransformWrites,fitsBeforeContentClick,'a bubbled content click does not trigger another fit');
+  assert.equal(app.node('preview-sizer').style.width,'366px');
+  await app.click('export-data');const mobileSession=JSON.parse(app.node('session-json').value);await app.click('close-session');
+  delete desktopSession.exportedAt;delete mobileSession.exportedAt;assert.deepEqual(mobileSession,desktopSession,'device preview does not enter session data');
+  await app.click('download-html');assert.equal(await app.objectURLs.get(app.downloads.at(-1).href).text(),desktopHTML);
+  await app.click('share-link');assert.equal(app.clipboardTexts.at(-1),desktopLink,'shared drafts do not inherit the simulated device');
+  await app.previewView('card');assert.equal(app.node('email-device-controls').hidden,true);
+  await app.previewView('email');assert.equal(parseFloat(app.node('preview-sizer').style.width),366,'device choice persists within this page');
+  await app.emailDevice('desktop');assert.equal(parseFloat(app.node('preview-sizer').style.width),740);
 });
 
 test('six independent abstract pattern controls preserve the chosen layout, palette, identity and photo', async () => {
@@ -429,7 +545,7 @@ test('manual clipboard fallback selects the current export with public image URL
   const app = harness();
   await app.input('nameLine1', 'Zoë');
   await app.click('copy-signature');
-  const expected = core.render({ ...core.defaults, nameLine1: 'Zoë' });
+  const expected = core.render({ ...freshDraft, nameLine1: 'Zoë' });
   assert.deepEqual(app.attempts, { modern: 1, legacy: 1 });
   assert.ok(app.selected, 'A manual-copy selection must exist after both clipboard APIs fail.');
   assert.equal(app.selected.innerHTML, expected);
@@ -488,7 +604,7 @@ test('download requests a Blob containing the current standalone export and publ
   assert.match(blob.type, /^text\/html/i);
   const html = await blob.text();
   assert.match(html, /^<!doctype html>/i);
-  assert.ok(html.includes(core.render({ ...core.defaults, nameLine1: 'Zoë' })));
+  assert.ok(html.includes(core.render({ ...freshDraft, nameLine1: 'Zoë' })));
   assert.doesNotMatch(html, /src="(?:\.\/|https?:\/\/(?:127\.0\.0\.1|localhost))/);
   assert.match(app.node('status').textContent, /requested/i);
   assert.doesNotMatch(app.node('status').textContent, /downloaded|file saved/i);
@@ -619,7 +735,7 @@ test('editor undo/redo restores typing, invalid dimensions, icons, colors, and r
   await app.click('undo-change'); assert.equal(app.node('height').value,208);
   assert.equal(app.node('height').getAttribute('aria-invalid'),'false');
   await app.input('websiteIcon','none'); await app.selectTheme('preset-midnight');
-  await app.click('undo-change'); assert.equal(app.node('frontBackground').value,'#f3f0ea');
+  await app.click('undo-change'); assert.equal(app.node('frontBackground').value,'#ffffff');
   assert.equal(app.node('websiteIcon').value,'none');
   await app.click('undo-change'); assert.equal(app.node('websiteIcon').value,'web');
   await app.click('reset-draft'); await app.click('undo-change');
