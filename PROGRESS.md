@@ -1,6 +1,6 @@
 # Signature editor — progress and handoff
 
-Updated: 2026-09-09. Current extension: selectable Plum default, warm stone editor, and desktop/mobile email preview widths. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+Updated: 2026-09-09. Published extension: selectable Plum default, warm stone editor, and desktop/mobile email preview widths. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
 
 ## Reference-inspired Plum editor — 9 September 2026
 
@@ -20,8 +20,12 @@ Lead browser evidence: a fresh origin starts with Plum; Forest changes the signa
 | Preview width | Aligned message/signature frames; no export/session changes; no page overflow | Passed browser geometry and independent tests |
 | Source, assets, public boundary | Fresh runtime hash; matching entry points; strict 65-file build | Passed local checks and independent audit |
 | Reference comparison | Actual reference versus refreshed desktop/mobile UI | Passed scoped nonblind review; inherited Original small text remains a readability gap |
-| Exact-commit CI and Pages | Reviewed commit passes and matches hosted bytes | Pending publication |
+| Exact-commit CI and Pages | Reviewed commit passes and matches hosted bytes | Passed app commit 50fa641; 221 Linux tests and 96 matching public URLs |
 | Real Gmail send/receive | Received messages on actual clients | Remains unverified from the prior release; no send was attempted in this UI-only extension |
+
+Published app commit: `50fa641c2588676dca46d1fbfd8a9fb85a1ef3cc`. [Exact-commit CI and Pages succeeded](https://github.com/Ademord/gmail-signature/actions/runs/34287788001): **221 tests passed, zero failures or skips**, sixteen motif checks, twelve flow checks, current asset version, and the 65-file build. Independent deployment verification matched **96 of 96 URLs** to Git blobs: 65 canonical files, 19 versioned resources, and twelve raw email artwork PNGs with correct MIME/CORS headers. The [independent visual review](docs/reviews/plum-editor-2026-09-09.md) is scoped to this refinement and records the remaining compact-type limitation.
+
+The hosted browser initially retained its cached prior entry page. A release-specific URL fetched the current HTML and all resources at `ab570e96e3452b6e`; the independent checker confirmed canonical URLs also serve current bytes. Eighteen palettes and the violet controls loaded. Existing named form fields were compared before/after and remained identical; no hosted palette, personal text, or photo was changed or exported. Live Email → Mobile aligned both frames at approximately 390 px while leaving dimensions at 662 × 208 px. Keyboard ArrowRight moved Colors to Icons with visible plum focus locally. Refresh the page if an older interface remains cached.
 
 The sections below preserve previous release evidence.
 
