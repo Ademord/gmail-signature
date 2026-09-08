@@ -1,6 +1,6 @@
 # Signature editor — progress and handoff
 
-Updated: 2026-09-09. Current work: simpler choosing and editing, guided by the user's purpose-led methodology reference. Published baseline: selectable Plum default and warm stone editor. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+Updated: 2026-09-09. Published: simpler choosing and editing, guided by the user's purpose-led methodology reference, with the existing Plum default and warm stone editor. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
 
 ## Interaction simplification — 9 September 2026
 
@@ -18,9 +18,11 @@ Ownership: lead application integration and Codex browser; independent purpose r
 | Less repetition | Four tabs, one Copy action, one total-size readout; complete sizing/contact paths remain reachable | Passed actual controls and scoped purpose review |
 | Recovery and compatibility | Enabled custom choices, legacy tab imports, invalid nested-field focus, unchanged unrelated fields | Passed 47 interaction tests, causal mutation, actual export-validation and legacy Icons import |
 | Independent comparison | Critic reviews actual before/after desktop and phone paths | Passed scoped nonblind review; phone uses the existing edit/preview links |
-| Integrated delivery | Current token, retained suite, 65-file boundary, exact CI and live resources | Local 228 tests: 227 passed, zero failed, one Windows skip; publication pending |
+| Integrated delivery | Current token, retained suite, 65-file boundary, exact CI and live resources | Passed app commit e59d7d6: 228 Linux tests, successful Pages deployment, 96 matching public URLs |
 
-Final runtime token: `58e82c029a055915`. The HTML entry points match and the build contains 65 public files. The independent journey reviewer verified that all seven new tests fail against the old baseline; restoring only nearest-disclosure validation causes the nested image-base case to fail. Actual browser evidence and its limits are detailed in the [interaction review](docs/reviews/interaction-2026-09-09.md). The critic's final footer recommendation was implemented as a quiet two-row action block. Phone screenshot output has a compositor limitation; do not infer exact scrolled geometry from those images. Direct DOM observations and repeated native-key activation establish the reported phone fit and scroll behavior.
+Final runtime token: `58e82c029a055915`. The HTML entry points match and the build contains 65 public files. Local checks: 228 tests, 227 passed, zero failed, one expected Windows symlink skip. The independent journey reviewer verified that all seven new tests fail against the old baseline; restoring only nearest-disclosure validation causes the nested image-base case to fail. Actual browser evidence and its limits are detailed in the [interaction review](docs/reviews/interaction-2026-09-09.md). The critic's final footer recommendation was implemented as a quiet two-row action block. Phone screenshot output has a compositor limitation; do not infer exact scrolled geometry from those images. Direct DOM observations and repeated native-key activation establish the reported phone fit and scroll behavior.
+
+Published app commit: `e59d7d62789534a9fcc8ff200e97a7e0a431c2c7`. [Exact-commit CI and Pages passed](https://github.com/Ademord/gmail-signature/actions/runs/34290759040), with **228 tests passed and zero failures or skips**. Independent deployment verification matched **96 of 96 public URLs** to committed bytes: 65 canonical files, 19 versioned resources, and twelve raw artwork PNGs with expected MIME/CORS headers. The live Codex browser loaded the current token, four tabs, four cycling buttons, one Copy button, and no duplicate-size paragraph. Opening Size & arrangement exposed both dimension sliders and the current Wide/Tall selection. All **35 named saved draft fields** matched before/after the upgrade. Hosted checking did not change the signature or export personal data; the release-specific URL avoids a stale cached entry page.
 
 Earlier sections record previous releases and do not certify this change.
 
