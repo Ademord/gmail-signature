@@ -12,6 +12,7 @@
     email: '', phone: '+41 00 000 00 00', linkedin: 'https://www.linkedin.com/',
     location: 'Zurich, Switzerland', tags: 'SOFTWARE · DATA · AI',
     width: 321, height: 208, layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
+    artworkPlacement: 'auto', artworkScale: 100, artworkPositionX: 50, artworkPositionY: 50,
     portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64,
     frontBackground: '#f3f0ea', backBackground: '#1c1c1c',
     websiteIcon: 'web', emailIcon: 'mail', phoneIcon: 'phone', linkedinIcon: 'linkedin', locationIcon: 'pin',
@@ -100,6 +101,9 @@
     });
     result.width = dimension(input.width, defaults.width, 280, 420);
     result.height = dimension(input.height, defaults.height, 180, 320);
+    result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 75, 150);
+    result.artworkPositionX = dimension(input.artworkPositionX, defaults.artworkPositionX, 0, 100);
+    result.artworkPositionY = dimension(input.artworkPositionY, defaults.artworkPositionY, 0, 100);
     result.portraitSize = dimension(input.portraitSize, defaults.portraitSize, 40, 96);
     ['accent', 'frontBackground', 'backBackground'].forEach(function (key) { result[key] = result[key].toLowerCase(); });
     result.imageBase = result.imageBase.replace(/\/+$/, '');
@@ -190,7 +194,21 @@
     return label.length <= 34 ? label : host;
   }
   function selectedPattern(v) { return v.pattern === 'auto' ? (v.design === 'original' ? 'dots' : v.design) : v.pattern; }
+  var flowingPatterns = Object.freeze(['cutpaper','colorfield','chromatic','counterform','overprint','gesture']);
+  function resolveArtworkPlacement(values) {
+    var v = values || defaults, placement = v.artworkPlacement || 'auto';
+    return placement === 'auto' ? (flowingPatterns.includes(selectedPattern(v)) ? 'flow' : 'motif') : placement;
+  }
+  function flowAsset(values) {
+    var v = values || defaults;
+    return resolveArtworkPlacement(v) === 'flow' && flowingPatterns.includes(selectedPattern(v)) ?
+      'pattern-' + selectedPattern(v) + (v.layout === 'stacked' ? '-tall.png' : '-wide.png') : '';
+  }
+  function isFlow(v) { return resolveArtworkPlacement(v) === 'flow' && flowingPatterns.includes(selectedPattern(v)); }
   function hasPortrait(v) { return Boolean(v.portraitData || v.portraitUrl); }
+  function lineWidth(lines,font,fixed,spacing,factor) {
+    return Math.ceil(Math.max.apply(null,lines.map(function (text) { return units(text,fixed) * font * (factor || 1) + Array.from(text).length * (spacing || 0); }).concat(0)));
+  }
   var crcTable = Array.from({length:256}, function (_, n) {
     for (var k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
     return n >>> 0;
@@ -271,19 +289,20 @@
     if (v.design !== 'original') return designPlan(v);
     var pad = Math.round(18 + (v.width - 280) * 0.1), top = v.height < 200 ? 18 : 22;
     var dotH = Math.min(v.height - 26, 182), dotW = Math.round(dotH * 76 / 182);
-    if (selectedPattern(v) === 'none') dotW = 0;
+    if (selectedPattern(v) === 'none' || isFlow(v)) dotW = 0;
     if (hasPortrait(v)) dotW = Math.max(dotW, v.portraitSize);
     var right = 11, gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
+    var matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
     var nameFont = Math.min(24, 22 * v.width / 321), longest = Math.max(units(v.nameLine1), units(v.nameLine2), 1);
-    nameFont = Math.min(nameFont, (textW - 2) / longest);
+    nameFont = Math.min(nameFont, (contentW - 2) / longest);
     var nameLine = Math.ceil(nameFont * 1.12), titleFont = 9, subFont = 9;
-    var titleLines = wrap(v.title, textW, titleFont, true, 0.73);
-    var subLines = wrap(v.subtitle, textW, subFont, true);
+    var titleLines = wrap(v.title, contentW, titleFont, true, 0.73);
+    var subLines = wrap(v.subtitle, contentW, subFont, true);
     var names = [v.nameLine1, v.nameLine2].filter(Boolean), square = v.height < 200 ? 15 : 17;
     var titleH = titleLines.length ? 7 + titleLines.length * 11 : 0;
     var subH = subLines.length ? 11 + subLines.length * 12 : 0;
-    var frontSpace = v.height - 2 * top - square - names.length * nameLine - titleH - subH;
-    var innerW = v.width - pad * 2, contactW = innerW - 39, contactFont = 10.5;
+    var frontSpace = v.height - 2 * top - square - names.length * nameLine - titleH - subH - matPad * 2;
+    var innerW = v.width - pad * 2, contactW = innerW - 39 - matPad * 2, contactFont = 10.5;
     var rows = [];
     function add(key, label, text, href) {
       if (text) rows.push({key:key, label:label, icon:v[key + 'Icon'], lines:wrap(text, contactW - 2, contactFont, true), href:href});
@@ -293,14 +312,16 @@
     add('phone', 'Phone', v.phone, phoneHref(v.phone));
     add('linkedin', 'LinkedIn', v.linkedin && linkLabel(v.linkedin), webURL(v.linkedin));
     add('location', 'Location', v.location, '');
-    var tagLines = wrap(v.tags, innerW, 8.5, true);
+    var tagLines = wrap(v.tags, innerW - matPad * 2, 8.5, true);
     var rowGap = v.height < 200 ? 4 : 6;
     var contactH = rows.reduce(function (sum, row) { return sum + row.lines.length * 14; }, 0) + Math.max(0, rows.length - 1) * rowGap;
     var tagH = tagLines.length ? 12 + 1 + 8 + tagLines.length * 11 : 0;
-    var backSpace = v.height - top * 2 - square - contactH - tagH;
+    var backSpace = v.height - top * 2 - square - contactH - tagH - matPad * 2;
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true)));
+    var groupW = Math.min(innerW - matPad * 2,Math.max(lineWidth(tagLines,8.5,true),Math.max.apply(null,rows.map(function (row) { return 39 + lineWidth(row.lines,contactFont,true); }).concat(0))));
     return {pad:pad,top:top,dotH:dotH,dotW:dotW,right:right,gap:gap,textW:textW,nameFont:nameFont,
       nameLine:nameLine,names:names,square:square,titleLines:titleLines,subLines:subLines,frontSpace:frontSpace,
-      innerW:innerW,contactW:contactW,contactFont:contactFont,rows:rows,rowGap:rowGap,tagLines:tagLines,backSpace:backSpace};
+      innerW:innerW,contactW:contactW,contactFont:contactFont,rows:rows,rowGap:rowGap,tagLines:tagLines,backSpace:backSpace,matPad:matPad,identityW:identityW,groupW:groupW};
   }
   // Every design uses this measured plan for both validation and rendering.
   // Fixed line breaks keep email clients from stretching the declared cards.
@@ -308,7 +329,9 @@
     var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2 + 20, H = tall ? v.height * 2 + 20 : v.height;
     var pad = H < 220 ? 16 : 22, compact = !tall && H < 220, idPad = tall ? pad : compact ? 8 : 12;
     var cPad = tall ? pad : compact ? (v.design === 'signal' ? 7 : 8) : 12, rowGap = compact ? 4 : 10, gridGap = 18;
-    var artW = selectedPattern(v) === 'none' ? 0 : (v.design === 'editorial' ? 46 : 76);
+    var matPad = isFlow(v) ? 7 : 0;
+    idPad -= matPad; cPad -= matPad;
+    var artW = selectedPattern(v) === 'none' || isFlow(v) ? 0 : (v.design === 'editorial' ? 46 : 76);
     if (hasPortrait(v)) artW = Math.max(artW, v.portraitSize);
     var artGap = artW ? 16 : 0, rail = v.design === 'studio' ? 14 : 0, frame = v.design === 'signal' ? 4 : 0;
     var bodyW = W - rail - frame * 2, bodyH = H - frame * 2, mainW = bodyW;
@@ -319,6 +342,7 @@
     if (artRail && artW) { mainW = bodyW - artW - 16; idW = mainW; contactPanelW = mainW; }
     if (v.design === 'prism' && !tall) { contactOffset = 36; contactPanelW -= contactOffset; }
     var textW = idW - idPad * 2 - (!artRail ? artW + artGap : 0);
+    var contentW = textW - matPad * 2;
     var fixedName = v.customFont ? v.customFont === 'mono' : v.design === 'signal', serif = v.customFont ? v.customFont === 'serif' : v.design === 'editorial';
     var names = [v.nameLine1, v.nameLine2].filter(Boolean);
     var nameFont = v.design === 'editorial' ? 34 : v.design === 'studio' ? 32 : 30;
@@ -326,19 +350,20 @@
     var joined = !tall && !side, longest;
     if (joined) {
       var joint = names.join(' '), jointWidth = units(joint, fixedName) * (serif ? 1.12 : 1);
-      if ((textW - 3) / Math.max(1,jointWidth) >= 20) names = [joint];
+      if ((contentW - 3) / Math.max(1,jointWidth) >= 20) names = [joint];
     }
     longest = Math.max.apply(null, names.map(function (name) { return units(name, fixedName); }).concat(1)) * (serif ? 1.12 : 1);
-    nameFont = Math.min(nameFont, (textW - 3) / longest);
-    var nameLine = Math.ceil(nameFont * 1.12), titleLines = wrap(v.title,textW - 2,9,true,.73), subLines = wrap(v.subtitle,textW - 2,9,true);
+    nameFont = Math.min(nameFont, (contentW - 3) / longest);
+    var nameLine = Math.ceil(nameFont * 1.12), titleLines = wrap(v.title,contentW - 2,9,true,.73), subLines = wrap(v.subtitle,contentW - 2,9,true);
     var titleH = titleLines.length ? 7 + titleLines.length * 11 : 0, subH = subLines.length ? 10 + subLines.length * 12 : 0;
     var frontHead = v.design === 'studio' ? 20 : v.design === 'orbit' ? 12 : 0;
-    var identityH = names.length * nameLine + titleH + subH + frontHead;
+    var identityH = names.length * nameLine + titleH + subH + frontHead + matPad * 2;
     var topH = side ? H : Math.round(bodyH * (tall ? (v.design === 'signal' ? .39 : .48) : (v.design === 'editorial' ? .52 : .47)));
     if (!side) topH = Math.max(topH, identityH + idPad * 2, !artRail && hasPortrait(v) ? v.portraitSize + idPad * 2 : 0);
     var contactPanelH = side ? H : bodyH - topH;
     var cols = side ? 1 : tall ? (v.design === 'contour' ? 2 : 1) : 2;
-    var innerW = contactPanelW - cPad * 2, cellW = Math.floor((innerW - gridGap * (cols - 1)) / cols), contactW = cellW - 22;
+    var innerW = contactPanelW - cPad * 2, workingW = innerW - matPad * 2;
+    var cellW = Math.floor((workingW - gridGap * (cols - 1)) / cols), contactW = cellW - 22;
     var rows = [], contactFont = 10.5;
     function add(key, label, text, href) {
       if (text) rows.push({key:key,label:label,icon:v[key + 'Icon'],text:text,lines:wrap(text,contactW - 2,contactFont,true),href:href});
@@ -349,7 +374,7 @@
     add('linkedin','LinkedIn',v.linkedin && linkLabel(v.linkedin),webURL(v.linkedin));
     add('location','Location',v.location,'');
     if (tall && cols > 1 && rows.some(function (row) { return row.lines.length > 2; })) {
-      cols = 1; cellW = innerW; contactW = cellW - 22;
+      cols = 1; cellW = workingW; contactW = cellW - 22;
       rows.forEach(function (row) { row.lines = wrap(row.text,contactW - 2,contactFont,true); });
     }
     var labelH = v.design === 'signal' ? 10 : 0, contactH = 0;
@@ -357,7 +382,16 @@
       contactH += Math.max.apply(null,rows.slice(i,i + cols).map(function (row) { return row.lines.length * 14 + labelH; }));
       if (i + cols < rows.length) contactH += rowGap;
     }
-    var tagLines = wrap(v.tags,innerW - 2,8.5,true), tagH = tagLines.length ? 8 + tagLines.length * 11 : 0;
+    var tagLines = wrap(v.tags,workingW - 2,8.5,true), tagH = tagLines.length ? 8 + tagLines.length * 11 : 0;
+    contactH += matPad * 2;
+    var gridW = innerW, groupW = innerW;
+    if (matPad) {
+      cellW = Math.min(cellW,22 + Math.max.apply(null,rows.map(function (row) { return Math.max(lineWidth(row.lines,contactFont,true),v.design === 'signal' ? lineWidth([row.label.toUpperCase()],7.5,true) : 0); }).concat(0)));
+      contactW = cellW - 22;
+      gridW = cellW * cols + gridGap * (cols - 1);
+      groupW = Math.min(workingW,Math.max(rows.length ? gridW : 0,lineWidth(tagLines,8.5,true)));
+    }
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,fixedName,0,serif ? 1.12 : 1),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true),frontHead ? 28 : 0));
     if (!side) {
       var minTop = Math.max(identityH + idPad * 2, !artRail && hasPortrait(v) ? v.portraitSize + idPad * 2 : 0);
       topH = Math.max(minTop, Math.min(topH, bodyH - cPad * 2 - contactH - tagH - (['editorial','contour','prism'].includes(v.design) ? 1 : 0)));
@@ -369,12 +403,12 @@
       dotH:dotH,dotW:artW,gap:artGap,textW:textW,nameFont:nameFont,nameLine:nameLine,names:names,titleLines:titleLines,subLines:subLines,
       frontHead:frontHead,frontSpace:topH - idPad * 2 - identityH,identityH:identityH,innerW:innerW,contactW:contactW,cellW:cellW,
       cols:cols,gridGap:gridGap,contactFont:contactFont,rows:rows,rowGap:rowGap,tagLines:tagLines,labelH:labelH,
-      contactH:contactH,tagH:tagH,backSpace:contactPanelH - cPad * 2 - contactH - tagH - (['editorial','contour','prism'].includes(v.design) ? 1 : 0)};
+      contactH:contactH,tagH:tagH,backSpace:contactPanelH - cPad * 2 - contactH - tagH - (['editorial','contour','prism'].includes(v.design) ? 1 : 0),matPad:matPad,identityW:identityW,gridW:gridW,groupW:groupW};
   }
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320]].forEach(function (rule) {
+    [['width',280,420],['height',180,320],['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
         String(raw).trim() === '' || !Number.isInteger(Number(raw)) || Number(raw) < rule[1] || Number(raw) > rule[2])) {
@@ -394,6 +428,8 @@
     if (v.layout !== 'paired' && v.layout !== 'stacked') errors.layout = 'Choose paired or stacked.';
     if (v.design !== 'custom' && !designs.some(function (design) { return design.id === v.design; })) errors.design = 'Choose an available design.';
     if (!Object.prototype.hasOwnProperty.call(patterns, v.pattern)) errors.pattern = 'Choose an available pattern or None.';
+    if (!['auto','motif','flow'].includes(v.artworkPlacement)) errors.artworkPlacement = 'Choose automatic, motif or flowing artwork.';
+    if (v.artworkPlacement === 'flow' && !flowingPatterns.includes(selectedPattern(v))) errors.artworkPlacement = 'Flow is available for the six abstract artworks. Choose automatic or motif for this pattern.';
     [['customPattern',parseCustomPattern],['customLayout',parseCustomLayout]].forEach(function (entry) {
       if (v[entry[0]]) try { entry[1](v[entry[0]]); } catch (error) { errors[entry[0]] = error.message; }
     });
@@ -422,7 +458,7 @@
     if (p.subLines.length > 2) errors.subtitle = 'Shorten the subtitle to fit two lines at this width.';
     p.rows.forEach(function (row) { if (row.lines.length > 2) errors[row.key] = 'Shorten this text to fit two lines at this width.'; });
     if (p.tagLines.length > 2) errors.tags = 'Shorten the tags to fit two lines at this width.';
-    if (p.frontSpace < (v.design === 'original' ? 10 : 0) || p.backSpace < (v.design === 'original' ? 10 : 0)) errors.height = 'Increase the card height or shorten the text to keep everything readable.';
+    if (p.frontSpace < (v.design === 'original' && !isFlow(v) ? 10 : 0) || p.backSpace < (v.design === 'original' && !isFlow(v) ? 10 : 0)) errors.height = 'Increase the card height or shorten the text to keep everything readable.';
     if (!Object.keys(errors).length && renderUnchecked(v).length >= 10000) {
       errors[v.pattern === 'custom' ? 'customPattern' : 'website'] = v.pattern === 'custom' ? 'Simplify the custom artwork or shorten URLs to keep the email under 10,000 HTML characters.' : 'Shorten the URLs to keep the HTML under 10,000 characters.';
     }
@@ -438,11 +474,40 @@
       (height ? ' height="' + height + '"' : '') + ' style="border-collapse:collapse;table-layout:fixed;width:' + width + 'px;' +
       (height ? 'height:' + height + 'px;' : '') + (background ? 'background-color:' + background + ';' : '') + '">' + content + '</table>';
   }
+  // All painted panels sample one canvas transform. In particular, the second
+  // Original card continues the first painting instead of restarting the image.
+  // Only backgrounds are decorative: removing them leaves every text/link intact.
+  function flowSurface(v, assetBase) {
+    if (!isFlow(v)) return table;
+    var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2 + 20, H = tall ? v.height * 2 + 20 : v.height;
+    var baseW = tall ? 420 : 860, baseH = tall ? 660 : 320;
+    var scale = Math.max(W / baseW,H / baseH) * v.artworkScale / 100;
+    var imageW = baseW * scale, imageH = baseH * scale;
+    var originX = (W - imageW) * v.artworkPositionX / 100, originY = (H - imageH) * v.artworkPositionY / 100;
+    var source = (assetBase + '/' + flowAsset(v)).replace(/[\\'"()]/g,function (character) { return '%' + character.charCodeAt(0).toString(16).toUpperCase(); });
+    function px(value) { return Math.round(value * 1000) / 1000; }
+    function paintStyle(x,y) {
+      return 'background-image:url(&quot;' + escape(source) + '&quot;);background-repeat:no-repeat;background-size:' +
+        px(imageW) + 'px ' + px(imageH) + 'px;background-position:' + px(originX - (x || 0)) + 'px ' + px(originY - (y || 0)) + 'px;';
+    }
+    function surface(width,height,content,background,x,y) {
+      return table(width,height,content,background).replace('style="','style="' + paintStyle(x,y));
+    }
+    surface.paintStyle = paintStyle;
+    return surface;
+  }
   function spacer(height) { return '<tr><td height="' + height + '" style="padding:0;height:' + height + 'px;font-size:0;line-height:0">&nbsp;</td></tr>'; }
   function square(size, color) { return table(size, size, '<tr><td style="padding:0;background-color:' + color + ';font-size:0;line-height:0">&nbsp;</td></tr>'); }
-  function textRow(lines, font, line, color, family, weight, spacing) {
+  function backedText(text, background) {
+    return background ? '<span style="background:' + background + '">' + text + '</span>' : text;
+  }
+  function informationMat(width,rows,background,pad) {
+    if (!rows) return '';
+    return table(width + pad * 2,0,'<tr><td style="padding:' + pad + 'px;background-color:' + background + '">' + table(width,0,rows) + '</td></tr>');
+  }
+  function textRow(lines, font, line, color, family, weight, spacing, background) {
     if (!lines.length) return '';
-    return '<tr><td style="padding:0;font-family:' + family + ';font-size:' + font + 'px;line-height:' + line + 'px;font-weight:' + (weight || 400) + ';color:' + color + (spacing ? ';letter-spacing:' + spacing + 'px' : '') + ';white-space:nowrap">' + lines.map(escape).join('<br>') + '</td></tr>';
+    return '<tr><td style="padding:0;font-family:' + family + ';font-size:' + font + 'px;line-height:' + line + 'px;font-weight:' + (weight || 400) + ';color:' + color + (spacing ? ';letter-spacing:' + spacing + 'px' : '') + ';white-space:nowrap">' + lines.map(function (text) { return backedText(escape(text),background); }).join('<br>') + '</td></tr>';
   }
   function blankCol(width) { return '<td width="' + width + '" style="padding:0;width:' + width + 'px;font-size:0;line-height:0">&nbsp;</td>'; }
   function portraitSource(v, options) {
@@ -470,7 +535,7 @@
     return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="' + width + '" height="' + height + '" style="border-collapse:collapse;table-layout:fixed;width:' + width + 'px;height:' + height + 'px;font-size:0;line-height:0"><colgroup>' + columns + '</colgroup>' + rows + '</table>';
   }
   function decoration(v, p, assetBase, options) {
-    var pattern = selectedPattern(v), source = portraitSource(v, options), rows = '', remaining = p.dotH;
+    var pattern = isFlow(v) ? 'none' : selectedPattern(v), source = portraitSource(v, options), rows = '', remaining = p.dotH;
     if (source) {
       var radius = v.portraitShape === 'circle' ? '50%' : v.portraitShape === 'rounded' ? '12px' : '0';
       rows += '<tr><td align="center" style="padding:0;font-size:0;line-height:0"><img src="' + escape(source) + '" width="' + v.portraitSize +
@@ -505,6 +570,9 @@
   }
   function renderDesign(v, p, assetBase, options) {
     var ink = readable(v.frontBackground,black), muted = readable(v.frontBackground,'#5a5651');
+    var flow = isFlow(v), surface = flowSurface(v,assetBase), frontMat = '';
+    var mainX = p.frame + (p.artRail && p.dotW && v.design === 'prism' ? p.dotW + 16 : 0);
+    var identityX = p.side ? p.rail : mainX, identityY = p.frame;
     var font = v.customFont || (v.design === 'editorial' ? 'serif' : v.design === 'signal' ? 'mono' : 'sans');
     var nameFamily = font === 'serif' ? 'Georgia,Times,serif' : font === 'mono' ? mono : sans;
     function cell(width,content,background,align) {
@@ -512,20 +580,22 @@
         (background ? ';background-color:' + background : '') + '">' + content + '</td>';
     }
     function identity(height) {
-      var name = textRow(p.names,Math.floor(p.nameFont * 10) / 10,p.nameLine,ink,nameFamily,font === 'serif' ? 400 : 600);
-      var title = p.titleLines.length ? spacer(7) + textRow(p.titleLines,9,11,readable(v.frontBackground,v.accent),roleMono,400,.73) : '';
-      var subtitle = p.subLines.length ? textRow(p.subLines,9,12,muted,mono) : '';
+      var name = textRow(p.names,Math.floor(p.nameFont * 10) / 10,p.nameLine,ink,nameFamily,font === 'serif' ? 400 : 600,0,frontMat);
+      var title = p.titleLines.length ? spacer(7) + textRow(p.titleLines,9,11,readable(v.frontBackground,v.accent),roleMono,400,.73,frontMat) : '';
+      var subtitle = p.subLines.length ? textRow(p.subLines,9,12,muted,mono,400,0,frontMat) : '';
       var rows = name + title + (subtitle ? spacer(10) + subtitle : '');
       if (v.design === 'orbit') rows = ruleRow(28,3,v.accent) + spacer(9) + rows;
-      if (v.design === 'studio') rows = ruleRow(p.textW,8,v.accent) + spacer(12) + rows;
+      if (v.design === 'studio') rows = ruleRow(flow ? p.identityW : p.textW,8,v.accent) + spacer(12) + rows;
       if (v.design === 'prism' || v.design === 'signal') rows = subtitle + (subtitle ? spacer(10) : '') + name + title;
       if (v.customAlign ? v.customAlign === 'center' : v.design === 'contour') rows = rows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
-      var text = cell(p.textW,table(p.textW,0,rows),'','middle'), art = '';
-      if (!p.artRail && p.dotW) art = cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),v.design === 'studio' ? v.backBackground : '', 'middle');
+      var identity = flow ? informationMat(p.identityW,rows,v.frontBackground,p.matPad) : table(p.textW,0,rows);
+      if (flow && (v.customAlign ? v.customAlign === 'center' : v.design === 'contour')) identity = identity.replace('<table ','<table align="center" ');
+      var text = cell(p.textW,identity,'','middle'), art = '';
+      if (!p.artRail && p.dotW) art = cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),v.design === 'studio' && !flow ? v.backBackground : '', 'middle');
       var contents = v.design === 'orbit' || v.design === 'studio' ? art + (art ? blankCol(p.gap) : '') + text : text + (art ? blankCol(p.gap) : '') + art;
-      return table(p.idW,height,'<tr>' + blankCol(p.idPad) + contents + blankCol(p.idPad) + '</tr>',v.frontBackground);
+      return surface(p.idW,height,'<tr>' + blankCol(p.idPad) + contents + blankCol(p.idPad) + '</tr>',v.frontBackground,identityX,identityY);
     }
-    function contactPanel(width,height) {
+    function contactPanel(width,height,x,y) {
       var background = v.design === 'editorial' ? v.frontBackground : v.backBackground;
       var color = readable(background,black), quiet = readable(background,'#5a5651');
       var grid = '';
@@ -548,23 +618,27 @@
         grid += '<tr>' + cells + '</tr>';
         if (i + p.cols < p.rows.length) grid += '<tr><td colspan="' + (p.cols * 2 - 1) + '" height="' + p.rowGap + '" style="padding:0;height:' + p.rowGap + 'px;font-size:0;line-height:0">&nbsp;</td></tr>';
       }
-      var rows = grid ? '<tr><td style="padding:0">' + table(p.innerW,0,grid) + '</td></tr>' : '';
+      var rows = grid ? '<tr><td style="padding:0">' + table(p.gridW,0,grid) + '</td></tr>' : '';
       if (p.tagLines.length) {
-        if (v.design === 'editorial') rows += spacer(8) + '<tr><td style="padding:0;background-color:' + v.backBackground + '">' + table(p.innerW,0,textRow(p.tagLines,8.5,11,readable(v.backBackground,cream),mono)) + '</td></tr>';
+        if (v.design === 'editorial') rows += spacer(8) + '<tr><td style="padding:0;background-color:' + v.backBackground + '">' + table(flow ? p.groupW : p.innerW,0,textRow(p.tagLines,8.5,11,readable(v.backBackground,cream),mono)) + '</td></tr>';
         else rows += spacer(8) + textRow(p.tagLines,8.5,11,quiet,mono);
       }
-      return table(width,height,'<tr>' + blankCol(p.cPad) + cell(p.innerW,table(p.innerW,0,rows),'','middle') + blankCol(p.cPad) + '</tr>',background);
+      var information = flow ? informationMat(p.groupW,rows,background,p.matPad) : table(p.innerW,0,rows);
+      return surface(width,height,'<tr>' + blankCol(p.cPad) + cell(p.innerW,information,'','middle') + blankCol(p.cPad) + '</tr>',background,x,y);
     }
     function artRail(height,background) {
       if (!p.dotW) return '';
-      return cell(p.dotW + 16,table(p.dotW + 16,height,'<tr>' + blankCol(8) + cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),'','middle') + blankCol(8) + '</tr>',background),'','middle');
+      if (flow) return '<td width="' + (p.dotW + 16) + '" align="center" valign="middle" style="padding:0;background-color:' + background + ';' +
+        surface.paintStyle(v.design === 'prism' ? p.frame : mainX + p.mainW,p.frame) + '">' + table(p.dotW,0,decoration(v,p,assetBase,options)) + '</td>';
+      return cell(p.dotW + 16,surface(p.dotW + 16,height,'<tr>' + blankCol(8) + cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),'','middle') + blankCol(8) + '</tr>',background,v.design === 'prism' ? p.frame : mainX + p.mainW,p.frame),'','middle');
     }
     var output;
     if (p.side) {
-      output = '<tr>' + (p.rail ? cell(p.rail,'',v.accent) : '') + cell(p.idW,identity(p.topH)) + cell(p.contactPanelW,contactPanel(p.contactPanelW,p.contactPanelH)) + '</tr>';
+      output = '<tr>' + (p.rail ? cell(p.rail,'',v.accent) : '') + cell(p.idW,identity(p.topH)) + cell(p.contactPanelW,contactPanel(p.contactPanelW,p.contactPanelH,p.rail + p.idW,0)) + '</tr>';
     } else {
-      var divided = ['editorial','contour','prism'].includes(v.design), contact = contactPanel(p.contactPanelW,p.contactPanelH - (divided ? 1 : 0));
-      if (p.contactOffset) contact = table(p.mainW,p.contactPanelH - (divided ? 1 : 0),'<tr>' + blankCol(p.contactOffset) + cell(p.contactPanelW,contact) + '</tr>',v.frontBackground);
+      var divided = ['editorial','contour','prism'].includes(v.design), contactY = p.frame + p.topH + (divided ? 1 : 0);
+      var contact = contactPanel(p.contactPanelW,p.contactPanelH - (divided ? 1 : 0),mainX + p.contactOffset,contactY);
+      if (p.contactOffset) contact = surface(p.mainW,p.contactPanelH - (divided ? 1 : 0),'<tr>' + blankCol(p.contactOffset) + cell(p.contactPanelW,contact) + '</tr>',v.frontBackground,mainX,contactY);
       var bodyRows = '<tr>' + cell(p.idW,identity(p.topH)) + '</tr>';
       if (divided) bodyRows += ruleRow(p.mainW,1,v.accent);
       bodyRows += '<tr>' + cell(p.mainW,contact) + '</tr>';
@@ -594,36 +668,46 @@
       if (/[?#]/.test(assetBase)) throw new TypeError('Use an asset folder URL without a query or fragment.');
       if (webURL(assetBase)) assetBase = webURL(assetBase).replace(/\/+$/, '');
     }
-    if (v.design !== 'original') return renderDesign(v, p, assetBase, options);
+    // All tables already declare zero cellspacing, cellpadding and borders.
+    // The duplicate collapse rule buys no extra geometry here; removing it in
+    // Flow leaves room for the decorative surface URLs inside Gmail's budget.
+    if (v.design !== 'original') {
+      var designed = renderDesign(v, p, assetBase, options);
+      return isFlow(v) ? designed.replace(/border-collapse:collapse;/g,'') : designed;
+    }
+    var flow = isFlow(v), surface = flowSurface(v,assetBase);
+    var identityRows = textRow(p.names, Math.floor(p.nameFont * 10) / 10, p.nameLine, frontText, sans, 600);
+    if (p.titleLines.length) identityRows += spacer(7) + textRow(p.titleLines, 9, 11, titleColor, roleMono, 400, 0.73);
+    if (p.subLines.length) identityRows += spacer(11) + textRow(p.subLines, 9, 12, frontMuted, mono);
     var frontRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>' +
-      spacer(Math.min(Math.round(v.height * 0.19), p.frontSpace)) + textRow(p.names, Math.floor(p.nameFont * 10) / 10, p.nameLine, frontText, sans, 600);
-    if (p.titleLines.length) frontRows += spacer(7) + textRow(p.titleLines, 9, 11, titleColor, roleMono, 400, 0.73);
-    if (p.subLines.length) frontRows += spacer(11) + textRow(p.subLines, 9, 12, frontMuted, mono);
+      spacer(Math.min(Math.round(v.height * 0.19), p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + informationMat(p.identityW,identityRows,v.frontBackground,p.matPad) + '</td></tr>' : identityRows);
     var dots = spacer(13) + '<tr><td style="padding:0;font-size:0;line-height:0"><img src="' + escape(assetBase + '/dots.png') +
       '" width="' + p.dotW + '" height="' + p.dotH + '" alt="" style="display:block;width:' + p.dotW + 'px;height:' + p.dotH + 'px;border:0"></td></tr>';
     if (selectedPattern(v) !== 'dots' || hasPortrait(v)) dots = spacer(13) + decoration(v, p, assetBase, options);
-    var front = table(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.textW + '" valign="top" style="padding:0;vertical-align:top">' +
-      table(p.textW, 0, frontRows) + '</td>' + blankCol(p.gap) + '<td width="' + p.dotW + '" valign="top" style="padding:0;vertical-align:top">' +
-      table(p.dotW, 0, dots) + '</td>' + blankCol(p.right) + '</tr>', v.frontBackground);
+    var artworkCell = flow && !p.dotW ? '' : blankCol(p.gap) + '<td width="' + p.dotW + '" valign="top" style="padding:0;vertical-align:top">' + table(p.dotW, 0, dots) + '</td>';
+    var front = surface(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.textW + '" valign="top" style="padding:0;vertical-align:top">' +
+      table(p.textW, 0, frontRows) + '</td>' + artworkCell + blankCol(p.right) + '</tr>', v.frontBackground,0,0);
     var contacts = p.rows.map(function (row, i) {
       var bottom = i === p.rows.length - 1 ? 0 : p.rowGap, label = row.lines.map(escape).join('<br>');
       if (row.href) label = '<a href="' + escape(row.href) + '" style="color:' + backText + ';text-decoration:none">' + label + '</a>';
       var icon = row.icon === 'none' ? '' : '<img src="' + escape(assetBase + '/' + iconFile(row.icon, v.backBackground)) + '" width="14" height="14" alt="' + row.label + '" style="display:block;width:14px;height:14px;border:0">';
       return '<tr><td width="28" valign="top" style="padding:0 0 ' + bottom + 'px;font-size:0;line-height:0">' + icon +
         '</td><td width="1" style="padding:0;background-color:' + backMuted + ';font-size:0;line-height:0">&nbsp;</td>' + blankCol(10) +
-        '<td width="' + p.contactW + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + mono + ';font-size:' + p.contactFont +
+        '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + mono + ';font-size:' + p.contactFont +
         'px;line-height:14px;color:' + backText + ';white-space:nowrap">' + label + '</td></tr>';
     }).join('');
     var backRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>';
-    if (contacts) backRows += spacer(Math.min(21, p.backSpace)) + '<tr><td style="padding:0">' + table(p.innerW, 0, contacts) + '</td></tr>';
-    if (p.tagLines.length) backRows += spacer(12) + '<tr><td height="1" style="padding:0;height:1px;background-color:' + v.accent + ';font-size:0;line-height:0">&nbsp;</td></tr>' +
-      spacer(8) + textRow(p.tagLines, 8.5, 11, backMuted, mono);
-    var back = table(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.innerW + '" valign="top" style="padding:0;vertical-align:top">' +
-      table(p.innerW, 0, backRows) + '</td>' + blankCol(p.pad) + '</tr>', v.backBackground);
+    var backInformation = contacts ? '<tr><td style="padding:0">' + table(flow ? p.groupW : p.innerW,0,contacts) + '</td></tr>' : '';
+    var tagRows = p.tagLines.length ? spacer(12) + '<tr><td height="1" style="padding:0;height:1px;background-color:' + v.accent + ';font-size:0;line-height:0">&nbsp;</td></tr>' +
+      spacer(8) + textRow(p.tagLines,8.5,11,backMuted,mono) : '';
+    if (flow && (backInformation || tagRows)) backRows += spacer(Math.min(21,p.backSpace)) + '<tr><td style="padding:0">' + informationMat(p.groupW,backInformation + tagRows,v.backBackground,p.matPad) + '</td></tr>';
+    else if (!flow) backRows += (contacts ? spacer(Math.min(21,p.backSpace)) + backInformation : '') + tagRows;
+    var back = surface(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.innerW + '" valign="top" style="padding:0;vertical-align:top">' +
+      table(p.innerW, 0, backRows) + '</td>' + blankCol(p.pad) + '</tr>', v.backBackground,v.layout === 'stacked' ? 0 : v.width + 20,v.layout === 'stacked' ? v.height + 20 : 0);
     var cell = function (html) { return '<td valign="top" style="padding:0;vertical-align:top">' + html + '</td>'; };
-    var output = v.layout === 'stacked' ? table(v.width, v.height * 2 + 20, '<tr>' + cell(front) + '</tr>' + spacer(20) + '<tr>' + cell(back) + '</tr>') :
-      table(v.width * 2 + 20, v.height, '<tr>' + cell(front) + blankCol(20) + cell(back) + '</tr>');
-    return output;
+    var output = v.layout === 'stacked' ? surface(v.width, v.height * 2 + 20, '<tr>' + cell(front) + '</tr>' + spacer(20) + '<tr>' + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0) :
+      surface(v.width * 2 + 20, v.height, '<tr>' + cell(front) + blankCol(20) + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0);
+    return flow ? output.replace(/border-collapse:collapse;/g,'') : output;
   }
   function render(values, options) {
     var v = checked(values);
@@ -645,5 +729,5 @@
     if (v.tags) lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, validate:validate, render:render, plainText:plainText});
+  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, validate:validate, render:render, plainText:plainText});
 }));

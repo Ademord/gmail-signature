@@ -1,6 +1,6 @@
 # Signature Studio roadmap
 
-The current source adds six full-canvas compositions, six abstract studies, four fantasy themes, private photo cropping, and scoped AI proposals. Original retains its two-card arrangement. The immediate task is to finish reviewing the integrated editor and exports, then improve compact email formats. This document describes implementation and plans; it does **not** declare every release, deployment, or received-email check passed. [PROGRESS.md](../PROGRESS.md) holds the latest evidence from the expanded eight-agent work.
+The current extension adds abstract artwork across the full card, direct editing of side details, seventeen color palettes, and simpler layout controls. The seven existing compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) distinguishes completed checks from the pending current release and Gmail received-message gate.
 
 ## Implemented collection
 
@@ -14,15 +14,17 @@ The current source adds six full-canvas compositions, six abstract studies, four
 | Editorial | Full-width serif masthead, fine rule, contact columns | Reading order and reliable font fallbacks |
 | Signal | Framed terminal-style header and labeled grid | Readable monospaced text and helpful labels |
 
-The six new designs use the full Wide or Tall canvas. Their name placement, artwork position, and contact arrangement differ. The gallery and preview share the renderer. Selecting a design applies its composition, colors, and default pattern while preserving personal details. Users can change or hide the pattern, apply quick palettes, swap colors, fine-tune colors, reset the selected design, or use **Surprise me**. Signature changes use undo/redo and draft/session persistence. Saved color themes still contain only a name and three colors; complete presets remain future work.
+The six new designs use the full Wide or Tall canvas. Their name placement and contact arrangement differ. Selecting a layout preserves the current colors, pattern, and personal details. Artwork and palettes are separate choices; Reset design explicitly restores the composition's default palette and pattern. Signature edits use Undo/Redo and draft/session persistence. Saved palettes contain only a name and three colors; complete presets remain future work.
 
-The workspace now focuses on the current canvas. **Browse designs** opens Layouts, Themes, and Artwork tabs in a separate dialog; **Browse artwork** opens the same browser directly to patterns. The sidebar keeps simple selectors, palettes live in Colors, and section AI tools are small text links. A selection returns to the preview. Further features should fit these existing surfaces before adding permanent panels or another gallery to the main page.
+**Browse designs** has Layouts and Artwork tabs. The main Design panel's Layout section collapses; the separate Layout tab provides synchronized width and height sliders and number fields. **Colors → Palettes** groups six quick choices with eleven more: Midnight, six abstract palettes, and four fantasy palettes. Palette selection changes colors only. Further features should fit these surfaces before adding permanent panels.
 
-The fantasy gallery now contains **Galaxy** (Orbit, violet spirals), **Starlight** (Editorial, gold constellations), **Moonlight** (Contour, Sailor Moon-inspired crescent and ribbons), and **Frost Crown** (Signal, Frozen Throne-inspired ice crown and runes). Each applies a composition, palette, and pattern that can then be mixed independently. These are four starting themes using the seven compositions.
+Galaxy, Starlight, Moonlight, and Frost Crown remain available as separate artwork and palette choices. Their earlier combined Themes gallery has been removed. Existing saved colors and session backups remain compatible.
 
 ## Abstract artwork
 
-Cut paper, Color field, Chromatic, Counterform, Overprint, and Gesture add six original compositions with broad shapes, material differences, and deliberate negative space. The Artwork tab shows large previews; Themes pairs each study with an existing composition and a quiet palette. Both use the existing import, undo, AI, and export paths. The seven layout engines remain unchanged.
+Cut paper, Color field, Chromatic, Counterform, Overprint, and Gesture have twelve dedicated Wide/Tall PNG backgrounds. Automatic placement lets these six studies flow across the signature. Side detail retains the smaller motif; Across signature selects flow explicitly. Scale is 75–150%, with horizontal and vertical positions from 0–100%; an axis enables when its scaled image can move. Text and contacts remain separate content, with the final visual treatment still under review. Placement settings travel through history, draft links, AI proposals, and session imports.
+
+**Edit artwork** creates editable side details: Cut forms, Interlock, Color blocks, Counterspace, Offset planes, and Rhythm. It changes inks and cells, mirrors shapes, and makes repeatable variations using the existing custom-pattern recipe. Custom grids remain side details; the drawing dialog does not modify a flowing PNG background. Unfinished edits remain local until Apply, and existing recipes reopen exactly. Flow adds four placement/scale/position fields with backward-compatible defaults; drawn recipes need no new image host.
 
 Reference directions come from [MoMA’s cut-out collection](https://www.moma.org/calendar/exhibitions/1429) and [Kunsthaus’s postwar abstraction](https://kunsthaus.ch/en/sammlung/nachkriegskunst/). The criterion is a stronger signature-sized composition, not an assertion of museum equivalence. Each artwork must remain distinguishable at small sizes and leave names and contact text readable.
 
@@ -38,7 +40,7 @@ A NASA portrait fixture and a multi-face composite have exercised the Node detec
 
 Local crops work for private preview, PNG export, and session backup. Clickable HTML email requires an explicit, stable, publicly readable **square HTTPS image URL**. Users download the crop, host it themselves, and choose **Use photo URL**. The editor checks loading and square dimensions; it does not publish the file. Copy/HTML export requires that URL while a local crop is present. Draft links do not embed uploaded photos. PNG export additionally needs cross-origin reads when images come from another host.
 
-Session imports now let users choose **Information**, **Design**, or both. Information includes wording, contacts, and photo data/URL. Design includes compositions, recipes, colors, icons, dimensions, image base, photo shape/size, themes, and view settings. Unselected fields stay. The complete incoming file and combined result still validate before restoration; saved themes merge when Design is selected.
+Session imports offer Information, Design, or both. Information includes wording, contacts, and photo data/URL. Design includes compositions, recipes, artwork placement, colors, icons, dimensions, image base, photo shape/size, saved palettes, and view settings. Unselected fields stay. The complete incoming file and combined result validate before restoration; saved palettes merge when Design is selected.
 
 ## Implemented AI extensions
 
@@ -50,7 +52,7 @@ Custom layout recipes choose six base compositions, three name-font families, an
 
 ## Artwork
 
-All sixteen transparent antialiased **304 × 728 RGBA PNGs**, including six abstract studies and four fantasy motifs, provide 4× native detail at 76 × 182 px. Geometry is editable in [`scripts/prepare-patterns.mjs`](../scripts/prepare-patterns.mjs) and regenerates without additional packages. PNG motif inks are fixed independently of card colors and accent; custom pixel artwork has its own editable palette.
+The sixteen **304 × 728 RGBA motifs** remain available as side details. Twelve additional Wide/Tall backgrounds provide the full-card abstract compositions. [`prepare-patterns.mjs`](../scripts/prepare-patterns.mjs) and [`prepare-flow-patterns.mjs`](../scripts/prepare-flow-patterns.mjs) generate these assets without extra packages. PNG inks stay independent of card colors; custom grids have their own editable palette.
 
 ![Six design motifs, four fantasy motifs, and six abstract studies on light and dark backgrounds](design-artwork.png)
 
@@ -59,13 +61,14 @@ This is an artwork proof at twice nominal display size, not an editor screenshot
 ```sh
 node scripts/prepare-patterns.mjs --proof
 node scripts/prepare-patterns.mjs --check
+node scripts/prepare-flow-patterns.mjs --check
 ```
 
-Checks read the real PNGs and verify dimensions, transparency, solid ink, antialiased edges, uniqueness, and deterministic regeneration. Deliberately blank images, wrong dimensions, and duplicate artwork have been rejected. Visual review of the complete signatures remains separate.
+Checks inspect real PNG bytes and deterministic regeneration. Flow-aware PNG export embeds CSS background images before rasterization and fails on unreadable or corrupt assets. Google lists background-image, size, position, and repeat in [Gmail's supported CSS](https://developers.google.com/workspace/gmail/design/css); actual settings paste/send preservation still requires received-message evidence.
 
-## Immediate acceptance work
+## Acceptance coverage
 
-Review all designs in Wide and Tall with and without photos and patterns. Use short/long names, Unicode, all contacts, empty optional fields, and size limits. Inspect actual-size signatures alongside gallery thumbnails. Exercise crop application, multi-face selection, manual adjustment, removal, undo/redo, reload, session transfer, hosted URL errors, clipboard fallback, HTML export, and PNG export. Verify the public build includes required patterns and licensed detector files.
+Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The current work adds independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles work in waves. Final runtime-version checks, exact-commit CI, and live deployment acceptance are pending; prior releases do not certify this revision.
 
 The seven exported AI examples have passed proposal validation and actual rendering with the default signature. Further checks cover field scope, default prompt privacy, stale proposals, one-step Undo, custom recipe limits, and HTML budget errors. Codex in-app browser evidence includes verified downloaded JSON/PNG files and the corrected Signal layout. Gmail paste/send verification remains blocked on an authenticated send test; these browser checks do not close it.
 
@@ -77,7 +80,7 @@ The real reference is [HubSpot's Email Signature Generator](https://www.hubspot.
 | --- | --- | --- |
 | 1. Compact email layouts | Explicit total-width controls and short single-signature formats around 320–420 px; a compact reply version; primary-contact selection; restrained artwork | Actual received messages fit narrow views; readable text at 100%; no overlap with long names or optional fields; output dimensions match the UI |
 | 2. Email compatibility and accessibility | A matrix recording client/platform/version, insertion method, light/dark appearance, images blocked, replies, fonts, and received-message results; concise contrast and export feedback | Evidence for each supported case; keyboard/focus checks; workarounds or explicit unsupported status; simulated previews never described as received-email proof |
-| 3. Brand kits and complete presets | Separate color themes from presets containing design, pattern, palette, layout, and approved typography; brand kits with stable asset URLs and icon styles | Complete JSON round trips; old drafts still restore; applying a kit preserves personal details; invalid assets recover; Undo restores the previous signature |
+| 3. Brand kits and complete presets | Add presets containing design, pattern, palette, layout, and approved typography alongside existing color-only palettes; brand kits with stable asset URLs and icon styles | Complete JSON round trips; old drafts still restore; applying a kit preserves personal details; invalid assets recover; Undo restores the previous signature |
 | 4. Optional hosted assets | Opt-in publication to a user-selected host with exact image/destination preview; stable URLs, replacement policy, errors, and manual-URL fallback | Approved upload returns a usable public URL; failed uploads leave the crop intact; cross-origin export behavior is known; previously sent assets follow a documented retention policy |
 | 5. Broader typography and layout controls | Extend the existing three-family/two-alignment recipes with tested sizes, spacing presets, and contact columns; meaningful compact/mirrored/two-ink variants | Visibly useful choices; measured/exported dimensions agree; fallback fonts reviewed; extreme settings cannot overlap or hide content |
 | 6. Custom icons and logos | PNG preparation first; controlled SVG sanitization/rasterization later; transparency, attribution, light/dark variants, hosted URLs, and bundled fallbacks | Invalid input rejected; contacts survive icon removal; semantic text remains; email uses stable PNG URLs; cross-origin failures have a clear recovery path |

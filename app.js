@@ -22,6 +22,8 @@
   const storageKey = 'signature-studio:draft:v1';
   const themeStorageKey = 'signature-studio:themes:v1';
   const colorKeys = ['frontBackground', 'backBackground', 'accent'];
+  const flowingPatterns = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
+  const artworkNumbers = ['artworkScale','artworkPositionX','artworkPositionY'];
   const hexColor = /^#[0-9a-f]{6}$/i;
   const presets = [
     { id: 'preset-original', name: 'Original', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -54,7 +56,7 @@
         themes.push(saved);
       }
     }
-  } catch { themeNotice('Saved themes could not be loaded. Your signature draft is still available.', true); }
+  } catch { themeNotice('Saved palettes could not be loaded. Your signature draft is still available.', true); }
   const status = $('status');
   const previewCopy = document.createElement('button');
   previewCopy.id = 'copy-preview';
@@ -69,6 +71,7 @@
   let draft = { ...core.defaults }, lastValid = null, view = 'card', activeTab = 'design', undoDraft = null;
   let portraitControls = null;
   let aiControls = null;
+  let artworkControls = null;
   const editHistory = window.EditorHistory.create();
   function syncHistory() {
     $('undo-change').disabled = !editHistory.canUndo;
@@ -139,7 +142,7 @@
   }
   // All miniature cards use the same renderer as the working canvas and exports.
   const designs = core.designs || [];
-  const designButtons = [], patternButtons = [], paletteButtons = [], collectionButtons = [];
+  const designButtons = [], patternButtons = [], paletteButtons = [];
   const studioPalettes = [
     { name: 'Vermilion', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
     { name: 'Cobalt', frontBackground: '#eef2ff', backBackground: '#182d59', accent: '#3659d9' },
@@ -148,9 +151,15 @@
     { name: 'Saffron', frontBackground: '#fff2d8', backBackground: '#353027', accent: '#a7620c' },
     { name: 'Rose', frontBackground: '#f9e7e7', backBackground: '#462c39', accent: '#ad3e66' }
   ];
+  // Legacy collections still supply their colors; composition and artwork are separate choices.
+  const extraPalettes = [
+    ...presets.filter(item => !studioPalettes.some(palette => colorKeys.every(key => palette[key] === item[key]))),
+    ...(window.SignatureCollections || [])
+  ];
   const designById = id => (id === 'custom' ? core.customDesign : designs.find(item => item.id === id)) || designs[0];
   function applyStyle(patch, message) {
     const before = { ...draft };
+    if (Object.hasOwn(patch,'pattern') && !flowingPatterns.includes(patch.pattern) && draft.artworkPlacement === 'flow' && !Object.hasOwn(patch,'artworkPlacement')) patch = {...patch,artworkPlacement:'auto'};
     Object.assign(draft, patch);
     preserveUnreadableDraft = false;
     recordEdit(before); fill(); render(); save();
@@ -161,13 +170,13 @@
   }
   function applyDesign(id) {
     const item = designById(id);
-    if (item) applyStyle(designPatch(item), item.name + ' applied. Your details are unchanged.');
+    if (item) applyStyle({ design: item.id }, item.name + ' layout applied.');
   }
   for (const [index, item] of designs.entries()) {
     const option = document.createElement('option'); option.value = item.id; option.textContent = item.name;
     $('design').append(option);
     const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-design-' + item.id; button.className = 'design-choice';
-    button.setAttribute('aria-label', 'Apply ' + item.name + ' design'); button.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-label', 'Apply ' + item.name + ' layout'); button.setAttribute('aria-pressed', 'false');
     const viewport = document.createElement('span'); viewport.className = 'design-thumbnail'; viewport.setAttribute('aria-hidden', 'true');
     const preview = document.createElement('span'); preview.className = 'design-miniature'; viewport.append(preview); button.append(viewport);
     const caption = document.createElement('span'); caption.className = 'design-caption';
@@ -180,16 +189,6 @@
   if (core.customDesign) {
     const option = document.createElement('option'); option.value = 'custom'; option.id = 'custom-design-option'; option.textContent = 'Custom layout'; $('design').append(option);
   }
-  for (const item of window.SignatureCollections || []) {
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-collection-' + item.id; button.className = 'design-choice collection-choice';
-    button.setAttribute('aria-label', 'Apply ' + item.name + ' collection'); button.setAttribute('aria-pressed', 'false');
-    const viewport = document.createElement('span'); viewport.className = 'design-thumbnail'; viewport.setAttribute('aria-hidden', 'true');
-    const preview = document.createElement('span'); preview.className = 'design-miniature'; viewport.append(preview); button.append(viewport);
-    const caption = document.createElement('strong'); caption.className = 'design-caption'; caption.textContent = item.name; button.append(caption);
-    const description = document.createElement('span'); description.className = 'design-caption-note'; description.textContent = item.description; button.append(description);
-    button.addEventListener('click', () => applyStyle({ design:item.design, pattern:item.pattern, ...Object.fromEntries(colorKeys.map(key => [key,item[key]])) }, item.name + ' applied.'));
-    $(item.category === 'abstract' ? 'abstract-collection-gallery' : 'collection-gallery').append(button); collectionButtons.push({button,item,viewport,preview});
-  }
   function patternAsset(id) { return id === 'dots' || id === 'original' ? 'sig/dots.png' : 'sig/pattern-' + id + '.png'; }
   for (const [id, label] of Object.entries(core.patterns || {})) {
     const option = document.createElement('option'); option.value = id; option.textContent = label; if (id === 'custom') option.id = 'custom-pattern-option'; $('pattern').append(option);
@@ -201,22 +200,22 @@
     const caption = document.createElement('span'); caption.textContent = id === 'auto' ? 'Auto' : label;
     const study = (window.SignatureCollections || []).find(item => item.category === 'abstract' && item.pattern === id);
     button.append(artwork); button.append(caption); $(study ? 'abstract-pattern-choices' : 'pattern-choices').append(button);
-    button.addEventListener('click', () => { if (id === 'custom' && !draft.customPattern) aiControls?.open('artwork'); else applyStyle({ pattern: id }, label + ' pattern applied.'); });
+    button.addEventListener('click', () => { if (id === 'custom' && !draft.customPattern) artworkControls?.open(); else applyStyle({ pattern: id }, label + ' pattern applied.'); });
     patternButtons.push({ button, id, artwork });
   }
-  for (const item of studioPalettes) {
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-palette-' + item.name.toLowerCase(); button.className = 'palette-choice';
+  for (const item of [...studioPalettes, ...extraPalettes]) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-palette-' + (item.id?.replace(/^preset-/, '') || item.name.toLowerCase()); button.className = 'palette-choice';
     button.setAttribute('aria-label', 'Apply ' + item.name + ' colors'); button.setAttribute('aria-pressed', 'false');
     const swatches = document.createElement('span'); swatches.className = 'palette-swatches'; swatches.setAttribute('aria-hidden', 'true');
     for (const key of colorKeys) { const swatch = document.createElement('span'); swatch.style.backgroundColor = item[key]; swatches.append(swatch); }
     button.append(swatches); const caption = document.createElement('span'); caption.textContent = item.name; button.append(caption);
     button.addEventListener('click', () => applyStyle(Object.fromEntries(colorKeys.map(key => [key, item[key]])), item.name + ' colors applied.'));
-    $('palette-choices').append(button); paletteButtons.push({ button, item });
+    $(studioPalettes.includes(item) ? 'palette-choices' : 'extra-palette-choices').append(button); paletteButtons.push({ button, item });
   }
   function fitMiniatures() {
     if (!lastValid) return;
     const width = lastValid.width * 2 + 20;
-    for (const { viewport, preview } of [...designButtons, ...collectionButtons]) {
+    for (const { viewport, preview } of designButtons) {
       const scale = Math.min(1, Math.max(1, viewport.clientWidth - 20) / width);
       preview.style.width = width + 'px'; preview.style.transform = 'scale(' + scale + ')';
       viewport.style.height = Math.ceil(lastValid.height * scale + 20) + 'px';
@@ -225,6 +224,18 @@
   function syncStudio() {
     const selected = designById(draft.design);
     if (!selected) return;
+    const canFlow = flowingPatterns.includes(draft.pattern), isFlow = canFlow && draft.artworkPlacement !== 'motif';
+    $('artwork-flow-option').disabled = !canFlow;
+    $('artworkPlacement').value = draft.artworkPlacement;
+    $('artwork-flow-settings').hidden = !isFlow;
+    const tallArt = draft.layout === 'stacked', canvasW = tallArt ? draft.width : draft.width * 2 + 20, canvasH = tallArt ? draft.height * 2 + 20 : draft.height;
+    const artW = tallArt ? 420 : 860, artH = tallArt ? 660 : 320, artScale = Math.max(canvasW / artW, canvasH / artH) * draft.artworkScale / 100;
+    $('artworkPositionX').disabled = Math.abs(canvasW - artW * artScale) < 0.01;
+    $('artworkPositionY').disabled = Math.abs(canvasH - artH * artScale) < 0.01;
+    $('artwork-position-note').hidden = !isFlow || (!$('artworkPositionX').disabled && !$('artworkPositionY').disabled);
+    $('pattern-note').textContent = isFlow ? 'Artwork flows across the signature. Adjust its scale and position below.' : 'A side detail keeps the artwork separate from your text. Abstract studies can flow across the signature.';
+    for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = isFlow ? 'Draw a side detail' : 'Edit artwork';
+    for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
     $('design-description').textContent = selected.description;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';
     const customized = !colorKeys.every(key => selected[key] === draft[key]) || draft.pattern !== 'auto';
@@ -234,6 +245,12 @@
     for (const { button, item } of designButtons) { const active = item.id === draft.design; button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-selected', active); }
     for (const { button, id, artwork } of patternButtons) {
       button.setAttribute('aria-pressed', String(id === draft.pattern));
+      if (flowingPatterns.includes(id) && artwork.children[0]) {
+        const previewFlow = draft.artworkPlacement !== 'motif';
+        artwork.children[0].src = previewFlow ? 'sig/' + core.flowAsset({...draft,pattern:id}) : patternAsset(id);
+        button.classList.toggle('is-flow-wide', previewFlow && draft.layout !== 'stacked');
+        button.classList.toggle('is-flow-tall', previewFlow && draft.layout === 'stacked');
+      }
       if (id === 'auto' && artwork.children[0]) {
         let base = draft.design;
         if (base === 'custom') { try { base = core.parseCustomLayout(draft.customLayout).composition; } catch { base = 'original'; } }
@@ -243,18 +260,11 @@
     for (const { button, item } of paletteButtons) button.setAttribute('aria-pressed', String(matchesColors(item)));
     if (lastValid) {
       for (const { item, preview } of designButtons) {
-        const miniature = { ...lastValid, ...designPatch(item), layout: 'paired' };
-        if (item.id === draft.design) Object.assign(miniature, palette(), { pattern: lastValid.pattern });
+        const miniature = { ...lastValid, design: item.id, layout: 'paired' };
         try {
           // Links are removed because the whole preview is a template-selection button.
           preview.innerHTML = core.render(miniature, { assetBase: './sig', preview: true }).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>');
         } catch { preview.textContent = item.name; }
-      }
-      for (const { button, item, preview } of collectionButtons) {
-        const patch = {design:item.design,pattern:item.pattern,...Object.fromEntries(colorKeys.map(key => [key,item[key]]))};
-        button.setAttribute('aria-pressed', String(Object.entries(patch).every(([key,value]) => draft[key] === value)));
-        try { preview.innerHTML = core.render({...lastValid,...patch,layout:'paired'}, {assetBase:'./sig',preview:true}).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi,'<span>').replace(/<\/a>/gi,'</span>'); }
-        catch { preview.textContent = item.name; }
       }
       fitMiniatures();
     }
@@ -276,13 +286,12 @@
     select.innerHTML = '';
     const option = (value, text) => { const item = document.createElement('option'); item.value = value; item.textContent = text; return item; };
     select.append(option('', 'Custom colors'));
-    for (const theme of presets) select.append(option(theme.id, theme.name));
     if (themes.length) {
-      const group = document.createElement('optgroup'); group.label = 'Saved themes';
+      const group = document.createElement('optgroup'); group.label = 'Saved palettes';
       for (const theme of themes) group.append(option(theme.id, theme.name));
       select.append(group);
     }
-    select.value = selectedThemeId;
+    select.value = themes.some(theme => theme.id === selectedThemeId) ? selectedThemeId : '';
     $('theme-name').value = themes.find(theme => theme.id === selectedThemeId)?.name || '';
     syncThemeState();
   }
@@ -292,7 +301,7 @@
       themes = next;
       return true;
     } catch {
-      themeNotice('Theme not saved. Browser storage is unavailable. Copy a draft link to keep these colors.', true);
+      themeNotice('Palette not saved. Browser storage is unavailable. Copy a draft link to keep these colors.', true);
       return false;
     }
   }
@@ -308,7 +317,7 @@
     const duplicate = [...presets, ...themes].some(theme => theme.id !== existing?.id && theme.name.toLowerCase() === name.toLowerCase());
     if (!name || name.length > 40 || duplicate) {
       $('theme-name').setAttribute('aria-invalid', 'true');
-      themeNotice(duplicate ? 'That name is already used. Choose another name, or update the selected theme.' : 'Give the theme a name of 1–40 characters.', true);
+      themeNotice(duplicate ? 'That name is already used. Choose another name, or update the selected palette.' : 'Give the palette a name of 1–40 characters.', true);
       $('theme-name').focus();
       return;
     }
@@ -356,8 +365,17 @@
         if (core.limits?.[key]) input.maxLength = core.limits[key];
       }
     }
-    $('height-range').value = draft.height;
+    syncSizeControls();
     syncColors(); syncIcons(); renderThemeMenu(); syncStudio(); portraitControls?.sync?.();
+  }
+  function syncSizeControls() {
+    for (const key of ['width', 'height']) $(key + '-range').value = draft[key];
+    const width = Number(draft.width), height = Number(draft.height);
+    const validSize = Number.isInteger(width) && width >= 280 && width <= 420 && Number.isInteger(height) && height >= 180 && height <= 320;
+    $('size-explanation').textContent = validSize ? (draft.layout === 'stacked'
+      ? 'Tall uses two panels: ' + width + ' × ' + (height * 2 + 20) + ' px in total.'
+      : 'Wide uses two panels: ' + (width * 2 + 20) + ' × ' + height + ' px in total.')
+      : 'Each value sets one panel. The preview shows the full signature size.';
   }
   function save() {
     const note = document.querySelector('.rail-footer > span');
@@ -489,16 +507,18 @@
       if (!colorKeys.includes(key)) return;
       draft[key] = input.value.toLowerCase();
       if (hexColor.test(draft[key])) $(key).value = draft[key];
-    } else if (input.id === 'height-range') {
-      draft.height = Number(input.value);
-      form.elements.namedItem('height').value = input.value;
+    } else if (input.id === 'height-range' || input.id === 'width-range') {
+      const key = input.id.replace('-range', '');
+      draft[key] = Number(input.value);
+      form.elements.namedItem(key).value = input.value;
     } else if (Object.hasOwn(core.defaults, input.name)) {
-      draft[input.name] = ['width', 'height'].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
-      if (input.name === 'height') $('height-range').value = input.value;
+      draft[input.name] = ['width', 'height', ...artworkNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
+      if (input.name === 'pattern' && !flowingPatterns.includes(draft.pattern) && draft.artworkPlacement === 'flow') draft.artworkPlacement = 'auto';
       if (colorKeys.includes(input.name)) $(input.name + '-hex').value = input.value.toUpperCase();
     } else return;
     preserveUnreadableDraft = false;
-    recordEdit(before, input.tagName === 'SELECT' ? undefined : (input.dataset.colorField || (input.id === 'height-range' ? 'height' : input.name)));
+    recordEdit(before, input.tagName === 'SELECT' ? undefined : (input.dataset.colorField || (input.id.endsWith('-range') ? input.id.replace('-range', '') : input.name)));
+    syncSizeControls();
     if (iconKeys.includes(input.name)) syncIcons();
     render(); save(); syncThemeState();
   });
@@ -639,7 +659,7 @@
     note.textContent = stored ? 'Draft saved in this browser.' : 'Not saved. Export data to keep this session.';
     note.classList.toggle('storage-warning', !stored);
     themeNotice('');
-    announce(stored ? 'Session restored. Added ' + merged.added + ' saved theme' + (merged.added === 1 ? '.' : 's.') : 'Session restored for this tab. Browser storage is unavailable; export data to keep it.', !stored);
+    announce(stored ? 'Session restored. Added ' + merged.added + ' saved palette' + (merged.added === 1 ? '.' : 's.') : 'Session restored for this tab. Browser storage is unavailable; export data to keep it.', !stored);
   }
   window.SessionControls.attach({ getSession, restore: restoreSession, copy: text => copyContent(null, text), onError: message => { validate(true); announce(message, true); } });
   portraitControls = window.PortraitControls?.attach({ getDraft: () => ({ ...draft }), setPortrait: patch => {
@@ -651,6 +671,13 @@
     if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
     applyStyle(patch, 'AI changes applied. Undo restores your previous design.');
   }, copy: text => copyContent(null,text), onError: message => announce(message,true)});
+  artworkControls = window.SignatureArtworkControls?.attach({getDraft: () => ({...draft}), applyChanges: patch => {
+    core.parseCustomPattern(patch.customPattern);
+    const artwork = {pattern:'custom',customPattern:patch.customPattern,artworkPlacement:draft.artworkPlacement === 'flow' ? 'motif' : draft.artworkPlacement};
+    const errors = core.validate({...draft,...artwork});
+    if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+    applyStyle(artwork, 'Artwork applied. Undo restores your previous design.');
+  }, onError: message => announce(message,true)});
   window.SignatureLibraryControls?.attach({onOpen: () => {syncStudio();fitMiniatures();}});
   fill(); setTab(activeTab); render(); save(); syncHistory();
   if (startupMessage) announce(startupMessage);

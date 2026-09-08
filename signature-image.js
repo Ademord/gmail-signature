@@ -50,10 +50,9 @@
     element.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     element.setAttribute('style', 'margin:0;padding:0;font-style:normal;font-variant:normal;letter-spacing:normal;text-align:left;direction:ltr;');
     element.innerHTML = core.render(v, v.imageBase === core.defaults.imageBase ? { assetBase: './sig', allowPortraitData: true } : { allowPortraitData: true });
-    // SVG images cannot fetch external resources. Embed each original PNG first.
+    // SVG images cannot fetch external resources. Embed image and painted-surface assets.
     var assets = new Map();
-    await Promise.all(Array.from(element.querySelectorAll('img')).map(async function (img) {
-      var source = img.src;
+    function embeddedAsset(source) {
       if (!assets.has(source)) assets.set(source, (async function () {
         var controller = new AbortController();
         var abort = function () { controller.abort(); };
@@ -80,8 +79,25 @@
           if (options.signal) options.signal.removeEventListener('abort', abort);
         }
       }()));
-      img.setAttribute('src', await assets.get(source));
-    }));
+      return assets.get(source);
+    }
+    var imageWork = Array.from(element.querySelectorAll('img')).map(async function (img) {
+      img.setAttribute('src', await embeddedAsset(img.src));
+    });
+    var backgroundWork = Array.from(element.querySelectorAll('[style]')).map(async function (surface) {
+      var backgroundImage = surface.style && surface.style.backgroundImage;
+      if (!backgroundImage || /^(none|initial|inherit|unset|revert|revert-layer)$/.test(backgroundImage)) return;
+      var match = backgroundImage.match(/^url\((["']?)(.*?)\1\)$/);
+      if (!match) throw new Error('This artwork background could not be embedded.');
+      var source = new URL(match[2], element.baseURI || document.baseURI).href;
+      surface.style.backgroundImage = 'url("' + await embeddedAsset(source) + '")';
+    });
+    var fallbackWork = Array.from(element.querySelectorAll('[background]')).map(async function (surface) {
+      if (!surface.getAttribute) return;
+      var source = surface.getAttribute('background');
+      if (source) surface.setAttribute('background', await embeddedAsset(new URL(source, element.baseURI || document.baseURI).href));
+    });
+    await Promise.all(imageWork.concat(backgroundWork, fallbackWork));
     if (document.fonts) await document.fonts.ready;
     var markup = new XMLSerializer().serializeToString(element);
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size.width + '" height="' + size.height + '" viewBox="0 0 ' + size.logicalWidth + ' ' + size.logicalHeight + '"><foreignObject width="100%" height="100%">' + markup + '</foreignObject></svg>';

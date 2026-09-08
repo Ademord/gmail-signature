@@ -18,7 +18,7 @@ test('design and pattern catalogs are immutable and old 23-field sessions inheri
     assert.equal(typeof d.name,'string');assert.equal(typeof d.description,'string');assert.equal(d.pattern,'auto');
     for(const k of ['accent','frontBackground','backBackground'])assert.match(d[k],/^#[a-f0-9]{6}$/);
   }
-  const old={...core.defaults};for(const key of ['design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize'])delete old[key];
+  const old={...core.defaults};for(const key of ['design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY'])delete old[key];
   assert.equal(Object.keys(old).length,23);
   assert.equal(core.normalize(old).design,'original');assert.equal(core.normalize(old).pattern,'auto');
   assert.equal(core.normalize(old).portraitData,'');assert.equal(core.normalize(old).portraitSize,64);
@@ -53,7 +53,7 @@ test('all seven compositions support minimum, default and maximum dimensions in 
 
 test('patterns switch independently, none removes artwork, and all assets retain declared aspect ratios',()=>{
   for(const design of ids)for(const pattern of Object.keys(core.patterns)){
-    const html=core.render(values({design,pattern,customPattern:pattern==='custom'?customPattern:''}));
+    const html=core.render(values({design,pattern,artworkPlacement:'motif',customPattern:pattern==='custom'?customPattern:''}));
     const effective=pattern==='auto'?(design==='original'?'dots':design):pattern;
     const images=[...html.matchAll(/<img\b[^>]*>/g)].map(m=>m[0]).filter(tag=>/alt=""/.test(tag));
     if(effective==='none'){assert.equal(images.length,0);continue;}

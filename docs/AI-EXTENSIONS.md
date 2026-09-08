@@ -4,7 +4,7 @@ Signature Studio can turn a JSON response from an AI you choose into a previewed
 
 ## Use the helper
 
-1. Open the small AI link for **Design**, **Artwork**, **Layout**, **Colors**, **Details**, **Icons**, or **Photo format** in the relevant editor section. Existing layouts, themes, and patterns are available separately through **Browse designs**.
+1. Open the small AI link for **Design**, **Artwork**, **Layout**, **Colors**, **Details**, **Icons**, or **Photo format**. Artwork's link is in **Browse artwork → Create with AI**. Layouts and artwork are in Browse designs; color-only choices are in **Colors → Palettes**.
 2. Describe the change or select a request idea. Read the generated prompt; it includes the allowed fields, their current style values or fictional wording, and the response format.
 3. Click **Copy prompt** and paste it into your chosen AI. If clipboard access is blocked, use **Select prompt** and your keyboard or selection menu.
 4. Paste the JSON reply into **Paste your AI's JSON reply**. You can edit it directly, or start with **Try an editable example** without using an AI service.
@@ -43,8 +43,8 @@ Omit unchanged fields. A response never accepts raw HTML, CSS, JavaScript, SVG, 
 
 | Section | Allowed fields |
 | --- | --- |
-| `design` | `design`, `customLayout`, `layout`, `width`, `height`, `pattern`, `customPattern`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
-| `artwork` | `pattern`, `customPattern`, `frontBackground`, `backBackground`, `accent` |
+| `design` | `design`, `customLayout`, `layout`, `width`, `height`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
+| `artwork` | `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent` |
 | `layout` | `design`, `customLayout`, `layout`, `width`, `height` |
 | `colors` | `frontBackground`, `backBackground`, `accent` |
 | `details`, option off | `title`, `subtitle`, `tags` |
@@ -52,7 +52,7 @@ Omit unchanged fields. A response never accepts raw HTML, CSS, JavaScript, SVG, 
 | `icons` | `websiteIcon`, `emailIcon`, `phoneIcon`, `linkedinIcon`, `locationIcon` |
 | `photo` | `portraitShape`, `portraitSize` |
 
-The broad Design section changes visual settings only. It cannot change personal details, the uploaded photo, its public URL, the image base, stored themes, or application settings. Artwork can change its palette and card colors; Icons selects from the bundled icons rather than uploading new artwork.
+The broad Design section changes visual settings only. It cannot change personal details, the uploaded photo, its public URL, the image base, saved palettes, or application settings. Artwork can change its placement and card colors; custom recipes also carry their own ink palette. Icons selects from bundled icons.
 
 ## Values and limits
 
@@ -60,7 +60,10 @@ The broad Design section changes visual settings only. It cannot change personal
 | --- | --- |
 | Surface/accent colors | Six-digit hex strings such as `#18283e` |
 | `design` | `original`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, or `custom` |
-| `pattern` | `auto`, `dots`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, `galaxy`, `starlight`, `moonlight`, `frost`, `custom`, `none` |
+| `pattern` | `auto`, `dots`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, `gesture`, `galaxy`, `starlight`, `moonlight`, `frost`, `custom`, `none` |
+| `artworkPlacement` | `auto`, `motif`, or `flow` |
+| `artworkScale` | JSON integer 75–150, percent |
+| `artworkPositionX`, `artworkPositionY` | JSON integers 0–100, percent |
 | `layout` | `paired` for Wide; `stacked` for Tall |
 | `width` | JSON integer 280–420 |
 | `height` | JSON integer 180–320 |
@@ -100,6 +103,12 @@ These are 36 combinations of six compositions, three font choices, and two align
 
 A proposal containing a `customLayout` must also set `design` to `custom`. Selecting `custom` without including a recipe is valid only if the current draft already contains a valid custom layout. Applied recipes stay with the current draft and session; they do not create a separate named preset library.
 
+## Artwork placement
+
+`auto` uses full-card artwork for `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, and `gesture`; other patterns and custom grids use a side detail. `flow` explicitly requires one of those six abstract patterns. `motif` selects a side detail. Scale and position affect the flowing background and remain saved when another placement is selected.
+
+When changing from flowing artwork to a custom grid, include `artworkPlacement: "motif"`. A proposal with explicit `flow` and an unsupported pattern is rejected. The dedicated Wide/Tall images remain PNG assets; custom grids do not edit those images.
+
 ## Custom pixel-art recipe
 
 Set `pattern` to `custom` and include `customPattern` as an object with exactly `palette` and `rows`:
@@ -111,7 +120,7 @@ Set `pattern` to `custom` and include `customPattern` as an object with exactly 
 
 The recipe serializes to at most 2,048 characters internally. Include `pattern: "custom"` whenever a response includes `customPattern`. A response may select an existing custom pattern without supplying a new recipe only when the draft already has a valid one.
 
-The renderer fits the grid into its decorative rail and emits native email table cells. The custom artwork itself needs no new image URL or hosting service. Bundled PNG icons, other PNG patterns, and photos retain their existing hosting requirements.
+The renderer fits the grid into a side detail and emits native email table cells. It does not stretch the grid across the full signature. **Edit artwork** reopens the same recipe for manual ink/cell editing. Custom artwork needs no new image URL or hosting service; bundled PNG artwork and photos retain their hosting requirements.
 
 The complete signature must remain **below 10,000 HTML characters**. The grid limits are an upper bound on recipe complexity, not a guarantee that any grid fits. Adjacent same-color cells and repeated rows compact well; noisy checkerboards often do not. If a preview reports a budget error, reduce color changes/rows, simplify the shape, or shorten URLs, then preview again. This is pixel art, not general AI image generation.
 
@@ -152,6 +161,7 @@ Open the matching section before previewing an example. The Details example work
   "changes": {
     "design": "orbit",
     "pattern": "starlight",
+    "artworkPlacement": "auto",
     "frontBackground": "#e6edf6",
     "backBackground": "#17253f",
     "accent": "#cda762"
@@ -169,6 +179,7 @@ Open the matching section before previewing an example. The Details example work
   "name": "Artwork example",
   "changes": {
     "pattern": "custom",
+    "artworkPlacement": "motif",
     "customPattern": {
       "palette": [
         "#dcc18a"

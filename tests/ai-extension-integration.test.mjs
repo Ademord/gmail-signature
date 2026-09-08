@@ -146,7 +146,7 @@ test('all four independently expected fantasy themes retain portraits and produc
 
 test('selective import uses the independently expected information/design boundary and preserves every unchecked field', () => {
   const information = ['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl'];
-  const design = ['width','height','layout','design','pattern','customPattern','customLayout','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize'];
+  const design = ['width','height','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize'];
   assert.deepEqual([...session.informationFields].sort(),[...information].sort());
   assert.deepEqual([...session.designFields].sort(),[...design].sort());
   const oldTheme = {id:'theme-shared',name:'Old palette',frontBackground:'#eeeeee',backBackground:'#111111',accent:'#557755'};
@@ -156,6 +156,7 @@ test('selective import uses the independently expected information/design bounda
     website:'https://example.org/work',websiteLabel:'Portfolio',email:'incoming@example.org',phone:'+44 20 0000 0000',linkedin:'https://www.linkedin.com/in/incoming',location:'Paris',
     portraitData:'data:image/png;base64,'+readFileSync(new URL('../sig/icon-pin.png',import.meta.url)).toString('base64'),portraitUrl:'https://example.org/incoming.png',
     width:410,height:310,layout:'stacked',design:'custom',customLayout:JSON.stringify(recipe),pattern:'custom',customPattern:JSON.stringify(pattern),
+    artworkPlacement:'motif',artworkScale:125,artworkPositionX:13,artworkPositionY:71,
     accent:'#994466',frontBackground:'#eeddcc',backBackground:'#223344',websiteIcon:'mail',emailIcon:'none',phoneIcon:'pin',linkedinIcon:'web',locationIcon:'linkedin',imageBase:'https://example.org/new-assets',portraitShape:'square',portraitSize:80},
     themes:[newTheme],ui:{editorTab:'layout',previewView:'email',imageScale:6,imageBackground:'white',selectedThemeId:newTheme.id,themeName:'New colors'}}));
   const beforeCurrent = JSON.stringify(current), beforeIncoming = JSON.stringify(incoming);

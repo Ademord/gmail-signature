@@ -48,6 +48,9 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   assert.deepEqual(Object.fromEntries(['design', 'pattern', 'portraitData', 'portraitUrl', 'portraitShape', 'portraitSize'].map(key => [key, restored.draft[key]])), {
     design: 'original', pattern: 'auto', portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64
   });
+  assert.deepEqual(Object.fromEntries(['artworkPlacement','artworkScale','artworkPositionX','artworkPositionY'].map(key=>[key,restored.draft[key]])), {
+    artworkPlacement:'auto',artworkScale:100,artworkPositionX:50,artworkPositionY:50
+  });
   const again = session.parse(session.serialize(restored));
   assert.deepEqual(again, restored);
   assert.match(signature.render(again.draft), /href="mailto:zoe@example.com"/);
@@ -58,7 +61,8 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
 test('every named design round-trips photo bytes, independent pattern, legacy details, and selected theme', async () => {
   const photo = 'data:image/png;base64,' + (await read('sig/icon-web.png')).toString('base64');
   for (const design of designs) {
-    const draft = { ...legacyDraft, design, pattern: 'contour', customLayout:'', customPattern:'', portraitData: photo,
+    const draft = { ...legacyDraft, design, pattern: 'contour', customLayout:'', customPattern:'',
+      artworkPlacement:'auto',artworkScale:100,artworkPositionX:50,artworkPositionY:50,portraitData: photo,
       portraitUrl: 'https://example.com/cropped-photo.png?v=2', portraitShape: 'rounded', portraitSize: 96 };
     const input = { draft, themes: [savedTheme], ui: { ...oldUI, editorTab: 'photo' } };
     const text = session.serialize(input), restored = session.parse(text);
@@ -98,6 +102,7 @@ const expectedPublicFiles = [
   'signature-only.html', 'portrait-core.js', 'portrait-controls.js', 'portrait-worker.js', 'portrait.css',
   'design-collections.js', 'ai-extension-core.js', 'ai-extension-controls.js', 'ai-extension.css',
   'library-controls.js', 'library.css',
+  'artwork-core.js', 'artwork-controls.js', 'artwork.css',
   'vendor/pico.js', 'vendor/facefinder.bin', 'vendor/PICO-LICENSE.txt',
   'sig/dots.png', 'sig/icon-mail.png', 'sig/icon-phone.png', 'sig/icon-linkedin.png',
   'sig/icon-pin.png', 'sig/icon-web.png', 'sig/icon-mail-dark.png', 'sig/icon-phone-dark.png',
@@ -106,7 +111,13 @@ const expectedPublicFiles = [
   'sig/pattern-prism.png', 'sig/pattern-editorial.png', 'sig/pattern-signal.png',
   'sig/pattern-galaxy.png', 'sig/pattern-starlight.png', 'sig/pattern-moonlight.png', 'sig/pattern-frost.png',
   'sig/pattern-cutpaper.png', 'sig/pattern-colorfield.png', 'sig/pattern-chromatic.png',
-  'sig/pattern-counterform.png', 'sig/pattern-overprint.png', 'sig/pattern-gesture.png'
+  'sig/pattern-counterform.png', 'sig/pattern-overprint.png', 'sig/pattern-gesture.png',
+  'sig/pattern-cutpaper-wide.png', 'sig/pattern-cutpaper-tall.png',
+  'sig/pattern-colorfield-wide.png', 'sig/pattern-colorfield-tall.png',
+  'sig/pattern-chromatic-wide.png', 'sig/pattern-chromatic-tall.png',
+  'sig/pattern-counterform-wide.png', 'sig/pattern-counterform-tall.png',
+  'sig/pattern-overprint-wide.png', 'sig/pattern-overprint-tall.png',
+  'sig/pattern-gesture-wide.png', 'sig/pattern-gesture-tall.png'
 ];
 
 async function sourceFixture(t) {
@@ -130,7 +141,7 @@ async function sourceFixture(t) {
 }
 
 test('actual public build retains the complete reviewed runtime and excludes test photos, private files, and docs', async t => {
-  assert.equal(expectedPublicFiles.length, 50);
+  assert.equal(expectedPublicFiles.length, 65);
   assert.deepEqual([...PUBLIC_FILES].sort(), [...expectedPublicFiles].sort());
   const root = await sourceFixture(t), { output } = await buildSite(root), files = [];
   async function walk(directory) {

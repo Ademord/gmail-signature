@@ -59,9 +59,12 @@
           if (!edited) smart(); else notice(!autoFrame ? 'Adjusting your saved crop. Upload the original photo if you want a wider crop.' : faces.length ? 'Face detection finished. Use Smart crop to try it, or keep your adjustments.' : 'No clear face found. Your manual crop is ready.');
         } catch { if (revision === request) notice('Face detection is unavailable. Use the crop controls to position your photo.'); }
       } catch (error) { if (revision === request) notice(error.message, true); }
-      finally { if (revision === request) $('portrait-file').value = ''; }
     }
-    $('portrait-file').addEventListener('change', () => { const file = $('portrait-file').files[0]; if (file) return openPhoto(file); });
+    $('portrait-file').addEventListener('change', () => {
+      const file = $('portrait-file').files[0];
+      $('portrait-file').value = '';
+      if (file) return openPhoto(file);
+    });
     $('portrait-edit').addEventListener('click', () => {
       const data = settings.getDraft().portraitData; if (!data) return;
       try {

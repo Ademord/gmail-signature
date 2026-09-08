@@ -116,8 +116,10 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   node('editor-form').elements = { namedItem: key => inputs[key] || null };
   const footer = new Element(), actionGroup = new Element(), workspace = new Element(), column = new Element();
   const views = ['card', 'email'].map(view => { const element = new Element('button'); element.dataset.view = view; return element; });
+  const artworkEditButtons=[...pageSource.matchAll(/<button\b[^>]*\bdata-edit-artwork\b[^>]*>/g)].map(()=>new Element('button'));
+  assert.ok(artworkEditButtons.length>0,'the real page has a manual artwork entry point');
   const one = new Map([['.rail-footer > span', footer], ['.preview-actions > div', actionGroup], ['[data-preview-view]', workspace], ['.preview-column', column]]);
-  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views]]);
+  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons]]);
   const location = new URL('http://127.0.0.1:4173/?source=regression' + initialHash);
   const document = {
     activeElement: null, body: new Element('body'),
@@ -141,9 +143,10 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     static createObjectURL(blob) { const url = `blob:test/${objectURLs.size + 1}`; objectURLs.set(url, blob); return url; }
     static revokeObjectURL(url) { revoked.push(url); }
   }
-  let imageSettings = null;
+  let imageSettings = null, artworkSettings = null, artworkOpened = 0;
   const context = {
-    window: { SignatureCore: core, ClipboardItem, SignatureImage: { attach(settings) { imageSettings = settings; } } }, document, location,
+    window: { SignatureCore: core, ClipboardItem, SignatureImage: { attach(settings) { imageSettings = settings; } },
+      SignatureArtworkControls: {attach(settings) {artworkSettings = settings; return {open() {artworkOpened++;}};}} }, document, location,
     history: { replaceState(_state, _title, path) { location.href = new URL(path, location).href; } },
     localStorage: {
       getItem: key => storage.get(key) ?? null,
@@ -168,10 +171,14 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   if (expectPreview) assert.ok(node('signature-preview').innerHTML.includes('<table'), 'Startup must render successfully; swallowed runtime errors are not a pass.');
   return {
     node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,
+    hasNode: id => nodes.has(id),
     failNextWrite(key) { nextWriteFailure = key; },
     get imageSettings() { return imageSettings; },
+    get artworkSettings() { return artworkSettings; },
+    get artworkOpened() { return artworkOpened; },
     click: id => node(id).click(),
     async input(key, value) { const field = inputs[key] || node(key); field.value = String(value); await emit(node('editor-form').events, 'input', { target: field }); },
+    async finishEdit() { await emit(node('editor-form').events, 'change'); },
     async selectTheme(id) { node('theme-select').value = id; await emit(node('theme-select').events, 'change'); },
     async pasteSession(text) { node('session-json').value = text; await emit(node('session-json').events, 'input'); },
     async importParts(information, design) { node('session-import-information').checked=information; node('session-import-design').checked=design; await emit(node('session-import-information').events,'change'); },
@@ -183,52 +190,74 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   };
 }
 
-test('fantasy collections change composition, palette and artwork together without losing photos or details', async () => {
-  const app = harness({initialDraft:{...core.defaults,nameLine1:'Jordan',portraitData:localPortrait}});
-  for (const [id,design,background] of [['galaxy','orbit','#15192e'],['starlight','editorial','#18283e'],['moonlight','contour','#f1e7fa'],['frost','signal','#d7eef6']]) {
-    await app.click('choose-collection-' + id);
-    const saved = JSON.parse(app.storage.get(storageKey));
-    assert.equal(saved.design,design); assert.equal(saved.pattern,id); assert.equal(saved.frontBackground,background);
-    assert.equal(saved.nameLine1,'Jordan'); assert.equal(saved.portraitData,localPortrait);
-    assert.match(app.node('signature-preview').innerHTML, new RegExp('pattern-' + id + '\\.png'));
-  }
-  await app.click('undo-change'); assert.equal(app.node('pattern').value,'moonlight');
-  await app.click('redo-change'); assert.equal(app.node('pattern').value,'frost');
-  await app.click('export-data'); const saved = app.node('session-json').value;
-  await app.click('close-session'); await app.click('reset-draft');
-  await app.click('import-data'); await app.pasteSession(saved); await app.click('session-restore');
-  assert.equal(app.node('pattern').value,'frost'); assert.equal(app.node('portraitData').value,localPortrait);
+// These expected colors are independent of runtime catalog metadata. A palette
+// must never smuggle the legacy collection's composition or pattern into a draft.
+const expectedPalettes = [
+  ['vermilion','#f3f0ea','#1c1c1c','#c8362a'], ['cobalt','#eef2ff','#182d59','#3659d9'],
+  ['forest','#edf2ea','#1d392f','#a64435'], ['lilac','#eee6f7','#32263d','#8049a7'],
+  ['saffron','#fff2d8','#353027','#a7620c'], ['rose','#f9e7e7','#462c39','#ad3e66'],
+  ['midnight','#172333','#edf1f5','#d66942'],
+  ['cutpaper','#f5f0e6','#f5f0e6','#2348c7'], ['colorfield','#efe9e1','#d8cbc3','#735568'],
+  ['chromatic','#f0e7ce','#ece8df','#244dd7'], ['counterform','#eee5ce','#eee5ce','#575b29'],
+  ['overprint','#f4e8dd','#ede4d6','#b74535'], ['gesture','#f3efe8','#f3efe8','#c94836'],
+  ['galaxy','#15192e','#242041','#c396ef'], ['starlight','#18283e','#2a3f5c','#edcc83'],
+  ['moonlight','#f1e7fa','#402e63','#b95689'], ['frost','#d7eef6','#102d47','#4489b3']
+];
+
+test('the simplified browser has two sections, collapsible layouts and seventeen distinct color palettes', () => {
+  const app=harness();
+  assert.deepEqual([...pageSource.matchAll(/data-library-tab="([^"]+)"/g)].map(match=>match[1]),['layouts','artwork']);
+  for(const id of ['library-tab-themes','library-panel-themes','collection-gallery','abstract-collection-gallery']) assert.equal(app.hasNode(id),false,id+' is removed');
+  assert.doesNotMatch(appSource,/choose-collection-/);
+  assert.match(pageSource,/<details\b[^>]*id="layout-disclosure"[^>]*>[\s\S]*?<summary>Layout<\/summary>/);
+  assert.match(pageSource,/<details\b[^>]*id="more-palettes"[^>]*>/);
+  assert.match(pageSource,/<details\b[^>]*id="saved-palettes"[^>]*>/);
+  assert.deepEqual(app.node('palette-choices').children.map(button=>button.id),expectedPalettes.slice(0,6).map(([id])=>'choose-palette-'+id));
+  assert.deepEqual(app.node('extra-palette-choices').children.map(button=>button.id),expectedPalettes.slice(6).map(([id])=>'choose-palette-'+id));
+  const buttons=[...app.node('palette-choices').children,...app.node('extra-palette-choices').children];
+  assert.equal(buttons.length,17,'six common palettes plus eleven additional palettes');
+  const actualColors=buttons.map(button=>button.children[0].children.map(swatch=>swatch.style.backgroundColor.toLowerCase()).join('|'));
+  assert.equal(new Set(actualColors).size,17,'every visible palette has a unique three-color combination');
+  assert.deepEqual(actualColors,expectedPalettes.map(([,front,back,accent])=>[front,back,accent].join('|')));
+  assert.equal(app.hasNode('choose-palette-spruce'),false,'the duplicate remains a legacy data identity, not another palette choice');
 });
 
-test('all six abstract collections are usable in their gallery and preserve identity and uploaded photos', async () => {
-  const app = harness({initialDraft:{...core.defaults,nameLine1:'Jordan',portraitData:localPortrait}});
-  const expected = [
-    ['cutpaper','orbit','#f5f0e6'], ['colorfield','prism','#efe9e1'], ['chromatic','studio','#f0e7ce'],
-    ['counterform','orbit','#eee5ce'], ['overprint','prism','#f4e8dd'], ['gesture','orbit','#f3efe8']
-  ];
-  assert.deepEqual(app.node('abstract-collection-gallery').children.map(button=>button.id),expected.map(([id])=>'choose-collection-'+id));
-  for (const [id,design,background] of expected) {
-    await app.click('choose-collection-' + id);
-    const saved = JSON.parse(app.storage.get(storageKey));
-    assert.equal(saved.design,design); assert.equal(saved.pattern,id); assert.equal(saved.frontBackground,background);
-    assert.equal(saved.nameLine1,'Jordan'); assert.equal(saved.portraitData,localPortrait);
-    assert.equal(app.node('choose-collection-'+id).getAttribute('aria-pressed'),'true');
-    assert.match(app.node('signature-preview').innerHTML,new RegExp('pattern-'+id+'\\.png'));
+test('all seventeen palettes change only three colors and survive undo, reload and selective import', async () => {
+  const initial={...core.defaults,design:'signal',pattern:'counterform',layout:'stacked',nameLine1:'Jordan',
+    width:400,height:300,portraitData:localPortrait,artworkPlacement:'flow',artworkScale:125,artworkPositionX:19,artworkPositionY:83};
+  const app=harness({initialDraft:initial});
+  for(const [id,frontBackground,backBackground,accent] of expectedPalettes) {
+    await app.click('choose-palette-'+id);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,frontBackground,backBackground,accent},id+' changes colors only');
+    assert.equal(app.node('choose-palette-'+id).getAttribute('aria-pressed'),'true');
   }
-  await app.click('undo-change'); assert.equal(app.node('pattern').value,'overprint');
-  await app.click('redo-change'); assert.equal(app.node('pattern').value,'gesture');
-  await app.click('export-data'); const saved = app.node('session-json').value;
+  await app.click('undo-change'); assert.equal(app.node('frontBackground').value,'#f1e7fa');
+  await app.click('redo-change'); assert.equal(app.node('frontBackground').value,'#d7eef6');
+  await app.click('export-data'); const saved=app.node('session-json').value;
   await app.click('close-session'); await app.click('reset-draft');
-  await app.click('import-data'); await app.pasteSession(saved); await app.click('session-restore');
-  assert.equal(app.node('pattern').value,'gesture'); assert.equal(app.node('portraitData').value,localPortrait);
+  await app.click('import-data'); await app.pasteSession(saved); await app.importParts(false,true); await app.click('session-restore');
+  const restored=JSON.parse(app.storage.get(storageKey));
+  assert.equal(restored.design,'signal'); assert.equal(restored.pattern,'counterform'); assert.equal(restored.artworkPositionY,83);
+  assert.equal(restored.nameLine1,core.defaults.nameLine1); assert.equal(restored.portraitData,'');
+  assert.equal(harness({initialDraft:restored}).node('frontBackground').value,'#d7eef6');
 });
 
 test('six independent abstract pattern controls preserve the chosen layout, palette, identity and photo', async () => {
-  const initial = {...core.defaults,design:'signal',layout:'stacked',nameLine1:'Jordan',portraitData:localPortrait,
+  const initial = {...core.defaults,design:'signal',layout:'stacked',nameLine1:'Jordan',portraitData:localPortrait,artworkPlacement:'motif',
     frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341'};
   const app = harness({initialDraft:initial});
   const expected = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
+  const assertThumbnails=mode=>{
+    for(const id of expected) {
+      const button=app.node('choose-pattern-'+id), img=button.children[0].children[0];
+      assert.equal(img.src,'sig/pattern-'+id+(mode==='motif'?'':'-'+mode)+'.png',id+' thumbnail shows the candidate artwork that will be applied');
+      assert.equal(button.classList.contains('is-flow-wide'),mode==='wide',id+' wide preview frame');
+      assert.equal(button.classList.contains('is-flow-tall'),mode==='tall',id+' tall preview frame');
+    }
+    assert.equal(app.node('choose-pattern-galaxy').children[0].children[0].src,'sig/pattern-galaxy.png','fantasy patterns keep their side-motif thumbnail');
+  };
   assert.deepEqual(app.node('abstract-pattern-choices').children.map(button=>button.id),expected.map(id=>'choose-pattern-'+id));
+  assertThumbnails('motif');
   for (const pattern of expected) {
     await app.click('choose-pattern-'+pattern);
     const saved = JSON.parse(app.storage.get(storageKey));
@@ -238,18 +267,102 @@ test('six independent abstract pattern controls preserve the chosen layout, pale
   }
   await app.click('undo-change'); assert.equal(app.node('pattern').value,'overprint');
   await app.click('redo-change'); assert.equal(app.node('pattern').value,'gesture');
+  await app.input('artworkPlacement','auto');await app.input('layout','paired');assertThumbnails('wide');
+  await app.input('layout','stacked');assertThumbnails('tall');
+  await app.input('artworkPlacement','motif');assertThumbnails('motif');
+  await app.click('undo-change');assertThumbnails('tall');
 });
 
-test('all seven design choices preserve identity and can be undone', async () => {
-  const app = harness();
-  await app.input('nameLine1', 'Jordan'); await app.input('website', 'https://example.org/work');
+test('all seven layout choices preserve the complete artwork, palette and information state', async () => {
+  const initial={...core.defaults,nameLine1:'Jordan',website:'https://example.org/work',pattern:'overprint',
+    frontBackground:'#edf1f7',backBackground:'#181c29',accent:'#a63542',artworkPlacement:'flow',artworkScale:130,artworkPositionX:40,artworkPositionY:63};
+  const app = harness({initialDraft:initial});
   for (const id of ['orbit','studio','contour','prism','editorial','signal','original']) {
     await app.click('choose-design-' + id);
     const saved = JSON.parse(app.storage.get(storageKey));
-    assert.equal(saved.design, id); assert.equal(saved.nameLine1, 'Jordan'); assert.equal(saved.website, 'https://example.org/work');
+    assert.deepEqual(saved,{...initial,design:id},id+' changes only the composition');
+    for(const button of app.node('design-gallery').children) assert.ok(button.children[0].children[0].innerHTML.includes('pattern-overprint-wide.png'),button.id+' preview retains the selected art');
   }
   await app.click('undo-change'); assert.equal(app.node('design').value, 'signal');
   await app.click('redo-change'); assert.equal(app.node('design').value, 'original');
+});
+
+test('width and height sliders stay synchronized with numeric inputs, real dimensions, undo and import',async()=>{
+  const app=harness();
+  for(const [key,min,max] of [['width',280,420],['height',180,320]]) {
+    for(const id of [key,key+'-range']) {
+      const tag=pageSource.match(new RegExp('<input\\b[^>]*id="'+id+'"[^>]*>'))[0];
+      assert.match(tag,new RegExp('min="'+min+'"')); assert.match(tag,new RegExp('max="'+max+'"'));
+      assert.match(tag,/step="1"/); assert.match(tag,new RegExp('type="'+(id===key?'number':'range')+'"'));
+    }
+  }
+  await app.input('width-range',420); await app.finishEdit();
+  assert.equal(Number(app.node('width').value),420); assert.equal(Number(app.node('width-range').value),420);
+  assert.match(app.node('dimension-label').textContent,/860 × 208/); assert.match(app.node('size-explanation').textContent,/860 × 208/);
+  await app.input('height-range',320); await app.finishEdit();
+  assert.equal(Number(app.node('height').value),320); assert.match(app.node('dimension-label').textContent,/860 × 320/);
+  await app.input('width',280); await app.finishEdit(); assert.equal(Number(app.node('width-range').value),280);
+  await app.click('undo-change'); assert.equal(Number(app.node('width-range').value),420);
+  await app.click('redo-change'); assert.equal(Number(app.node('width-range').value),280);
+  await app.input('layout','stacked'); assert.match(app.node('size-explanation').textContent,/280 × 660/);
+  const before=app.node('signature-preview').innerHTML;
+  await app.input('width',''); assert.match(app.node('size-explanation').textContent,/Each value sets one panel/);
+  assert.equal(app.node('signature-preview').innerHTML,before,'invalid empty numeric input never replaces the last valid preview');
+  await app.input('width',400); await app.input('height',300);
+  await app.click('export-data'); const text=app.node('session-json').value;
+  await app.click('close-session'); await app.click('reset-draft');
+  await app.click('import-data'); await app.pasteSession(text); await app.click('session-restore');
+  assert.equal(Number(app.node('width-range').value),400); assert.equal(Number(app.node('height-range').value),300);
+  assert.match(app.node('dimension-label').textContent,/400 × 620/);
+});
+
+test('legacy preset identities still restore, export and apply colors without resetting artwork',async()=>{
+  const initial={...core.defaults,design:'prism',pattern:'gesture',artworkPlacement:'flow',artworkScale:120};
+  const app=harness({initialDraft:initial});
+  await app.click('choose-palette-midnight');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,frontBackground:'#172333',backBackground:'#edf1f5',accent:'#d66942'});
+  await app.click('export-data'); const text=app.node('session-json').value;
+  assert.equal(JSON.parse(text).ui.selectedThemeId,'preset-midnight');
+  await app.click('close-session'); await app.click('reset-draft');
+  await app.click('import-data'); await app.pasteSession(text); await app.click('session-restore');
+  await app.click('export-data'); assert.equal(JSON.parse(app.node('session-json').value).ui.selectedThemeId,'preset-midnight');
+  await app.click('close-session');
+  assert.equal(app.node('pattern').value,'gesture'); assert.equal(Number(app.node('artworkScale').value),120);
+  const legacySpruce=JSON.parse(text), spruceColors={frontBackground:'#edf2ea',backBackground:'#1d392f',accent:'#a64435'};
+  Object.assign(legacySpruce.draft,spruceColors);legacySpruce.ui.selectedThemeId='preset-spruce';
+  await app.click('import-data');await app.pasteSession(JSON.stringify(legacySpruce));await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,...spruceColors});
+  assert.equal(app.node('choose-palette-forest').getAttribute('aria-pressed'),'true','the equivalent visible palette is selected');
+  await app.click('export-data');const reexported=JSON.parse(app.node('session-json').value);
+  assert.equal(reexported.ui.selectedThemeId,'preset-spruce','old selected palette identities remain round-trip compatible');
+  assert.deepEqual(reexported.draft,legacySpruce.draft,'restoring a legacy palette never replaces the chosen artwork or composition');
+});
+
+test('flow controls change numeric draft values, retain one gesture undo and follow artwork switches',async()=>{
+  const initial={...core.defaults,pattern:'counterform',artworkPlacement:'flow'};
+  const app=harness({initialDraft:initial});
+  assert.equal(app.node('artwork-flow-settings').hidden,false);assert.equal(app.node('artwork-flow-option').disabled,false);
+  assert.equal(app.node('artworkPositionX').disabled,true,'an exactly fitted axis has no position range');
+  assert.equal(app.node('artwork-position-note').hidden,false);
+  await app.input('artworkScale',110);await app.input('artworkScale',120);await app.input('artworkScale',130);await app.finishEdit();
+  assert.equal(JSON.parse(app.storage.get(storageKey)).artworkScale,130);
+  assert.equal(app.node('artworkScale-value').textContent,'130%');
+  assert.equal(app.node('artworkPositionX').disabled,false,'changing scale enables meaningful positioning');
+  assert.equal(app.node('artwork-position-note').hidden,true);
+  assert.match(app.node('signature-preview').innerHTML,/background-size:860\.6px 320\.223px/);
+  await app.click('undo-change'); assert.equal(Number(app.node('artworkScale').value),100);
+  assert.equal(app.node('undo-change').disabled,true,'one slider gesture makes one undo entry');
+  await app.click('redo-change');assert.equal(Number(app.node('artworkScale').value),130);
+  await app.input('artworkPositionX',0);await app.finishEdit();await app.input('artworkPositionY',100);await app.finishEdit();
+  assert.equal(JSON.parse(app.storage.get(storageKey)).artworkPositionX,0);assert.equal(app.node('artworkPositionY-value').textContent,'100%');
+  await app.click('choose-pattern-galaxy');
+  assert.equal(app.node('artworkPlacement').value,'auto');assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-flow-option').disabled,true);
+  assert.match(app.node('signature-preview').innerHTML,/pattern-galaxy\.png/);assert.doesNotMatch(app.node('signature-preview').innerHTML,/background-image/);
+  await app.click('undo-change');assert.equal(app.node('pattern').value,'counterform');assert.equal(app.node('artworkPlacement').value,'flow');
+  assert.equal(app.node('artwork-flow-settings').hidden,false);
+  await app.input('pattern','none');assert.equal(app.node('artworkPlacement').value,'auto');assert.equal(app.node('artwork-flow-option').disabled,true);
+  await app.click('choose-pattern-overprint');assert.equal(app.node('artwork-flow-settings').hidden,false);
+  assert.equal(Number(app.node('artworkScale').value),130,'returning to flow keeps the previous framing');
 });
 
 test('import cards apply information, design or both and leave unselected parts unchanged', async () => {
@@ -605,4 +718,54 @@ test('long imported theme identities survive browser reload, reimport, and sessi
   assert.equal(roundtrip.themes.length,3,'reimport after reload adds no duplicate');
   assert.equal(roundtrip.ui.selectedThemeId,identity.id);
   assert.equal(roundtrip.themes.find(theme=>theme.id===identity.id).importedFromName,originalName);
+});
+
+test('manual artwork applies only artwork with one undo step and survives session restore', async () => {
+  const initial = {...core.defaults,design:'orbit',pattern:'cutpaper',nameLine1:'Jordan',portraitData:localPortrait};
+  const app = harness({initialDraft:initial});
+  const recipe = JSON.stringify({palette:['#2348c7','#dd6146'],rows:['00..','00..','....','..11','..11','....','....','....']});
+  app.artworkSettings.applyChanges({pattern:'custom',customPattern:recipe,nameLine1:'Unexpected replacement',design:'signal'});
+  const applied = app.artworkSettings.getDraft();
+  assert.equal(applied.pattern,'custom'); assert.equal(applied.customPattern,recipe);
+  for (const key of Object.keys(initial).filter(key=>!['pattern','customPattern'].includes(key))) assert.equal(applied[key],initial[key],key+' stays');
+  assert.match(app.node('signature-preview').innerHTML,/bgcolor="#2348c7"/);
+  await app.click('undo-change'); assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'one application creates exactly one undo step');
+  await app.click('redo-change'); await app.click('export-data'); const backup=app.node('session-json').value;
+  await app.click('close-session'); await app.click('reset-draft');
+  await app.click('import-data'); await app.pasteSession(backup); await app.click('session-restore');
+  assert.equal(app.artworkSettings.getDraft().customPattern,recipe);
+  assert.equal(app.artworkSettings.getDraft().portraitData,localPortrait);
+  const reloaded=harness({initialDraft:JSON.parse(app.storage.get(storageKey))});
+  assert.equal(reloaded.artworkSettings.getDraft().customPattern,recipe);
+});
+
+test('manual artwork rejects invalid recipes before changing storage or history and opens from Custom artwork', async () => {
+  const app=harness(), before=app.storage.get(storageKey);
+  await app.click('choose-pattern-custom');
+  assert.equal(app.artworkOpened,1); assert.equal(app.storage.get(storageKey),before);
+  for (const customPattern of ['{broken',JSON.stringify({palette:['red'],rows:['0000','0000','0000','0000']})]) {
+    assert.throws(()=>app.artworkSettings.applyChanges({customPattern}));
+    assert.equal(app.storage.get(storageKey),before); assert.equal(app.node('undo-change').disabled,true);
+  }
+});
+
+test('manual artwork explicitly leaves flow without losing framing settings or introducing unrelated changes',async()=>{
+  const initial={...core.defaults,pattern:'gesture',artworkPlacement:'flow',artworkScale:140,artworkPositionX:10,artworkPositionY:89};
+  const app=harness({initialDraft:initial});
+  const customPattern=JSON.stringify({palette:['#123456'],rows:['00..','00..','....','....']});
+  app.artworkSettings.applyChanges({customPattern,artworkPlacement:'flow',artworkScale:75,nameLine1:'Unexpected'});
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'custom',customPattern,artworkPlacement:'motif'});
+  assert.equal(app.node('artwork-flow-settings').hidden,true);assert.match(app.node('signature-preview').innerHTML,/bgcolor="#123456"/);
+  assert.doesNotMatch(app.node('signature-preview').innerHTML,/background-image/);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('artwork-flow-settings').hidden,false);assert.equal(app.node('undo-change').disabled,true);
+});
+
+test('reapplying an untouched imported artwork preserves its exact recipe without a new undo entry', () => {
+  const customPattern=JSON.stringify({palette:['#2348C7'],rows:['00..','00..','....','....']},null,2);
+  const app=harness({initialDraft:{...core.defaults,pattern:'custom',customPattern}}), before=app.storage.get(storageKey);
+  app.artworkSettings.applyChanges({customPattern:app.artworkSettings.getDraft().customPattern});
+  assert.equal(app.storage.get(storageKey),before);
+  assert.equal(app.node('undo-change').disabled,true);
 });

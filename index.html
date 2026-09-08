@@ -6,22 +6,25 @@
   <meta name="theme-color" content="#f6f7f8">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=cc27cc5e607b403d">
-  <link rel="stylesheet" href="portrait.css?v=cc27cc5e607b403d">
-  <link rel="stylesheet" href="ai-extension.css?v=cc27cc5e607b403d">
-  <link rel="stylesheet" href="library.css?v=cc27cc5e607b403d">
-  <script src="portrait-core.js?v=cc27cc5e607b403d" defer></script>
-  <script src="signature-core.js?v=cc27cc5e607b403d" defer></script>
-  <script src="editor-history.js?v=cc27cc5e607b403d" defer></script>
-  <script src="signature-image.js?v=cc27cc5e607b403d" defer></script>
-  <script src="session-data.js?v=cc27cc5e607b403d" defer></script>
-  <script src="session-controls.js?v=cc27cc5e607b403d" defer></script>
-  <script src="portrait-controls.js?v=cc27cc5e607b403d" defer></script>
-  <script src="design-collections.js?v=cc27cc5e607b403d" defer></script>
-  <script src="ai-extension-core.js?v=cc27cc5e607b403d" defer></script>
-  <script src="ai-extension-controls.js?v=cc27cc5e607b403d" defer></script>
-  <script src="library-controls.js?v=cc27cc5e607b403d" defer></script>
-  <script src="app.js?v=cc27cc5e607b403d" defer></script>
+  <link rel="stylesheet" href="editor.css?v=4b21b60415b81f8c">
+  <link rel="stylesheet" href="portrait.css?v=4b21b60415b81f8c">
+  <link rel="stylesheet" href="ai-extension.css?v=4b21b60415b81f8c">
+  <link rel="stylesheet" href="library.css?v=4b21b60415b81f8c">
+  <link rel="stylesheet" href="artwork.css?v=4b21b60415b81f8c">
+  <script src="portrait-core.js?v=4b21b60415b81f8c" defer></script>
+  <script src="signature-core.js?v=4b21b60415b81f8c" defer></script>
+  <script src="editor-history.js?v=4b21b60415b81f8c" defer></script>
+  <script src="signature-image.js?v=4b21b60415b81f8c" defer></script>
+  <script src="session-data.js?v=4b21b60415b81f8c" defer></script>
+  <script src="session-controls.js?v=4b21b60415b81f8c" defer></script>
+  <script src="portrait-controls.js?v=4b21b60415b81f8c" defer></script>
+  <script src="design-collections.js?v=4b21b60415b81f8c" defer></script>
+  <script src="ai-extension-core.js?v=4b21b60415b81f8c" defer></script>
+  <script src="ai-extension-controls.js?v=4b21b60415b81f8c" defer></script>
+  <script src="library-controls.js?v=4b21b60415b81f8c" defer></script>
+  <script src="artwork-core.js?v=4b21b60415b81f8c" defer></script>
+  <script src="artwork-controls.js?v=4b21b60415b81f8c" defer></script>
+  <script src="app.js?v=4b21b60415b81f8c" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -70,17 +73,28 @@
         <input id="portraitShape" name="portraitShape" type="hidden" value="circle">
         <input id="portraitSize" name="portraitSize" type="hidden" value="64">
         <div id="design-panel" role="tabpanel" aria-labelledby="design-tab" data-editor-panel="design">
-          <fieldset class="field-section">
-            <legend>Design</legend>
+          <details id="layout-disclosure" class="editor-disclosure" open>
+            <summary>Layout</summary>
+            <div class="disclosure-content">
             <div class="field"><label for="design">Composition</label><select id="design" name="design" aria-describedby="design-description"></select></div>
             <p class="field-note design-description" id="design-description"></p>
             <button class="gallery-jump" type="button" data-open-library="layouts">Browse designs <span aria-hidden="true">↗</span></button>
-          </fieldset>
+            </div>
+          </details>
           <fieldset class="field-section pattern-section">
             <legend>Artwork</legend>
             <div class="field"><label for="pattern">Pattern</label><select id="pattern" name="pattern" aria-describedby="pattern-note"></select></div>
             <p class="field-note" id="pattern-note">Design default follows your composition.</p>
-            <div class="design-link-row"><button type="button" class="text-button" data-open-library="artwork">Browse artwork</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div>
+            <div class="design-link-row"><button type="button" class="text-button" data-open-library="artwork">Browse artwork</button><button type="button" class="text-button" data-edit-artwork>Edit artwork</button></div>
+            <details class="artwork-refinements"><summary>Artwork placement</summary>
+              <div class="field"><label for="artworkPlacement">Placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Automatic</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div>
+              <div id="artwork-flow-settings" hidden>
+                <div class="range-field"><label for="artworkScale">Scale <output id="artworkScale-value" for="artworkScale">100%</output></label><input id="artworkScale" name="artworkScale" type="range" min="75" max="150" step="1" value="100"></div>
+                <div class="range-field"><label for="artworkPositionX">Horizontal position <output id="artworkPositionX-value" for="artworkPositionX">50%</output></label><input id="artworkPositionX" name="artworkPositionX" type="range" min="0" max="100" step="1" value="50"></div>
+                <div class="range-field"><label for="artworkPositionY">Vertical position <output id="artworkPositionY-value" for="artworkPositionY">50%</output></label><input id="artworkPositionY" name="artworkPositionY" type="range" min="0" max="100" step="1" value="50"></div>
+                <p id="artwork-position-note" class="field-note">The artwork fits one edge exactly. Change Scale to move it along that edge.</p>
+              </div>
+            </details>
           </fieldset>
           <div class="design-tools"><button id="customize-colors" class="text-button" type="button">Edit colors</button><button type="button" class="text-button ai-inline" data-ai-section="design">Extend with AI ↗</button></div>
           <div class="explore-actions"><button id="shuffle-design" class="text-button" type="button">Surprise me</button><button id="reset-design" class="text-button" type="button">Reset design</button></div>
@@ -118,18 +132,20 @@
         <div id="layout-panel" role="tabpanel" aria-labelledby="layout-tab" data-editor-panel="layout" hidden>
           <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="layout">Create a layout with AI ↗</button></div>
           <fieldset class="field-section">
-            <legend><span class="section-index">01</span> Card size</legend>
-            <p class="section-note">The preview shows the full export dimensions.</p>
-            <div class="field-grid">
-              <div class="field"><label for="width">Width</label><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1"><span aria-hidden="true">px</span></div></div>
-              <div class="field"><label for="height">Height</label><div class="input-unit"><input id="height" name="height" type="number" value="208" min="180" max="320" step="1"><span aria-hidden="true">px</span></div></div>
+            <legend><span class="section-index">01</span> Panel size</legend>
+            <p class="section-note" id="size-explanation">Wide uses two panels: 662 × 208 px in total.</p>
+            <div class="size-control">
+              <div class="size-control-heading"><label for="width-range">Panel width</label><div class="field"><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1" aria-label="Panel width in pixels" aria-describedby="size-explanation"><span aria-hidden="true">px</span></div></div></div>
+              <div class="range-field"><input id="width-range" type="range" value="321" min="280" max="420" step="1" aria-describedby="width-range-labels size-explanation"><div class="range-labels" id="width-range-labels"><span>280 px</span><span>420 px</span></div></div>
             </div>
-            <div class="range-field"><label class="sr-only" for="height-range">Card height</label><input id="height-range" type="range" value="208" min="180" max="320" step="1" aria-describedby="height-range-labels"><div class="range-labels" id="height-range-labels"><span>180 px</span><span>320 px</span></div></div>
+            <div class="size-control">
+              <div class="size-control-heading"><label for="height-range">Panel height</label><div class="field"><div class="input-unit"><input id="height" name="height" type="number" value="208" min="180" max="320" step="1" aria-label="Panel height in pixels" aria-describedby="size-explanation"><span aria-hidden="true">px</span></div></div></div>
+              <div class="range-field"><input id="height-range" type="range" value="208" min="180" max="320" step="1" aria-describedby="height-range-labels size-explanation"><div class="range-labels" id="height-range-labels"><span>180 px</span><span>320 px</span></div></div>
+            </div>
           </fieldset>
           <fieldset class="field-section">
             <legend><span class="section-index">02</span> Arrangement</legend>
             <div class="field"><label for="layout">Card layout</label><select id="layout" name="layout"><option value="paired" selected>Wide</option><option value="stacked">Tall</option></select></div>
-            <div class="layout-diagram" aria-hidden="true"><span class="diagram-card diagram-light"><i></i><b></b><b></b></span><span class="diagram-card diagram-dark"><i></i><b></b><b></b></span><span class="diagram-caption">Wide</span></div>
           </fieldset>
           <details class="advanced-settings"><summary>Advanced settings<svg viewBox="0 0 16 16" width="15" height="15" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="field"><label for="imageBase">Image base URL</label><input id="imageBase" name="imageBase" type="url" value="https://raw.githubusercontent.com/Ademord/gmail-signature/main/sig" spellcheck="false" aria-describedby="image-base-note"><p class="field-note" id="image-base-note">Hosted images used in the signature.</p></div></details>
         </div>
@@ -148,30 +164,32 @@
         </div>
         <div id="colors-panel" role="tabpanel" aria-labelledby="colors-tab" data-editor-panel="colors" hidden>
           <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="colors">Suggest colors with AI ↗</button></div>
-          <fieldset class="field-section">
-            <legend>Quick palettes</legend>
-            <div id="palette-choices" class="palette-choices" role="group" aria-label="Quick color palettes"></div>
+          <details id="palettes-disclosure" class="editor-disclosure" open>
+            <summary>Palettes</summary>
+            <div class="disclosure-content">
+            <div id="palette-choices" class="palette-choices" role="group" aria-label="Color palettes"></div>
+            <details id="more-palettes" class="nested-disclosure"><summary>More palettes <span>11</span></summary><div id="extra-palette-choices" class="palette-choices" role="group" aria-label="More color palettes"></div></details>
             <div class="studio-small-actions"><button id="swap-colors" class="text-button" type="button">Swap surface colors</button></div>
-          </fieldset>
+            </div>
+          </details>
           <fieldset class="field-section">
-            <legend><span class="section-index">01</span> Theme</legend>
-            <div class="field"><label for="theme-select">Choose a theme</label><select id="theme-select"><option value="">Custom colors</option></select></div>
-            <p class="field-note" id="theme-state"></p>
-          </fieldset>
-          <fieldset class="field-section">
-            <legend><span class="section-index">02</span> Card colors</legend>
+            <legend>Card colors</legend>
             <div class="field"><label for="frontBackground">Name card background</label><div class="color-control"><input id="frontBackground" name="frontBackground" type="color" value="#f3f0ea"><input id="frontBackground-hex" type="text" aria-label="Name card background hex code" value="#F3F0EA" maxlength="7" spellcheck="false" data-color-field="frontBackground"></div></div>
             <div class="field"><label for="backBackground">Contact card background</label><div class="color-control"><input id="backBackground" name="backBackground" type="color" value="#1c1c1c"><input id="backBackground-hex" type="text" aria-label="Contact card background hex code" value="#1C1C1C" maxlength="7" spellcheck="false" data-color-field="backBackground"></div></div>
             <div class="field"><label for="accent">Accent color</label><div class="color-control"><input id="accent" name="accent" type="color" value="#c8362a"><input id="accent-hex" type="text" aria-label="Accent hex code" value="#C8362A" maxlength="7" spellcheck="false" data-color-field="accent"></div></div>
             <p class="field-note color-note">Text stays readable. Icons switch between light and dark automatically.</p>
           </fieldset>
-          <fieldset class="field-section">
-            <legend><span class="section-index">03</span> Save a theme</legend>
-            <div class="field"><label for="theme-name">Theme name</label><input id="theme-name" type="text" maxlength="40" placeholder="My colors" aria-describedby="theme-notice"></div>
+          <details id="saved-palettes" class="editor-disclosure">
+            <summary>Saved palettes</summary>
+            <div class="disclosure-content">
+            <div class="field"><label for="theme-select">Choose a saved palette</label><select id="theme-select"><option value="">Custom colors</option></select></div>
+            <p class="field-note" id="theme-state"></p>
+            <div class="field"><label for="theme-name">Palette name</label><input id="theme-name" type="text" maxlength="40" placeholder="My colors" aria-describedby="theme-notice"></div>
             <div class="theme-actions"><button id="save-theme" class="button button-secondary" type="button">Save new</button><button id="update-theme" class="button button-secondary" type="button" disabled>Update selected</button><button id="delete-theme" class="text-button" type="button" disabled>Delete</button></div>
             <p id="theme-notice" class="theme-notice" role="status" aria-live="polite" aria-atomic="true"></p>
-            <p class="field-note">Themes save colors only, in this browser.</p>
-          </fieldset>
+            <p class="field-note">Palettes save colors only, in this browser.</p>
+            </div>
+          </details>
         </div>
         <div class="rail-footer"><span><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.2"/></svg> Draft stays in this browser.</span><button id="reset-draft" class="text-button" type="button">Load example</button></div>
       </form>
@@ -196,10 +214,9 @@
   </main>
 
   <dialog id="design-library-dialog" class="design-library" aria-labelledby="design-library-title">
-    <div class="library-heading"><div><h2 id="design-library-title">Browse designs</h2><p>Choose a starting point. Your details stay.</p></div><button id="close-design-library" class="icon-button" type="button" aria-label="Close design browser"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+    <div class="library-heading"><div><h2 id="design-library-title">Browse designs</h2><p>Choose a layout or artwork. Set your palette in Colors.</p></div><button id="close-design-library" class="icon-button" type="button" aria-label="Close design browser"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
     <div class="library-tabs" role="tablist" aria-label="Browse collection">
       <button id="library-tab-layouts" type="button" role="tab" aria-selected="true" aria-controls="library-panel-layouts" data-library-tab="layouts">Layouts <span>7</span></button>
-      <button id="library-tab-themes" type="button" role="tab" aria-selected="false" aria-controls="library-panel-themes" data-library-tab="themes" tabindex="-1">Themes <span>10</span></button>
       <button id="library-tab-artwork" type="button" role="tab" aria-selected="false" aria-controls="library-panel-artwork" data-library-tab="artwork" tabindex="-1">Artwork</button>
     </div>
     <div class="library-content">
@@ -207,17 +224,10 @@
         <h3 id="design-gallery-heading" class="sr-only">Signature layouts</h3>
         <div id="design-gallery" class="design-gallery" role="group" aria-label="Signature design collection"></div>
       </section>
-      <section id="library-panel-themes" role="tabpanel" aria-labelledby="library-tab-themes" data-library-panel="themes" hidden>
-        <h3 class="library-section-title">Abstract studies</h3>
-        <p class="library-note">Six compositions in shape, color and negative space. Each pairs artwork with a layout and palette.</p>
-        <div id="abstract-collection-gallery" class="design-gallery collection-gallery" role="group" aria-label="Abstract theme collection"></div>
-        <h3 id="collection-gallery-heading" class="library-section-title library-section-divider">Fantasy</h3>
-        <p class="library-note">Galaxies, constellations, moonlight and ice.</p>
-        <div id="collection-gallery" class="design-gallery collection-gallery" role="group" aria-label="Fantasy theme collection"></div>
-      </section>
       <section id="library-panel-artwork" role="tabpanel" aria-labelledby="library-tab-artwork" data-library-panel="artwork" hidden>
         <h3 class="library-section-title">Abstract studies</h3>
-        <p class="library-note">Change the artwork and keep your layout and colors. For a complete composition, explore Themes.</p>
+        <p class="library-note">Choose artwork, then adjust its placement in Design. Draw a side detail to make your own shapes.</p>
+        <div class="design-link-row"><button type="button" class="text-button" data-edit-artwork>Edit shapes and colors</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div>
         <div id="abstract-pattern-choices" class="pattern-choices abstract-pattern-choices" role="group" aria-label="Choose abstract artwork"></div>
         <h3 class="library-section-title library-section-divider">Graphic &amp; fantasy</h3>
         <div id="pattern-choices" class="pattern-choices" role="group" aria-label="Choose a graphic pattern"></div>
@@ -229,7 +239,7 @@
     <div class="dialog-heading"><div><span class="dialog-eyebrow">SESSION DATA</span><h2 id="session-title">Export session</h2></div><button id="close-session" type="button" class="icon-button" aria-label="Close session data"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
     <p id="session-description" class="image-intro"></p>
     <div class="field" id="session-file-field" hidden><label for="session-file">Session JSON file</label><input type="file" id="session-file" accept=".json,application/json"></div>
-    <fieldset id="session-import-parts" class="session-import-parts" hidden><legend>What would you like to import?</legend><div class="session-part-options"><label class="session-part"><input type="checkbox" id="session-import-information" checked><span><strong>Information</strong><small>Name, role, contacts and photo</small></span></label><label class="session-part"><input type="checkbox" id="session-import-design" checked><span><strong>Design</strong><small>Layout, colors, artwork and saved themes</small></span></label></div></fieldset>
+    <fieldset id="session-import-parts" class="session-import-parts" hidden><legend>What would you like to import?</legend><div class="session-part-options"><label class="session-part"><input type="checkbox" id="session-import-information" checked><span><strong>Information</strong><small>Name, role, contacts and photo</small></span></label><label class="session-part"><input type="checkbox" id="session-import-design" checked><span><strong>Design</strong><small>Layout, colors, artwork and saved palettes</small></span></label></div></fieldset>
     <div class="field session-json-field"><label for="session-json">Session JSON</label><textarea id="session-json" rows="7" spellcheck="false" maxlength="1048576" aria-describedby="session-notice"></textarea></div>
     <p id="session-notice" role="status" aria-live="polite"></p>
     <div class="session-footer"><button id="session-copy" class="button button-secondary" type="button">Copy JSON</button><button id="session-download" class="button button-primary" type="button">Download JSON</button><button id="session-restore" class="button button-primary" type="button" hidden disabled>Restore session</button></div>

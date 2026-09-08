@@ -1,10 +1,10 @@
 # Signature Studio
 
-A browser-local email signature editor with seven compositions, six abstract studies, four fantasy themes, private photo cropping, and HTML or high-resolution PNG export. Customize each section directly or bring back a validated JSON proposal from your own AI. Start with the **Avery Morgan** example and keep the result in your browser.
+A browser-local email signature editor with seven layouts, flowing abstract artwork, seventeen color palettes, private photo cropping, and HTML or high-resolution PNG export. Adjust artwork placement or draw an editable side detail, then export the result. Start with the **Avery Morgan** example and keep the draft in your browser.
 
 [Open the published demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml) · [Design roadmap](docs/DESIGN-ROADMAP.md)
 
-![Signature Studio with the corrected Signal layout and a portrait](docs/studio.png)
+![Signature Studio with abstract artwork flowing across the card](docs/flow-studio.jpg)
 
 This README describes the implemented source. See [PROGRESS.md](PROGRESS.md) for the latest browser, release, and email checks; feature availability does not imply that every release check has passed. Browser verification uses the Codex in-app browser. Gmail paste/send verification remains blocked on an authenticated send test.
 
@@ -24,9 +24,7 @@ The server serves only the app, artwork, and detector files listed in `scripts/p
 
 ## Choose a design
 
-The main workspace keeps the current signature in view. In **Design**, use the Composition selector for a quick change, or click **Browse designs** to open the library with **Layouts**, **Themes**, and **Artwork** tabs. Choosing a card returns to the working preview. **Browse artwork** opens the artwork tab directly. The six new designs compose the full signature area; **Original** retains its two-card arrangement.
-
-![Layouts in the design library](docs/design-library.png)
+The main workspace keeps the signature in view. Expand **Design → Layout** to choose a Composition, or click **Browse designs** for the **Layouts** and **Artwork** library. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
 
 | Design | Composition |
 | --- | --- |
@@ -38,9 +36,9 @@ The main workspace keeps the current signature in view. In **Design**, use the C
 | Editorial | Full-width serif masthead, fine rule, contact columns |
 | Signal | Framed terminal-style header and labeled contact grid |
 
-A design applies its composition, palette, and default pattern while preserving personal details. Choose a different pattern independently, use **None** to remove it, or return to **Design default**. Six quick palettes and **Swap surface colors** are in **Colors**; **Edit colors** in Design opens that tab. **Surprise me** combines a design, palette, and pattern; **Undo** returns to the previous choice. **Reset design** restores the selected composition's default palette and pattern.
+A layout change preserves your details, selected colors, and pattern. Choose artwork separately, use **None** to remove it, or use **Design default** to follow the composition's default motif. **Surprise me** combines a layout, palette, and pattern; **Undo** returns to the previous choice. **Reset design** explicitly restores the selected composition's default palette and pattern.
 
-The **Themes** tab begins with six abstract studies. Each combines original artwork, a restrained palette, and a matching composition. In **Artwork**, choose the motif alone to keep your current layout and colors. Larger previews show these pieces at their full 76 × 182 display size.
+The six abstract studies use artwork composed for the whole Wide or Tall signature. With **Artwork placement → Automatic**, their shapes flow across the card while names and contacts remain separate text. Choose **Across signature** explicitly or **Side detail** for the smaller motif. Flowing artwork has **Scale** (75–150%), **Horizontal position**, and **Vertical position** (0–100%) controls. Position controls enable when the scaled image has room to move along that axis. Other patterns and custom drawn grids use a side detail.
 
 | Abstract study | Visual direction |
 | --- | --- |
@@ -51,22 +49,30 @@ The **Themes** tab begins with six abstract studies. Each combines original artw
 | Overprint | Translucent vermilion and cobalt planes |
 | Gesture | A broad ink gesture, vermilion, and open space |
 
-![Six abstract signature studies in the design library](docs/abstract-studies.jpg)
-
 These are original procedural compositions, informed by the economy of cut forms and postwar abstraction. References: [MoMA’s Matisse cut-outs](https://www.moma.org/calendar/exhibitions/1429) and [Kunsthaus’s Art after 1945](https://kunsthaus.ch/en/sammlung/nachkriegskunst/).
 
-The four fantasy themes remain available below them:
+### Make your own artwork
 
-| Theme | Starting composition | Artwork |
-| --- | --- | --- |
-| Galaxy | Orbit | Violet spirals and distant stars on midnight blue |
-| Starlight | Editorial | Golden constellations on deep blue |
-| Moonlight | Contour | Sailor Moon-inspired crescent, ribbons, and pink jewels |
-| Frost Crown | Signal | Frozen Throne-inspired ice crown and glowing runes |
+**Design → Edit artwork** opens a separate editor. Start with Cut forms, Interlock, Color blocks, Counterspace, Offset planes, or Rhythm. Change the inks, paint or erase cells, mirror the shapes, or try another variation. Undo and Redo inside the editor affect the study; **Apply** changes your signature in one step that the main Undo can reverse. Cancel keeps the signature as it was.
 
-These themes use the seven existing compositions; they are not four additional layout engines. Apply one, then mix its colors and pattern with another composition. Your personal details carry across.
+The drawing editor makes a **side detail**. It does not edit the flowing PNG background. The original PNG studies have fixed inks; drawing starts a separate shape study. Existing custom artwork—including a recipe brought back from AI—opens with its colors and grid intact. The signature preview shows its fit with your current composition and photo.
 
-In **Layout**, choose **Wide** or **Tall** and adjust width and height. Original places its cards beside each other or stacks them; the new designs use the full wide or tall canvas. The default overall size is 662 × 208 px in Wide and 321 × 436 px in Tall. Preview scaling fits the editor to the screen without resizing the exported signature. Check the displayed dimensions before copying into a narrow email view.
+Editable shapes use the existing native email-table format and travel with draft links and session backups, so the artwork needs no separate image upload. Dense painted patterns can exceed the signature's HTML limit; simplify the study if Apply is unavailable. Local photos still need the hosted URL described below for clickable email export.
+
+For the AI workflow, open **Browse artwork → Create with AI**. Both editing methods use the same custom-artwork recipe.
+
+The four fantasy motifs remain in **Artwork**; their matching colors are in **Colors → Palettes → More palettes**:
+
+| Motif | Artwork |
+| --- | --- |
+| Galaxy | Violet spirals and distant stars |
+| Starlight | Golden constellations |
+| Moonlight | Sailor Moon-inspired crescent, ribbons, and pink jewels |
+| Frost Crown | Frozen Throne-inspired ice crown and glowing runes |
+
+Selecting a fantasy palette changes colors only. Choose its artwork and layout independently.
+
+In the **Layout** tab, choose **Wide** or **Tall** and use the matching number fields or sliders for panel width (280–420 px) and height (180–320 px). The default total size is 662 × 208 px in Wide and 321 × 436 px in Tall. These are panel dimensions: Wide totals two widths plus a 20 px gap; Tall totals two heights plus that gap. Preview scaling fits the editor to the screen without changing the exported dimensions.
 
 ## Add details and a photo
 
@@ -111,27 +117,33 @@ Google documents a **10,000-character signature limit**, including images. The e
 
 Output uses tables, inline styling, real text, and normal links. Email clients may change fonts, colors, spacing, photo corners, or image loading. A browser preview does not prove Gmail preserves a signature after pasting and sending. Received-message testing remains the final compatibility check.
 
+Flowing artwork uses CSS background images. Google lists `background-image`, `background-size`, `background-position`, and `background-repeat` in [Gmail's supported CSS properties](https://developers.google.com/workspace/gmail/design/css). That documentation does not establish that a signature survives Gmail's settings paste and a real send; this release has no received-message result yet.
+
 ## Colors, patterns, and icons
 
 Open **Colors** to edit the two surface colors and accent with pickers or six-digit hex codes. Their positions depend on the design. Text switches to a readable ink when necessary, including when the accent is too close to its background.
 
-The Colors tab includes six quick palettes and a saved-theme selector with Original, Midnight, and Spruce. To save custom colors, enter a unique name and click **Save new**. Select a saved theme and use **Update selected** to revise it. **Delete** leaves the current colors in place; its Undo action restores the theme.
+**Palettes** contains six quick choices. **More palettes** adds Midnight, six abstract palettes, and four fantasy palettes, for seventeen distinct choices in total. Each changes only the two surface colors and accent. **Swap surface colors** reverses the surfaces.
 
-Saved themes contain **only a name and three colors**, not the design, pattern, photo, or contacts. They persist in this browser. Applying a theme preserves other signature details. Draft links include current choices but not the theme library; session JSON includes both.
+Expand **Saved palettes** to choose your own saved colors. Older Spruce sessions remain supported; its colors are available as Forest in the palette collection. Enter a unique name and click **Save new**; **Update selected** revises a saved palette. **Delete** leaves the current colors in place, and its Undo action restores the saved palette.
+
+Saved palettes contain **only a name and three colors**. They persist in this browser and preserve the current layout, artwork, photo, and contacts when applied. Draft links include the active choices; session JSON also includes saved palettes. Existing backups retain their compatible `themes` field name.
 
 The sixteen generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
 
 In **Icons**, select a globe, envelope, phone, LinkedIn mark, location pin, or **None** per contact row. None hides only the icon. The renderer chooses cream or charcoal artwork for the actual surface, using a calculated 3:1 contrast threshold. Custom icon uploads are planned.
 
-Publish all `sig/` assets, including five `*-dark.png` icons, the six composition motifs, six abstract studies, and four fantasy-theme motifs. Regenerate the icon variants and all sixteen motifs with:
+Publish all `sig/` assets, including the icons, sixteen motifs, and twelve Wide/Tall abstract backgrounds. Regenerate them with:
 
 ```sh
 node scripts/prepare-icons.mjs
 node scripts/prepare-patterns.mjs --proof
 node scripts/prepare-patterns.mjs --check
+node scripts/prepare-flow-patterns.mjs
+node scripts/prepare-flow-patterns.mjs --check
 ```
 
-The pattern check covers all sixteen generated motifs. It reads real PNGs and verifies dimensions, transparency, antialiased edges, uniqueness, and deterministic regeneration. Those motifs have 304 × 728 native pixels, equivalent to 4× detail at 76 × 182 px. The original `dots.png` is a separate bundled asset.
+The motif check covers sixteen 304 × 728 PNGs, equivalent to 4× detail at 76 × 182 px. The flow check covers twelve separate `*-wide.png` and `*-tall.png` backgrounds. Checks inspect real image bytes and deterministic regeneration. The original `dots.png` remains a separate bundled asset.
 
 ## Extend a section with your own AI
 
@@ -151,23 +163,23 @@ See [AI extensions: workflow, complete contract, and examples](docs/AI-EXTENSION
 
 **Undo** and **Redo** cover signature edits, including committed photo changes. Continuous typing in one field is grouped into a step. Invalid edits can be undone. A new edit after Undo clears the abandoned Redo branch. History holds up to 100 steps per page session; reloading clears history but retains the saved draft.
 
-Click **Export data**, then **Download JSON** or **Copy JSON**, to save your signature, applied crop or hosted photo URL, design choices, themes, editor tab, preview view, and image-export settings. The file contains readable contact details and may include your photo; keep it private.
+Click **Export data**, then **Download JSON** or **Copy JSON**, to save your signature, applied crop or hosted photo URL, artwork placement, saved palettes, editor tab, preview view, and image-export settings. The file contains readable contact details and may include your photo; keep it private.
 
 On another browser or device, use **Import data**, choose a JSON file or paste its contents, then choose what to import before clicking **Restore session**:
 
 | Selection | Imported | Preserved |
 | --- | --- | --- |
-| Information only | Name, role, contacts, footer wording, and photo data/URL | Current layout, colors, artwork, icons, photo format, saved themes, and view settings |
-| Design only | Layout, colors, artwork recipes, icons, photo shape/size, image base, saved themes, and view settings | Current identity, wording, contacts, and photo data/URL |
-| Both | The complete signature and imported design settings | Existing saved themes are retained and merged |
+| Information only | Name, role, contacts, footer wording, and photo data/URL | Current layout, colors, artwork placement/recipe, icons, photo format, saved palettes, and view settings |
+| Design only | Layout, colors, artwork placement/recipe, icons, photo shape/size, image base, saved palettes, and view settings | Current identity, wording, contacts, and photo data/URL |
+| Both | The complete signature and imported design settings | Existing saved palettes are retained and merged |
 
-Both options start selected; at least one is required. Imported themes are merged when Design is selected: duplicates are reused and conflicting names receive an imported suffix. The full file and resulting combined signature must validate before anything changes. Older plain draft JSON is accepted too. Recognizable pasted code fences, copied Markdown URL wrappers, and an escaped `@` in an email can be cleaned; the dialog reports those repairs and still applies normal validation.
+Both options start selected; at least one is required. Imported palettes are merged when Design is selected: duplicates are reused and conflicting names receive an imported suffix. The full file and resulting combined signature must validate before anything changes. Older plain draft JSON is accepted too, with defaults for the new artwork controls. Recognizable pasted code fences, copied Markdown URL wrappers, and an escaped `@` in an email can be cleaned; the dialog reports those repairs and still applies normal validation.
 
-A restored signature can be undone in the current tab; that Undo does not remove imported themes. Undo history is not included in backups. Browser storage belongs to each site address, so export before moving between local and hosted editors.
+A restored signature can be undone in the current tab; that Undo does not remove imported palettes. Undo history is not included in backups. Browser storage belongs to each site address, so export before moving between local and hosted editors.
 
 ![Import Information, Design, or both](docs/selective-import.png)
 
-**Copy draft link** includes signature details and a hosted photo URL. Anyone with the link can read them. It excludes saved themes and is unavailable for drafts containing an embedded photo; use session JSON for those.
+**Copy draft link** includes signature details, artwork settings, and a hosted photo URL. Anyone with the link can read them. It excludes saved palettes and is unavailable for drafts containing an embedded photo; use session JSON for those.
 
 ## Export an HD image
 
@@ -177,7 +189,7 @@ Click **Download PNG**, or right-click the preview to save it. PNG contains the 
 
 ![PNG export dialog showing Original in the earlier editor](docs/export.png)
 
-Image export uses the same table HTML as the preview and embeds assets before rasterization. Bundled artwork and uploaded crops render locally. Missing, corrupt, or unreadable images stop export with an error. Custom hosts must allow cross-origin reads. Text renders at the chosen resolution; raster artwork and the 384 px photo retain their native detail. A larger export does not invent detail in those images.
+Image export uses the same table HTML as the preview and embeds both regular images and flowing CSS backgrounds before rasterization. Bundled artwork and uploaded crops render locally. Missing, corrupt, or unreadable images stop export with an error. Custom hosts must allow cross-origin reads. Text renders at the chosen resolution; raster artwork and the 384 px photo retain their native detail. A larger export does not invent detail in those images.
 
 Codex in-app browser checks include verified downloaded JSON and PNG files; exact evidence is recorded in [PROGRESS.md](PROGRESS.md). Other browser engines need separate verification. See [MDN's SVG image restrictions](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image) for the embedding requirement.
 
@@ -200,7 +212,7 @@ The workflow follows [GitHub's custom Pages workflow documentation](https://docs
 
 ## Privacy and existing history
 
-Drafts and uploaded crops stay in this browser unless you copy, download, export, or deliberately share them. There is no account or server-side draft storage. Local storage is not encryption: someone with access to your browser profile can read it. Clearing browser data removes drafts and saved themes.
+Drafts and uploaded crops stay in this browser unless you copy, download, export, or deliberately share them. There is no account or server-side draft storage. Local storage is not encryption: someone with access to your browser profile can read it. Clearing browser data removes drafts and saved palettes.
 
 **The old commits in this repository contain personal contact information. Replacing the current files does not erase that history.** Public source exposes committed history even when the deployed site contains only generic examples. `.gitignore` does not remove already-tracked files.
 
@@ -213,27 +225,29 @@ The build publishes only its explicit allowlist. Keep private notes, original ph
 ```sh
 npm test
 node scripts/prepare-patterns.mjs --check
+node scripts/prepare-flow-patterns.mjs --check
 node scripts/version-assets.mjs --check
 npm run build
 ```
 
 Tests cover validation and dimensions, design rendering, undo/redo, photo crop geometry and file limits, icons, PNG export, session restore, storage recovery, and the public-file boundary. The seven exported AI examples have also been checked through proposal validation and actual rendering. Detector checks have used a NASA portrait fixture and a multi-face composite; browser smart cropping has been observed. [PROGRESS.md](PROGRESS.md) records exact current evidence, test counts, failures, release status, and received-email coverage.
 
-The build replaces `dist` with the 50 files in `scripts/public-files.mjs`, including the design browser, collection module, three AI-helper files, four fantasy assets, and licensed detector. Documentation, test fixtures, and repository metadata are excluded.
+The build replaces `dist` with the 65 files in `scripts/public-files.mjs`, including the manual artwork editor, twelve flowing backgrounds, AI helper, and licensed detector. Nineteen editor script/style links carry the runtime version. Documentation, test fixtures, and repository metadata are excluded.
 
 | File | Purpose |
 | --- | --- |
 | `index.html`, `signature.html` | Editor entry points |
 | `app.js`, `editor.css` | Studio controls, gallery, preview, persistence |
 | `signature-core.js` | Validation, measured layouts, HTML and plain text |
-| `design-collections.js` | Six abstract studies and four fantasy starting points |
-| `library-controls.js`, `library.css` | On-demand layout, theme, and artwork browser |
+| `design-collections.js` | Abstract/fantasy artwork metadata and palette colors |
+| `library-controls.js`, `library.css` | On-demand layout and artwork browser |
+| `artwork-core.js`, `artwork-controls.js`, `artwork.css` | Editable side-detail studies, painting, preview, and apply |
 | `ai-extension-core.js`, `ai-extension-controls.js`, `ai-extension.css` | Scoped prompts, JSON validation, proposal preview and apply |
 | `portrait-core.js`, `portrait-controls.js`, `portrait.css` | Photo preparation, crop UI, hosted-photo handoff |
 | `portrait-worker.js`, `vendor/` | Detector, model, provenance, MIT license |
 | `editor-history.js` | Bounded undo/redo |
 | `signature-image.js` | PNG generation, preview, download |
-| `session-data.js`, `session-controls.js` | Session files and theme merging |
+| `session-data.js`, `session-controls.js` | Session files and saved-palette merging |
 | `signature-only.html` | Generic standalone example |
 | `sig/`, `scripts/`, `tests/` | Artwork, build/server/generation scripts, tests |
 | `.github/workflows/pages.yml` | Tests, build, Pages deployment |

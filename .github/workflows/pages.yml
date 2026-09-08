@@ -28,6 +28,8 @@ jobs:
         run: npm test
       - name: Check generated artwork
         run: node scripts/prepare-patterns.mjs --check
+      - name: Check flowing artwork
+        run: node scripts/prepare-flow-patterns.mjs --check
       - name: Check editor asset versions
         run: node scripts/version-assets.mjs --check
       - name: Build public files

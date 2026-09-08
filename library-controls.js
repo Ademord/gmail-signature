@@ -43,7 +43,7 @@
       const tab = event.target.closest('[data-library-tab]');
       if (tab) { select(tab.dataset.libraryTab, true); return; }
       // Existing app handlers run on the selected button before this bubbles.
-      if (event.target.closest('.design-choice,.pattern-choice,[data-ai-section]')) close();
+      if (event.target.closest('.design-choice,.pattern-choice,[data-ai-section],[data-edit-artwork]')) close();
     }
     function keydown(event) {
       const tab = event.target.closest('[data-library-tab]');

@@ -71,7 +71,7 @@ test('six distinct decodable portrait PNGs are public alongside every preserved 
     pixelHashes.add(hash);
     assert.ok(decoded.rgba.some((value,index) => index % 4 === 3 && value > 0), name + ' contains visible pixels');
   }
-  assert.equal(PUBLIC_FILES.length, 50);
+  assert.equal(PUBLIC_FILES.length, 65);
 });
 
 test('every abstract pattern supports all seven designs and photo sizes in wide and tall formats', () => {
@@ -79,7 +79,7 @@ test('every abstract pattern supports all seven designs and photo sizes in wide 
     for (const [width,height] of [[280,180],[321,208],[420,320]]) for (const photoSize of [0,40,64,96]) {
       const withPhoto = photoSize > 0;
       const label = [pattern,design,layout,width,height,photoSize].join(':');
-      const value = draft({pattern,design,layout,width,height,
+      const value = draft({pattern,design,layout,width,height,artworkPlacement:'motif',
         portraitData:withPhoto ? photo : '', portraitUrl:withPhoto ? photoUrl : '', portraitSize:photoSize || 64});
       assert.deepEqual(core.validate(value), {}, label);
       const html = core.render(value), preview = core.render(value,{preview:true,assetBase:'./sig'});
@@ -110,7 +110,7 @@ test('every abstract pattern supports all seven designs and photo sizes in wide 
 test('abstract artwork and photos round-trip without changing the selected design, details, theme or UI', () => {
   const theme = {id:'theme-abstract',name:'Saved study',frontBackground:'#f5f0e6',backBackground:'#282b35',accent:'#325ea8'};
   for (const pattern of abstractIds) for (const design of designIds) for (const layout of ['paired','stacked']) {
-    const input = {draft:draft({pattern,design,layout,portraitData:photo,portraitUrl:photoUrl,portraitShape:'rounded',portraitSize:96}),
+    const input = {draft:draft({pattern,design,layout,artworkPlacement:'motif',portraitData:photo,portraitUrl:photoUrl,portraitShape:'rounded',portraitSize:96}),
       themes:[theme],ui:{editorTab:'design',previewView:'card',imageScale:4,imageBackground:'transparent',selectedThemeId:theme.id,themeName:theme.name}};
     const restored = session.parse(session.serialize(input));
     assert.deepEqual(restored, input, pattern + ':' + design + ':' + layout);
@@ -124,7 +124,7 @@ test('abstract artwork and photos round-trip without changing the selected desig
 });
 
 test('AI artwork prompts list all six ids and proposals apply only the requested artwork', () => {
-  const value = draft({design:'editorial',portraitData:photo,portraitUrl:photoUrl});
+  const value = draft({design:'editorial',artworkPlacement:'motif',portraitData:photo,portraitUrl:photoUrl});
   const prompt = ai.buildPrompt('artwork',value);
   const choices = prompt.match(/pattern choices: ([^.]+)\./)[1].split(', ');
   for (const pattern of abstractIds) {

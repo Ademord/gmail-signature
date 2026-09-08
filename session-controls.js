@@ -4,11 +4,12 @@
   window.SessionControls = Object.freeze({ attach: function (settings) {
     const $ = id => document.getElementById(id), codec = window.SignatureSession;
     const dialog = $('session-dialog');
-    let mode = 'export', parsed = null, revision = 0;
+    let mode = 'export', parsed = null, revision = 0, readingFile = false;
     const selection = () => ({information:$('session-import-information').checked,design:$('session-import-design').checked});
     function inspect() {
       parsed = null; $('session-restore').disabled = true;
       $('session-notice').dataset.error = 'false';
+      if (readingFile) { $('session-notice').textContent = 'Reading the selected session file…'; return; }
       if (!$('session-json').value.trim()) { $('session-notice').textContent = 'Choose a JSON file or paste your backup below.'; return; }
       try {
         const imported = codec.parsePasted($('session-json').value), parts = selection();
@@ -24,7 +25,7 @@
         try { text = codec.serialize(settings.getSession()); }
         catch (error) { settings.onError(error.message); return; }
       }
-      ++revision; mode = nextMode; parsed = null;
+      ++revision; mode = nextMode; parsed = null; readingFile = false;
       $('session-title').textContent = mode === 'export' ? 'Export session' : 'Import session';
       $('session-description').textContent = mode === 'export' ? 'Save your signature, themes, and view settings in one JSON file.' : 'Choose what to bring in. Everything else stays as it is.';
       $('session-import-parts').hidden = mode !== 'import';
@@ -43,20 +44,23 @@
     $('export-data').addEventListener('click', () => open('export'));
     $('import-data').addEventListener('click', () => open('import'));
     $('close-session').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => { ++revision; parsed = null; });
-    $('session-json').addEventListener('input', () => { ++revision; if (mode === 'import') inspect(); });
+    dialog.addEventListener('close', () => { ++revision; parsed = null; readingFile = false; });
+    $('session-json').addEventListener('input', () => { ++revision; readingFile = false; if (mode === 'import') inspect(); });
     for (const id of ['session-import-information','session-import-design']) $(id).addEventListener('change', () => { if (mode === 'import') inspect(); });
     $('session-file').addEventListener('change', async () => {
       const request = ++revision, file = $('session-file').files[0];
-      if (!file) return;
-      parsed = null; $('session-restore').disabled = true;
+      readingFile = Boolean(file);
+      if (!file) { if (mode === 'import') inspect(); return; }
+      $('session-json').value = ''; inspect();
       try {
         if (file.size > 1024 * 1024) throw new Error('Choose a session JSON file smaller than 1 MB.');
         const text = await file.text();
         if (request !== revision || !dialog.open) return;
+        readingFile = false;
         $('session-json').value = text; inspect();
       } catch (error) {
         if (request !== revision || !dialog.open) return;
+        readingFile = false; parsed = null; $('session-restore').disabled = true;
         $('session-json').value = ''; $('session-notice').textContent = error.message || 'The file could not be read.'; $('session-notice').dataset.error = 'true';
       }
     });
@@ -74,7 +78,7 @@
       $('session-notice').textContent = 'JSON download requested. Copy JSON is also available.';
     });
     $('session-restore').addEventListener('click', () => {
-      if (!parsed || mode !== 'import') return;
+      if (!parsed || readingFile || mode !== 'import') return;
       try { settings.restore(codec.selectParts(codec.parsePasted($('session-json').value).session,settings.getSession(),selection())); dialog.close(); }
       catch (error) { $('session-notice').textContent = error.message; $('session-notice').dataset.error = 'true'; }
     });

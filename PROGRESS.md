@@ -1,6 +1,29 @@
 # Signature editor — progress and handoff
 
-Updated: 2026-09-07. Active scope: six new compositions, private smart portrait cropping, four fantasy themes, external-AI extension, selective imports, and a simpler editor. The user selected gauntlet-loop and expanded the team from six to eight agents. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+Updated: 2026-09-08. Active scope: artwork across the full signature, editable side details, unified color palettes, collapsible layouts, width/height controls, and two reproduced input races. The previously released studio remains the baseline. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+
+## Flowing artwork and editor controls — 8 September 2026
+
+The user asked for abstract artwork to flow across the card, replacing the restricted rail treatment. Six built-in abstract studies now have twelve dedicated Wide/Tall backgrounds. Placement is Automatic, Side detail, or Across signature; flowing artwork supports 75–150% scale and 0–100% horizontal/vertical positions. Four draft fields store these choices with defaults for older sessions. The drawing dialog still creates an editable native-table side detail and explains that boundary; its six studies support inks, painting/erasing, mirrors, variations, local history, preview, and Apply/Cancel.
+
+The library now has Layouts and Artwork. Colors → Palettes holds seventeen color-only choices, including Midnight, the six abstract palettes, and four fantasy palettes. Layout selection preserves the current colors and pattern. The main Layout section collapses; the sizing tab has synchronized width and height sliders and number fields. Ten agent roles are working in waves on implementation, contracts, visual review, and release evidence.
+
+The initial audit confirmed the published `d1d1bbf` baseline had successful 170-test CI and 76 matching live resource URLs. Before the flow expansion, the independent manual-artwork audit passed 199 of 200 local tests with the existing Windows symlink skip, validated the runtime token, and confirmed a 53-file build. That intermediate result does not certify the later flow/palette revision. Import and photo fixes address stale JSON becoming restorable during a file read and inability to reselect a photo after interrupted detection.
+
+The current publication roster has **65 files** and **19 versioned editor script/style links**. Final local verification: **216 tests, 215 passed, zero failures, one expected Windows symlink skip**. Both generators pass sixteen motifs and twelve full-canvas backgrounds; the actual build matches all 65 source files and excludes private files and fixtures. Runtime token: `4b21b60415b81f8c`. The visual critic's first failure led to compact, padded identity/contact blocks replacing fragmented per-line masks. All six revised artworks, Original with a portrait, Signal, Tall, and the inspected PNG now pass the scoped visual review. Flow backgrounds are embedded before PNG rasterization. Google's [Gmail CSS reference](https://developers.google.com/workspace/gmail/design/css) lists the background properties used, but settings paste/send preservation remains unverified.
+
+Latest lead Codex-browser checks: Midnight changed only three colors; selecting Signal retained Counterform. Width 380 and height 260 produced a 380 × 540 Tall signature; Undo restored Wide while retaining those dimensions. At 390 × 844, sizing sliders measured 293 px, page scroll stayed within 375 px, and the two-tab library measured 369 px for both client and scroll width. Position controls disabled an axis with no travel and enabled it after zoom. The drawing dialog explained side-detail placement before Apply. The NASA fixture completed automatic face cropping and appeared independently of the flowing art. Actual downloads include a decoded 1284 × 1744 PNG and a 7,910-byte HTML file with the public Tall artwork URL, live contact links, and no local URLs. Exact-commit CI and hosted parity remain pending.
+
+| Check | Expected evidence | Status |
+| --- | --- | --- |
+| Import and photo recovery | Deferred file/detection probes reject stale state and allow retries | Ten import and four photo regressions passed; included in the final suite |
+| Flowing and manual artwork | Six full-card studies in both orientations; explicit side-detail editing; reversible apply | Passed local checks and revised visual review |
+| Palettes and layout controls | Seventeen distinct color-only choices, two library tabs, preserved colors/pattern, synchronized sizing | Passed desktop/mobile controls and independent regressions; legacy Spruce maps to Forest |
+| Persistence and export | Old/custom recipes and new placement fields round-trip; CSS backgrounds survive PNG embedding | Passed full suite and actual downloaded PNG/HTML checks |
+| CI, public build, and hosted demo | Current runtime token, 65-file boundary, exact-commit CI and deployed controls | Pending for this revision |
+| Real Gmail send/receive | Actual received desktop/mobile/light/dark messages | Blocked: Codex browser rechecked on 8 September and redirects to Gmail's public landing/sign-in page. No message sent. |
+
+The following sections preserve earlier release evidence and UI terminology; they do not describe the current library or certify this revision.
 
 ## Abstract artwork extension — 7 September 2026
 
