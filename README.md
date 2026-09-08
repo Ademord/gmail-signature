@@ -4,7 +4,7 @@ A browser-local email signature editor with seven layouts, flowing abstract artw
 
 [Open the published demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml) · [Design roadmap](docs/DESIGN-ROADMAP.md)
 
-![Signature Studio with the selectable Plum default and warm stone editor](docs/plum-studio.jpg)
+![Signature Studio with four editor tabs, direct layout and artwork controls, and the Plum palette](docs/interaction-studio.jpg)
 
 This README describes the implemented source. See [PROGRESS.md](PROGRESS.md) for the latest browser, release, and email checks; feature availability does not imply that every release check has passed. Browser verification uses the Codex in-app browser. Gmail paste/send verification remains blocked on an authenticated send test.
 
@@ -24,7 +24,9 @@ The server serves only the app, artwork, and detector files listed in `scripts/p
 
 ## Choose a design
 
-The main workspace keeps the signature in view, with warm stone surfaces, a light preview and white paper, serif headings, and readable controls. Plum buttons and selection states stay independent of your signature's palette. Expand **Design → Layout** to choose a Composition, or click **Browse designs** for the **Layouts** and **Artwork** library. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
+The editor has four tabs: **Design**, **Colors**, **Details**, and **Photo**. Warm stone surfaces and plum controls stay independent of your signature's palette. In **Design**, use the arrows beside the layout or artwork dropdown to try the previous or next available choice. Each click moves one enabled entry, wraps at the ends, and creates one Undo step. The native dropdowns remain available for direct selection.
+
+**Browse designs** opens the **Layouts** and **Artwork** library with larger previews and descriptions. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
 
 | Design | Composition |
 | --- | --- |
@@ -36,7 +38,7 @@ The main workspace keeps the signature in view, with warm stone surfaces, a ligh
 | Editorial | Full-width serif masthead, fine rule, contact columns |
 | Signal | Framed terminal-style header and labeled contact grid |
 
-A layout change preserves your details, selected colors, and pattern. Choose artwork separately, use **None** to remove it, or use **Design default** to follow the composition's default motif. **Surprise me** combines a layout, palette, and pattern; **Undo** returns to the previous choice. **Reset design** explicitly restores the selected composition's default palette and pattern.
+A layout change preserves your details, selected colors, and pattern. Choose artwork separately, use **None** to remove it, or use **Design default** to follow the composition's default motif. The quiet footer below the editing panels keeps **Surprise me**, **Extend with AI**, **Reset design**, and **Load example** available from every tab. **Surprise me** combines a layout, palette, and pattern; **Undo** returns to the previous choice. **Reset design** explicitly restores the selected composition's default palette and pattern. **Load example** restores the Avery Morgan example.
 
 The six abstract studies use artwork composed for the whole Wide or Tall signature. With **Artwork placement → Automatic**, their shapes flow across the card while names and contacts remain separate text. Choose **Across signature** explicitly or **Side detail** for the smaller motif. Flowing artwork has **Scale** (75–150%), **Horizontal position**, and **Vertical position** (0–100%) controls. Position controls enable when the scaled image has room to move along that axis. Other patterns and custom drawn grids use a side detail.
 
@@ -72,9 +74,9 @@ The four fantasy motifs remain in **Artwork**; their matching colors are in **Co
 
 Selecting a fantasy palette changes colors only. Choose its artwork and layout independently.
 
-In the **Layout** tab, choose **Wide** or **Tall** and use the matching number fields or sliders for panel width (280–420 px) and height (180–320 px). The default total size is 662 × 208 px in Wide and 321 × 436 px in Tall. These are panel dimensions: Wide totals two widths plus a 20 px gap; Tall totals two heights plus that gap. Preview scaling fits the editor to the screen without changing the exported dimensions.
+Open **Design → Size & arrangement** to choose **Wide** or **Tall** and adjust **Panel width** (280–420 px) and **Panel height** (180–320 px) with either the number fields or sliders. The disclosure starts closed. These values size each panel; the canvas footer shows the total exported size. At the default panel size, Wide totals 662 × 208 px and Tall totals 321 × 436 px, including the 20 px gap. Preview scaling fits the editor to the screen without changing those dimensions.
 
-Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from Layout, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
+Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from **Design → Size & arrangement**, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
 
 ## Add details and a photo
 
@@ -110,8 +112,8 @@ The editor checks that the URL loads a square image. It does not upload or publi
 ## Copy into Gmail
 
 1. Check the **Card** preview and both **Desktop** and **Mobile** widths in **Email**.
-2. If needed, open **Layout → Advanced settings** and set the image base to a public HTTPS folder containing the bundled `sig/` assets. Local preview uses bundled artwork for the default base. A portrait uses its separate photo URL.
-3. Click **Copy signature**, then paste the formatted signature into Gmail. If clipboard access is denied, follow the manual-copy fallback. **Download HTML** provides a file you can open to select and copy.
+2. If needed, open **Design → Size & arrangement → Advanced settings** and set the image base to a public HTTPS folder containing the bundled `sig/` assets. Local preview uses bundled artwork for the default base. A portrait uses its separate photo URL.
+3. Click **Copy signature** below the preview, then paste the formatted signature into Gmail. If clipboard access is denied, follow the manual-copy fallback. **Download HTML** provides a file you can open to select and copy.
 4. In Gmail, go to **Settings → See all settings → Signature**, choose defaults for new messages and replies, then **Save Changes**.
 5. Send a test message and inspect the received email on desktop and mobile. Check images, text, spacing, and links.
 
@@ -135,7 +137,7 @@ Saved palettes contain **only a name and three colors**. They persist in this br
 
 The sixteen generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
 
-In **Icons**, select a globe, envelope, phone, LinkedIn mark, location pin, or **None** per contact row. None hides only the icon. The renderer chooses cream or charcoal artwork for the actual surface, using a calculated 3:1 contrast threshold. Custom icon uploads are planned.
+Open **Details → Contact icons** to select a globe, envelope, phone, LinkedIn mark, location pin, or **None** per contact row. The disclosure starts closed. None hides only the icon. The renderer chooses cream or charcoal artwork for the actual surface, using a calculated 3:1 contrast threshold. Custom icon uploads are planned.
 
 Publish all `sig/` assets, including the icons, sixteen motifs, and twelve Wide/Tall abstract backgrounds. Regenerate them with:
 
@@ -167,9 +169,9 @@ See [AI extensions: workflow, complete contract, and examples](docs/AI-EXTENSION
 
 **Undo** and **Redo** cover signature edits, including committed photo changes. Continuous typing in one field is grouped into a step. Invalid edits can be undone. A new edit after Undo clears the abandoned Redo branch. History holds up to 100 steps per page session; reloading clears history but retains the saved draft.
 
-Click **Export data**, then **Download JSON** or **Copy JSON**, to save your signature, applied crop or hosted photo URL, artwork placement, saved palettes, editor tab, preview view, and image-export settings. The file contains readable contact details and may include your photo; keep it private.
+Open **Backup & restore** at the bottom of the editor, then click **Export data** and choose **Download JSON** or **Copy JSON** to save your signature, applied crop or hosted photo URL, artwork placement, saved palettes, editor tab, preview view, and image-export settings. The file contains readable contact details and may include your photo; keep it private.
 
-On another browser or device, use **Import data**, choose a JSON file or paste its contents, then choose what to import before clicking **Restore session**:
+On another browser or device, open **Backup & restore → Import data**, choose a JSON file or paste its contents, then choose what to import before clicking **Restore session**:
 
 | Selection | Imported | Preserved |
 | --- | --- | --- |
@@ -178,6 +180,8 @@ On another browser or device, use **Import data**, choose a JSON file or paste i
 | Both | The complete signature and imported design settings | Existing saved palettes are retained and merged |
 
 Both options start selected; at least one is required. Imported palettes are merged when Design is selected: duplicates are reused and conflicting names receive an imported suffix. The full file and resulting combined signature must validate before anything changes. Older plain draft JSON is accepted too, with defaults for the new artwork controls. Recognizable pasted code fences, copied Markdown URL wrappers, and an escaped `@` in an email can be cleaned; the dialog reports those repairs and still applies normal validation.
+
+Older sessions that selected the former Layout tab open **Design → Size & arrangement**; former Icons sessions open **Details → Contact icons**. Their signature fields and rendered output retain the existing format.
 
 A restored signature can be undone in the current tab; that Undo does not remove imported palettes. Undo history is not included in backups. Browser storage belongs to each site address, so export before moving between local and hosted editors.
 

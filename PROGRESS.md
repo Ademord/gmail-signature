@@ -1,6 +1,28 @@
 # Signature editor — progress and handoff
 
-Updated: 2026-09-09. Published extension: selectable Plum default, warm stone editor, and desktop/mobile email preview widths. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+Updated: 2026-09-09. Current work: simpler choosing and editing, guided by the user's purpose-led methodology reference. Published baseline: selectable Plum default and warm stone editor. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+
+## Interaction simplification — 9 September 2026
+
+The user finds the editor awkward and repetitive. They asked for direct left/right browsing as well as dropdowns, removal of duplicated size information, and a review based on the reusable method from their other local project. The applicable principle is to start with the real task, remove unnecessary decisions, fix the observed path, and have an independent critic challenge both usefulness and evidence. This is a design hypothesis grounded in the user's feedback, not a measured usage study.
+
+The actual baseline browser showed six editor tabs, two Copy signature buttons, and the identical `662 × 208 px` total in the sizing explanation and under the canvas. To compare layouts or artwork, users had to open a dropdown or gallery for each direct choice. Prior local reference captures remain available; this pass uses the real released editor as the task baseline.
+
+The agreed change has four tabs: Design, Colors, Details, Photo. Design gains Previous/Next controls around its native layout/artwork dropdowns. Each step changes one choice and creates one Undo step, skips unavailable custom choices, wraps predictably, and retains unrelated fields and custom recipes. Size & arrangement moves into a closed Design disclosure with direct Wide/Tall buttons; Contact icons moves into a closed Details disclosure. Total dimensions remain beneath the canvas. One Copy action stays beside the result; normal duplicate save text, the Edit colors shortcut, and repeated explanatory copy leave the main surface. Backup & restore remains accessible in a closed disclosure.
+
+Ownership: lead application integration and Codex browser; independent purpose reviewer; independent journey/test reviewer; HTML/CSS builder. The purpose review approved the plan, not its implementation. Preserve legacy session tab identifiers by mapping Layout to the opened Design sizing disclosure and Icons to the opened Details icon disclosure. Validation must open every collapsed ancestor before focusing an invalid field. All seven AI sections, export formats, and stored draft contracts remain supported.
+
+| Check | Expected evidence | Status |
+| --- | --- | --- |
+| Direct comparison | Real arrow clicks update the canvas; repeat/Undo/native select remain usable; full hit targets and stable focus | Passed actual desktop clicks, phone keyboard activation, and independent state tests |
+| Less repetition | Four tabs, one Copy action, one total-size readout; complete sizing/contact paths remain reachable | Passed actual controls and scoped purpose review |
+| Recovery and compatibility | Enabled custom choices, legacy tab imports, invalid nested-field focus, unchanged unrelated fields | Passed 47 interaction tests, causal mutation, actual export-validation and legacy Icons import |
+| Independent comparison | Critic reviews actual before/after desktop and phone paths | Passed scoped nonblind review; phone uses the existing edit/preview links |
+| Integrated delivery | Current token, retained suite, 65-file boundary, exact CI and live resources | Local 228 tests: 227 passed, zero failed, one Windows skip; publication pending |
+
+Final runtime token: `58e82c029a055915`. The HTML entry points match and the build contains 65 public files. The independent journey reviewer verified that all seven new tests fail against the old baseline; restoring only nearest-disclosure validation causes the nested image-base case to fail. Actual browser evidence and its limits are detailed in the [interaction review](docs/reviews/interaction-2026-09-09.md). The critic's final footer recommendation was implemented as a quiet two-row action block. Phone screenshot output has a compositor limitation; do not infer exact scrolled geometry from those images. Direct DOM observations and repeated native-key activation establish the reported phone fit and scroll behavior.
+
+Earlier sections record previous releases and do not certify this change.
 
 ## Reference-inspired Plum editor — 9 September 2026
 

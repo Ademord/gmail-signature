@@ -1,6 +1,6 @@
 # Signature Studio roadmap
 
-The current source adds a Plum starting palette, eighteen color palettes, a warm stone editor, and Desktop/Mobile Email preview widths to the previously released flowing artwork and side-detail editor. The seven compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) records release evidence and the remaining Gmail received-message gate. The [scoped visual review](reviews/plum-editor-2026-09-09.md) approves the palette/editor refinement and identifies compact signature typography as a remaining readability gap.
+The current source reorganizes the editor into four tabs, adds direct previous/next layout and artwork selection, and moves less frequent controls into closed disclosures. It retains the Plum starting palette, eighteen color palettes, warm stone editor, Desktop/Mobile Email preview widths, flowing artwork, and side-detail editor. The seven compositions, private photo cropping, and scoped AI proposals remain. This document describes source behavior and future plans; [PROGRESS.md](../PROGRESS.md) records release evidence and the remaining Gmail received-message gate. The earlier [scoped visual review](reviews/plum-editor-2026-09-09.md) covers the palette/editor refinement and identifies compact signature typography as a remaining readability gap. It does not certify the later interaction changes.
 
 ## Implemented collection
 
@@ -16,11 +16,17 @@ The current source adds a Plum starting palette, eighteen color palettes, a warm
 
 The six new designs use the full Wide or Tall canvas. Their name placement and contact arrangement differ. Selecting a layout preserves the current colors, pattern, and personal details. Artwork and palettes are separate choices; Reset design explicitly restores the composition's default palette and pattern. Signature edits use Undo/Redo and draft/session persistence. Saved palettes contain only a name and three colors; complete presets remain future work.
 
-**Browse designs** has Layouts and Artwork tabs. The main Design panel's Layout section collapses; the separate Layout tab provides synchronized width and height sliders and number fields. **Colors → Palettes** groups six quick choices with twelve more: Saffron, Midnight, six abstract palettes, and four fantasy palettes. Palette selection changes colors only. Further features should fit these surfaces before adding permanent panels.
+The four editor tabs are **Design**, **Colors**, **Details**, and **Photo**. In Design, previous/next arrows beside the native layout and artwork dropdowns choose one enabled entry, wrap at the ends, and add one Undo step. Dropdowns provide direct selection; **Browse designs** retains its Layouts and Artwork tabs, larger previews, and descriptions. The main Layout section still collapses.
+
+**Design → Size & arrangement** starts closed. Wide/Tall buttons choose the arrangement; synchronized sliders and number fields set each panel's width and height. Total exported dimensions appear in the canvas footer. **Details → Contact icons** and **Backup & restore** also start closed. There is one **Copy signature** action below the preview and a quiet 2×2 footer for Surprise me, Extend with AI, Reset design, and Load example, available across tabs.
+
+**Colors → Palettes** groups six quick choices with twelve more: Saffron, Midnight, six abstract palettes, and four fantasy palettes. Palette selection changes colors only. Further features should fit these surfaces before adding permanent panels.
 
 **Plum**, marked Default, uses white and warm cream surfaces with a purple accent. Fresh browser drafts and **Load example** use it. Existing saved drafts preserve their colors; legacy imports that omit color fields keep the same fallback behavior. The editor itself uses warm stone surfaces, a light preview, white paper, serif headings, and a fixed plum control accent independent of signature colors. The supplied form-and-preview reference informs this refinement; no bundled external fonts or runtime are required.
 
 The **Email** preview offers **Desktop** and **Mobile** widths, fitting within message surfaces up to 780 px and 390 px respectively. These are view-only controls: they scale the displayed signature within the available space and leave draft fields, export dimensions, draft links, and session backups unchanged. Actual compact signature layouts remain a separate planned feature; simulated message widths do not establish received-email behavior.
+
+Legacy sessions with a Layout tab selection open Design with Size & arrangement expanded; Icons selections open Details with Contact icons expanded. The signature field schema and rendering remain unchanged by this navigation update.
 
 Galaxy, Starlight, Moonlight, and Frost Crown remain available as separate artwork and palette choices. Their earlier combined Themes gallery has been removed. Existing saved colors and session backups remain compatible.
 
@@ -72,7 +78,7 @@ Checks inspect real PNG bytes and deterministic regeneration. Flow-aware PNG exp
 
 ## Acceptance coverage
 
-Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The 8 September flow release added independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles contributed in waves. Runtime-version checks, exact-commit CI, and live deployment acceptance passed on app commit d64ce06. That historical result does not certify the later Plum, editor-appearance, or Email preview changes. Received Gmail testing remains separate and unverified.
+Prior studio checks cover Wide/Tall layouts, photos, text fitting, history, session transfer, clipboard fallback, and HTML/PNG export. The 8 September flow release added independent flow, palette, slider, image-embedding, and input-race checks. Ten agent roles contributed in waves. Runtime-version checks, exact-commit CI, and live deployment acceptance passed on app commit d64ce06. That historical result does not certify later changes. A read-only audit of interaction asset version `58e82c029a055915` found exactly the 65 allowed public files, byte-for-byte source/build parity, matching HTML entry points, and no extra files or symbolic links. Runtime-version validation passed. Exact-commit CI and live release verification for this update remain pending; this local audit is not a release pass. Received Gmail testing remains separate and unverified.
 
 The seven exported AI examples have passed proposal validation and actual rendering with the default signature. Further checks cover field scope, default prompt privacy, stale proposals, one-step Undo, custom recipe limits, and HTML budget errors. Codex in-app browser evidence includes verified downloaded JSON/PNG files and the corrected Signal layout. Gmail paste/send verification remains blocked on an authenticated send test; these browser checks do not close it.
 

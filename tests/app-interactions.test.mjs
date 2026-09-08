@@ -64,12 +64,12 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
     set innerHTML(value) { this._html = String(value); this.children = []; this._text = ''; }
     get innerHTML() { return this._html; }
-    setAttribute(name, value) { this.attributes.set(name, String(value)); }
-    removeAttribute(name) { this.attributes.delete(name); }
+    setAttribute(name, value) { this.attributes.set(name, String(value)); if (name === 'open') this.open = true; }
+    removeAttribute(name) { this.attributes.delete(name); if (name === 'open') this.open = false; }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
     setCustomValidity(value) { this.validationMessage = value; }
     addEventListener(type, listener) { on(this.events, type, listener); }
-    append(child) { child.parentElement = this; this.children.push(child); }
+    append(child) { child.remove(); child.parentElement = this; this.children.push(child); }
     prepend(child) { child.parentElement = this; this.children.unshift(child); }
     remove() {
       if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this);
@@ -79,8 +79,9 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     select() { document.activeElement = this; }
     showModal() { this.open = true; }
     close() { this.open = false; return emit(this.events, 'close'); }
+    get options() { return this.children.filter(child => child.tagName === 'OPTION'); }
     closest(selector) {
-      let node = this.parentElement;
+      let node = this;
       while (node) {
         if (selector === '[data-editor-panel]' && node.dataset.editorPanel) return node;
         if (selector === 'details' && node.tagName === 'DETAILS') return node;
@@ -99,23 +100,36 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     }
   }
 
-  // Derive IDs from the real page so removed or renamed controls fail loudly.
-  for (const match of pageSource.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)) {
-    const element=new Element(match[1],match[2]);element.hidden=/\shidden(?:\s|>|=)/.test(match[0]);
+  // Read actual form ancestry, native options and tab order from the page. A
+  // moved field must not remain in a fictional old panel/disclosure here.
+  const pageRoot = new Element('body'), stack = [pageRoot], pageElements = [];
+  const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+  for (const match of pageSource.matchAll(/<!--[\s\S]*?-->|<\/?([a-z][\w-]*)\b([^>]*?)>/gi)) {
+    if (!match[1]) continue;
+    const tag = match[1].toLowerCase();
+    if (match[0].startsWith('</')) {
+      const index = stack.findLastIndex(element => element.tagName === tag.toUpperCase());
+      if (index > 0) stack.length = index;
+      continue;
+    }
+    const attributes = new Map([...match[2].matchAll(/([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)].map(attribute => [attribute[1],attribute[2] ?? attribute[3] ?? attribute[4] ?? '']));
+    const element = new Element(tag, attributes.get('id') || '');
+    for (const [key,value] of attributes) {
+      element.setAttribute(key,value);
+      if (key.startsWith('data-')) element.dataset[key.slice(5).replace(/-([a-z])/g,(_all,letter)=>letter.toUpperCase())] = value;
+      if (['name','value','type'].includes(key)) element[key] = value;
+      if (['hidden','disabled','checked','open'].includes(key)) element[key] = true;
+    }
+    stack.at(-1).append(element); pageElements.push(element);
+    if (!voidTags.has(tag) && !match[0].endsWith('/>')) stack.push(element);
   }
   const node = id => { assert.ok(nodes.has(id), `Required app element #${id} exists`); return nodes.get(id); };
   node('preview-viewport').clientWidth=viewportWidth;
-  const panelNames = ['details', 'layout', 'colors', 'icons', 'design', 'photo'];
-  const tabs = panelNames.map(name => node(name + '-tab'));
-  const panels = panelNames.map(name => node(name + '-panel'));
-  tabs.forEach((element, index) => { element.dataset.editorTab = panelNames[index]; });
-  panels.forEach((element, index) => { element.dataset.editorPanel = panelNames[index]; });
+  const tabs = pageElements.filter(element => element.dataset.editorTab);
+  const panels = pageElements.filter(element => element.dataset.editorPanel);
   const inputs = Object.fromEntries(Object.keys(core.defaults).map(key => [key, node(key)]));
   for (const [key, input] of Object.entries(inputs)) {
     input.name = key;
-    const field = new Element();
-    field.append(input);
-    panels[key.endsWith('Icon') ? 3 : ['frontBackground', 'backBackground', 'accent'].includes(key) ? 2 : ['width', 'height', 'layout', 'imageBase'].includes(key) ? 1 : 0].append(field);
   }
   for (const key of ['frontBackground', 'backBackground', 'accent']) node(key + '-hex').dataset.colorField = key;
   node('image-scale').value = '4'; node('image-background').value = 'transparent';
@@ -131,7 +145,9 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   const one = new Map([['.rail-footer > span', footer], ['.preview-actions > div', actionGroup], ['[data-preview-view]', workspace], ['.preview-column', column]]);
   // The workspace carries the same data attribute for CSS. It is deliberately
   // included in the generic selector so confusing it with buttons fails here.
-  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices]]);
+  const cycleButtons = pageElements.filter(element => element.dataset.cycleField);
+  const arrangementButtons = pageElements.filter(element => element.dataset.arrangement);
+  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices],['[data-cycle-field]',cycleButtons],['button[data-cycle-field]',cycleButtons],['[data-arrangement]',arrangementButtons],['button[data-arrangement]',arrangementButtons]]);
   const location = new URL('http://127.0.0.1:4173/?source=regression' + initialHash);
   const document = {
     activeElement: null, body: new Element('body'),
@@ -182,13 +198,16 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   vm.runInNewContext(appSource, context, { filename: 'app.js' });
   if (expectPreview) assert.ok(node('signature-preview').innerHTML.includes('<table'), 'Startup must render successfully; swallowed runtime errors are not a pass.');
   return {
-    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,
+    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,
+    get activeElement() { return document.activeElement; },
     hasNode: id => nodes.has(id),
     failNextWrite(key) { nextWriteFailure = key; },
     get imageSettings() { return imageSettings; },
     get artworkSettings() { return artworkSettings; },
     get artworkOpened() { return artworkOpened; },
     click: id => node(id).click(),
+    async key(id,key) { await emit(node(id).events,'keydown',{target:node(id),key}); },
+    async arrange(value) { const button=arrangementButtons.find(item=>item.dataset.arrangement===value);assert.ok(button,'arrangement '+value+' exists');await button.click(); },
     async previewView(view) { const button=views.find(item=>item.dataset.view===view);assert.ok(button);await button.click(); },
     async emailDevice(device) { const button=emailDevices.find(item=>item.dataset.emailDevice===device);assert.ok(button,'email device '+device+' exists');await button.click(); },
     async bubbleWorkspaceClick(id) { await emit(workspace.events,'click',{target:node(id)}); },
@@ -403,6 +422,134 @@ test('all seven layout choices preserve the complete artwork, palette and inform
   await app.click('redo-change'); assert.equal(app.node('design').value, 'original');
 });
 
+test('four editor tabs keep sizes with Design and icons with Details, with one copy action and no repeated total size', async () => {
+  const app=harness();
+  assert.deepEqual(app.tabs.map(tab=>tab.dataset.editorTab),['design','colors','details','photo']);
+  assert.deepEqual(app.panels.map(panel=>panel.dataset.editorPanel).sort(),['colors','design','details','photo']);
+  for(const id of ['layout-tab','layout-panel','icons-tab','icons-panel','size-explanation','copy-preview']) assert.equal(app.hasNode(id),false,id+' is removed');
+  assert.equal([...pageSource.matchAll(/id="copy-signature"/g)].length,1);
+  assert.equal(app.node('copy-signature').closest('[data-editor-panel]'),null,'the copy action remains outside editor tabs');
+  assert.equal(app.node('size-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'design');
+  assert.equal(app.node('icons-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'details');
+  assert.equal(Boolean(app.node('size-disclosure').open),false);
+  assert.equal(Boolean(app.node('icons-disclosure').open),false);
+  for(const key of ['width','height','layout','imageBase']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'design',key);
+  for(const key of ['websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'details',key);
+  assert.deepEqual([...new Set([...pageSource.matchAll(/data-ai-section="([^"]+)"/g)].map(match=>match[1]))].sort(),['artwork','colors','design','details','icons','layout','photo'],'all existing AI section entry points remain');
+  const saved=app.storage.get(storageKey);
+  for(const [from,key,to] of [['design','ArrowLeft','photo'],['photo','ArrowRight','design'],['design','End','photo'],['photo','Home','design'],['design','ArrowRight','colors']]) {
+    await app.key(from+'-tab',key);
+    assert.equal(app.activeElement,app.node(to+'-tab'));
+    for(const tab of app.tabs) {
+      assert.equal(tab.getAttribute('aria-selected'),String(tab.dataset.editorTab===to));
+      assert.equal(tab.tabIndex,tab.dataset.editorTab===to?0:-1);
+    }
+    for(const panel of app.panels) assert.equal(panel.hidden,panel.dataset.editorPanel!==to);
+  }
+  assert.equal(app.storage.get(storageKey),saved,'section navigation does not edit the signature');
+  assert.equal(app.node('undo-change').disabled,true);
+});
+
+test('layout arrows wrap, preserve the complete draft and create one undo entry per click', async () => {
+  const initial={...core.defaults,nameLine1:'Jordan',pattern:'overprint',portraitData:localPortrait,layout:'stacked',width:400,height:300,
+    frontBackground:'#edf1f7',backBackground:'#181c29',accent:'#a63542',artworkPlacement:'flow',artworkScale:130,artworkPositionX:40,artworkPositionY:63};
+  const app=harness({initialDraft:initial});
+  const next=app.node('next-design');next.focus();await app.click('next-design');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'orbit'});
+  assert.equal(app.activeElement,next,'the update handler does not displace an already focused cycle button');
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'one click requires exactly one undo');
+  await app.click('redo-change');assert.equal(app.node('design').value,'orbit');
+  await app.click('previous-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  await app.click('previous-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'signal'});
+  await app.click('next-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial,'last built-in wraps to first while Custom is disabled');
+  assert.equal(app.node('custom-design-option').disabled,true);
+  const native=harness({initialDraft:initial});await native.input('design','prism');await native.finishEdit();
+  assert.deepEqual(JSON.parse(native.storage.get(storageKey)),{...initial,design:'prism'});
+  await native.click('undo-change');assert.deepEqual(JSON.parse(native.storage.get(storageKey)),initial);
+  assert.equal(native.node('undo-change').disabled,true,'the native select path also applies once');
+});
+
+test('artwork arrows follow all enabled choices, skip unavailable Custom and preserve flow framing through undo', async () => {
+  const initial={...core.defaults,nameLine1:'Jordan',design:'signal',portraitData:localPortrait,artworkPlacement:'motif',artworkScale:129,artworkPositionX:14,artworkPositionY:87};
+  const expected=['cutpaper','colorfield','chromatic','counterform','overprint','gesture','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','none','auto'];
+  const app=harness({initialDraft:initial});
+  for(const pattern of expected) {
+    await app.click('next-pattern');
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern},pattern+' changes only artwork');
+  }
+  assert.equal(app.node('custom-pattern-option').disabled,true);assert.equal(app.artworkOpened,0,'browsing does not open the empty custom editor');
+  await app.click('previous-pattern');assert.equal(app.node('pattern').value,'none','first wraps backwards');
+  await app.click('previous-pattern');assert.equal(app.node('pattern').value,'frost','unavailable Custom is skipped backwards');
+  const flowInitial={...initial,pattern:'gesture',artworkPlacement:'flow'}, flow=harness({initialDraft:flowInitial});
+  await flow.click('next-pattern');
+  assert.deepEqual(JSON.parse(flow.storage.get(storageKey)),{...flowInitial,pattern:'dots',artworkPlacement:'auto'});
+  await flow.click('undo-change');assert.deepEqual(JSON.parse(flow.storage.get(storageKey)),flowInitial);
+  assert.equal(flow.node('undo-change').disabled,true,'the placement fallback is part of the same undo action');
+});
+
+test('existing custom layout and artwork remain in the arrow sequence and keep exact recipes', async () => {
+  const initial={...core.defaults,design:'custom',customLayout:JSON.stringify({composition:'editorial',font:'serif',align:'center'}),
+    pattern:'custom',customPattern:JSON.stringify({palette:['#2348c7','#dd6146'],rows:['00..','00..','....','..11','..11','....','....','....']}),artworkPlacement:'motif'};
+  const app=harness({initialDraft:initial});
+  assert.equal(app.node('custom-design-option').disabled,false);assert.equal(app.node('custom-pattern-option').disabled,false);
+  await app.click('next-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'original'});
+  await app.click('previous-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  await app.click('next-pattern');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'none'});
+  await app.click('previous-pattern');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'none'});
+  await app.click('redo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.artworkOpened,0);
+});
+
+test('Wide and Tall buttons synchronize the backing field and canvas without losing draft state',async()=>{
+  const initial={...core.defaults,design:'signal',pattern:'overprint',height:300,portraitData:localPortrait,artworkPlacement:'flow',artworkScale:125};
+  const app=harness({initialDraft:initial});
+  assert.equal(app.node('layout').hidden,true,'the select is retained for state rather than a duplicate visible control');
+  const selected=value=>{for(const button of app.arrangementButtons) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.arrangement===value));};
+  selected('paired');await app.arrange('stacked');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,layout:'stacked'});selected('stacked');
+  assert.equal(app.node('layout').value,'stacked');assert.equal(app.node('dimension-label').textContent,'321 × 620 px');
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);selected('paired');
+  assert.equal(app.node('undo-change').disabled,true);
+  await app.arrange('paired');assert.equal(app.node('undo-change').disabled,true,'reselecting the active arrangement is not an edit');
+});
+
+test('legacy Layout and Icons session tabs restore to their new visible sections and re-export canonical tabs',async()=>{
+  for(const [legacyTab,currentTab,disclosure] of [['layout','design','size-disclosure'],['icons','details','icons-disclosure']]) {
+    const initial={...core.defaults,nameLine1:'Jordan',design:'signal',pattern:'overprint'};
+    const app=harness(), incoming=JSON.stringify({format:'signature-editor-session',version:1,exportedAt:'2026-09-09T12:00:00.000Z',draft:initial,themes:[],ui:{editorTab:legacyTab}});
+    await app.click('import-data');await app.pasteSession(incoming);
+    assert.equal(app.node('session-restore').disabled,false,legacyTab+' remains an accepted backup value');
+    await app.click('session-restore');
+    assert.equal(app.node(currentTab+'-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.node(disclosure).open,true);assert.equal(app.node(currentTab+'-panel').hidden,false);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+    await app.click('export-data');assert.equal(JSON.parse(app.node('session-json').value).ui.editorTab,currentTab);
+    await app.click('close-session');await app.click('colors-tab');
+    await app.click('import-data');await app.pasteSession(incoming);await app.importParts(true,false);await app.click('session-restore');
+    assert.equal(app.node('colors-tab').getAttribute('aria-selected'),'true','information-only import preserves the current editor section');
+  }
+});
+
+test('copy validation reveals moved size fields and every nested disclosure before focusing the error',async()=>{
+  for(const [key,invalid] of [['width','999'],['imageBase','javascript:invalid']]) {
+    const app=harness();await app.input(key,invalid);await app.click('colors-tab');
+    const field=app.node(key),disclosures=[];
+    for(let parent=field.parentElement;parent;parent=parent.parentElement) if(parent.tagName==='DETAILS'){disclosures.push(parent);parent.removeAttribute('open');}
+    assert.ok(disclosures.length>=1,key+' is actually inside a disclosure in the real page');
+    await app.click('copy-signature');
+    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.activeElement,field,key+' receives focus');
+    assert.equal(field.getAttribute('aria-invalid'),'true');
+    for(let parent=field.parentElement;parent;parent=parent.parentElement) {
+      assert.equal(Boolean(parent.hidden),false,key+' has no hidden ancestor');
+      if(parent.tagName==='DETAILS') assert.equal(parent.open,true,key+' has no closed disclosure ancestor');
+    }
+    assert.equal(app.attempts.modern,0,'invalid fields prevent copying');
+  }
+});
+
 test('width and height sliders stay synchronized with numeric inputs, real dimensions, undo and import',async()=>{
   const app=harness();
   for(const [key,min,max] of [['width',280,420],['height',180,320]]) {
@@ -414,15 +561,15 @@ test('width and height sliders stay synchronized with numeric inputs, real dimen
   }
   await app.input('width-range',420); await app.finishEdit();
   assert.equal(Number(app.node('width').value),420); assert.equal(Number(app.node('width-range').value),420);
-  assert.match(app.node('dimension-label').textContent,/860 × 208/); assert.match(app.node('size-explanation').textContent,/860 × 208/);
+  assert.match(app.node('dimension-label').textContent,/860 × 208/);
   await app.input('height-range',320); await app.finishEdit();
   assert.equal(Number(app.node('height').value),320); assert.match(app.node('dimension-label').textContent,/860 × 320/);
   await app.input('width',280); await app.finishEdit(); assert.equal(Number(app.node('width-range').value),280);
   await app.click('undo-change'); assert.equal(Number(app.node('width-range').value),420);
   await app.click('redo-change'); assert.equal(Number(app.node('width-range').value),280);
-  await app.input('layout','stacked'); assert.match(app.node('size-explanation').textContent,/280 × 660/);
+  await app.input('layout','stacked'); assert.match(app.node('dimension-label').textContent,/280 × 660/);
   const before=app.node('signature-preview').innerHTML;
-  await app.input('width',''); assert.match(app.node('size-explanation').textContent,/Each value sets one panel/);
+  await app.input('width',''); assert.equal(app.node('width').getAttribute('aria-invalid'),'true');
   assert.equal(app.node('signature-preview').innerHTML,before,'invalid empty numeric input never replaces the last valid preview');
   await app.input('width',400); await app.input('height',300);
   await app.click('export-data'); const text=app.node('session-json').value;

@@ -61,12 +61,6 @@
     }
   } catch { themeNotice('Saved palettes could not be loaded. Your signature draft is still available.', true); }
   const status = $('status');
-  const previewCopy = document.createElement('button');
-  previewCopy.id = 'copy-preview';
-  previewCopy.type = 'button';
-  previewCopy.className = 'button button-primary';
-  previewCopy.textContent = 'Copy signature';
-  document.querySelector('.preview-actions > div').prepend(previewCopy);
   const imageButton = document.createElement('button');
   imageButton.id = 'export-image'; imageButton.type = 'button'; imageButton.className = 'button button-secondary image-export-button';
   imageButton.innerHTML = '<svg viewBox="0 0 18 18" width="17" height="17" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6.5" r="1.2" stroke="currentColor" stroke-width="1.2"/><path d="m3 14 4-4 2.5 2 3-4 2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Export image</span><span class="format-badge">HD</span>';
@@ -176,6 +170,20 @@
     const item = designById(id);
     if (item) applyStyle({ design: item.id }, item.name + ' layout applied.');
   }
+  document.querySelectorAll('[data-cycle-field]').forEach(button => button.addEventListener('click', () => {
+    const field = button.dataset.cycleField;
+    const options = Array.from($(field).options).filter(option => !option.disabled);
+    if (options.length < 2) return;
+    const step = button.dataset.cycleStep === '-1' ? -1 : 1;
+    const index = options.findIndex(option => option.value === draft[field]);
+    const next = options[index < 0 ? (step > 0 ? 0 : options.length - 1) : (index + step + options.length) % options.length];
+    if (field === 'design') applyDesign(next.value);
+    else applyStyle({ pattern: next.value }, next.textContent + ' artwork applied.');
+  }));
+  document.querySelectorAll('[data-arrangement]').forEach(button => button.addEventListener('click', () => {
+    if (draft.layout === button.dataset.arrangement) return;
+    applyStyle({ layout: button.dataset.arrangement }, button.textContent.trim() + ' arrangement applied.');
+  }));
   for (const [index, item] of designs.entries()) {
     const option = document.createElement('option'); option.value = item.id; option.textContent = item.name;
     $('design').append(option);
@@ -248,6 +256,9 @@
     $('canvas-customized').textContent = activePalette ? activePalette.name.toUpperCase() + ' PALETTE' : customized ? 'CUSTOM COLORS' : 'DESIGN DEFAULTS';
     if ($('custom-design-option')) $('custom-design-option').disabled = !draft.customLayout;
     if ($('custom-pattern-option')) $('custom-pattern-option').disabled = !draft.customPattern;
+    document.querySelectorAll('[data-cycle-field]').forEach(button => {
+      button.disabled = Array.from($(button.dataset.cycleField).options).filter(option => !option.disabled).length < 2;
+    });
     for (const { button, item } of designButtons) { const active = item.id === draft.design; button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-selected', active); }
     for (const { button, id, artwork } of patternButtons) {
       button.setAttribute('aria-pressed', String(id === draft.pattern));
@@ -275,7 +286,6 @@
       fitMiniatures();
     }
   }
-  $('customize-colors').addEventListener('click', () => { setTab('colors'); $('colors-tab').focus(); });
   $('swap-colors').addEventListener('click', () => applyStyle({ frontBackground: draft.backBackground, backBackground: draft.frontBackground }, 'Card colors swapped.'));
   $('reset-design').addEventListener('click', () => { const item = designById(draft.design); if (item) applyStyle(designPatch(item), item.name + ' colors and pattern restored. Your details are unchanged.'); });
   $('shuffle-design').addEventListener('click', () => {
@@ -376,15 +386,11 @@
   }
   function syncSizeControls() {
     for (const key of ['width', 'height']) $(key + '-range').value = draft[key];
-    const width = Number(draft.width), height = Number(draft.height);
-    const validSize = Number.isInteger(width) && width >= 280 && width <= 420 && Number.isInteger(height) && height >= 180 && height <= 320;
-    $('size-explanation').textContent = validSize ? (draft.layout === 'stacked'
-      ? 'Tall uses two panels: ' + width + ' × ' + (height * 2 + 20) + ' px in total.'
-      : 'Wide uses two panels: ' + (width * 2 + 20) + ' × ' + height + ' px in total.')
-      : 'Each value sets one panel. The preview shows the full signature size.';
+    document.querySelectorAll('[data-arrangement]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.arrangement === draft.layout)));
   }
   function save() {
     const note = document.querySelector('.rail-footer > span');
+    note.hidden = false;
     if (preserveUnreadableDraft) {
       $('save-status').textContent = 'Existing draft could not be read';
       note.textContent = 'Example not saved. Existing draft left in storage.';
@@ -404,6 +410,7 @@
       $('save-status').textContent = 'Saved in this browser';
       note.textContent = 'Draft saved in this browser.';
       note.classList.remove('storage-warning');
+      note.hidden = true;
     } catch {
       $('save-status').textContent = 'Storage unavailable — export data to keep a copy';
       note.textContent = 'Not saved. Use Export data to keep your signature and photo.';
@@ -412,6 +419,9 @@
     }
   }
   function setTab(name) {
+    if (name === 'layout') { name = 'design'; $('size-disclosure').setAttribute('open', ''); }
+    if (name === 'icons') { name = 'details'; $('icons-disclosure').setAttribute('open', ''); }
+    if (!['design','colors','details','photo'].includes(name)) name = 'design';
     activeTab = name;
     document.querySelectorAll('[data-editor-tab]').forEach(button => {
       const active = button.dataset.editorTab === name;
@@ -447,7 +457,6 @@
     }
     const keys = Object.keys(errors);
     $('copy-signature').setAttribute('aria-disabled', String(keys.length > 0));
-    previewCopy.setAttribute('aria-disabled', String(keys.length > 0));
     if (focus && keys.length) {
       const input = form.elements.namedItem(keys[0]);
       if (keys[0].startsWith('portrait')) {
@@ -457,7 +466,9 @@
       } else if (input) {
         const panel = input.closest('[data-editor-panel]');
         if (panel) setTab(panel.dataset.editorPanel);
-        input.closest('details')?.setAttribute('open', '');
+        for (let ancestor = input.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
+          if (ancestor.tagName === 'DETAILS') ancestor.setAttribute('open', '');
+        }
         ($(keys[0] + '-hex') || input).focus();
       }
       announce(errors[keys[0]], true);
@@ -483,7 +494,7 @@
     $('dimension-label').textContent = `${width} × ${height} px`;
     $('scale-label').textContent = scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%';
     $('preview-size-note').textContent = emailDevice === 'mobile'
-      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Try Layout → Tall for larger text.')
+      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Tall in Design for larger text.')
       : 'Preview your signature in a message. Export dimensions stay the same.';
     const column = document.querySelector('.preview-column');
     column.classList.toggle('is-tall', column.scrollHeight > innerHeight - 56);
@@ -608,7 +619,6 @@
     }
   }
   $('copy-signature').addEventListener('click', copySignature);
-  previewCopy.addEventListener('click', copySignature);
   $('download-html').addEventListener('click', () => {
     if (!validate(true)) return;
     let rendered;
