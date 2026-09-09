@@ -17,7 +17,7 @@
     imageBackground:'transparent', selectedThemeId:'', themeName:''});
   var own = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
   var informationFields = Object.freeze(['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl']);
-  var designFields = Object.freeze(['width','height','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize']);
+  var designFields = Object.freeze(['width','height','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize']);
   function fail(message) { throw new TypeError(message); }
   function object(value, label) {
     if (!value || typeof value !== 'object' || Array.isArray(value) ||

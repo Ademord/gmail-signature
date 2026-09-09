@@ -7,7 +7,7 @@ import {decodePNG, encodePNG} from './prepare-icons.mjs';
 // Coordinates are CSS pixels. Rasterize at 8×, then downsample in premultiplied
 // alpha to the 4× native asset size; transparent edges retain their real ink.
 const WIDTH = 76, HEIGHT = 182, NATIVE = 4, SAMPLE = 2, SCALE = NATIVE * SAMPLE;
-export const patternNames = Object.freeze(['orbit', 'studio', 'contour', 'prism', 'editorial', 'signal', 'galaxy', 'starlight', 'moonlight', 'frost', 'cutpaper', 'colorfield', 'chromatic', 'counterform', 'overprint', 'gesture']);
+export const patternNames = Object.freeze(['orbit', 'studio', 'contour', 'prism', 'editorial', 'signal', 'galaxy', 'starlight', 'moonlight', 'frost', 'cutpaper', 'colorfield', 'chromatic', 'counterform', 'overprint', 'gesture', 'neural', 'latent', 'tokenweave', 'resonance']);
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const rad = degrees => degrees * Math.PI / 180;
 
@@ -105,6 +105,89 @@ function canvas(width = WIDTH, height = HEIGHT, scale = SCALE) {
 }
 
 const painters = {
+  // AI-inspired studies use distinct visual structures: a branching graph,
+  // nested regions, interlaced sequences, and a continuous signal field.
+  // Inks are fixed; negative space and broad relationships survive reduction.
+  neural(c) {
+    const blue = '#486AAF', coral = '#CA654E', pale = '#E8C88D';
+    const curve = (start, a, b, end, width, ink) => {
+      const points = [];
+      for (let i = 0; i <= 64; i++) {
+        const t = i / 64, u = 1 - t;
+        points.push([u ** 3 * start[0] + 3 * u * u * t * a[0] + 3 * u * t * t * b[0] + t ** 3 * end[0],
+          u ** 3 * start[1] + 3 * u * u * t * a[1] + 3 * u * t * t * b[1] + t ** 3 * end[1]]);
+      }
+      c.path(points, width, ink);
+    };
+    curve([39, 176], [22, 120], [53, 77], [29, 12], 3.8, blue);
+    curve([37, 132], [35, 105], [6, 105], [12, 78], 3, blue);
+    curve([40, 91], [54, 77], [65, 77], [62, 49], 3, blue);
+    curve([36, 53], [27, 36], [9, 49], [8, 25], 2.2, blue);
+    curve([39, 139], [61, 134], [71, 117], [66, 102], 2.3, coral);
+    curve([12, 78], [5, 58], [40, 44], [62, 49], 1.4, '#91A5BC');
+    curve([8, 25], [20, 10], [59, 13], [62, 49], 1.4, '#91A5BC');
+    curve([12, 78], [17, 132], [73, 71], [66, 102], 1.4, '#91A5BC');
+    for (const [x, y, r, ink] of [[29, 12, 7, blue], [8, 25, 4.5, coral], [62, 49, 7.5, pale], [12, 78, 6, coral], [40, 91, 6.5, blue], [66, 102, 4.5, pale], [39, 139, 6.5, coral], [39, 176, 4.8, blue]]) {
+      c.circle(x, y, r, ink);
+      if (r > 6) c.circle(x, y, r * .35, '#F2E7CA');
+    }
+  },
+  latent(c) {
+    const inks = ['#6CACB6', '#47799D', '#575C91', '#A46D92', '#D58B78', '#EBC78C'];
+    for (let level = 0; level < inks.length; level++) {
+      const points = [], rx = 34 - level * 4.7, ry = 80 - level * 11.7;
+      for (let step = 0; step <= 180; step++) {
+        const a = step * Math.PI * 2 / 180;
+        const bend = 1 + .12 * Math.sin(a * 3 + .5) + .07 * Math.cos(a * 2 - level * .18);
+        points.push([39 + Math.cos(a) * rx * bend + Math.sin(a * 2) * (8 - level * .7) + level * .45,
+          90 + Math.sin(a) * ry * bend - level * 3.1]);
+      }
+      c.poly(points, inks[level]);
+    }
+    // Two displaced contours reveal the field's skew rather than outlining it
+    // with a mechanical target or adding unrelated particles.
+    const edge = [];
+    for (let i = 0; i <= 76; i++) {
+      const y = 17 + i * 1.95;
+      edge.push([22 + 11 * Math.sin(y / 30) + 5 * Math.cos(y / 17), y]);
+    }
+    c.path(edge, 1.35, '#EFE0AE');
+  },
+  tokenweave(c) {
+    const warp = ['#39798A', '#557BB6', '#8975A5'];
+    const weft = ['#CC654D', '#D6A75A', '#CC654D', '#DB9160', '#D6A75A'];
+    const centerX = (lane, y) => 14 + lane * 23 + 4.5 * Math.sin(y / 30 + lane * .35);
+    const centerY = (row, x) => 20 + row * 34 + 4 * Math.sin(x / 23 + row * .3);
+    const horizontal = (row, x0, x1) => {
+      const top = [], bottom = [];
+      for (let x = x0; x <= x1; x += .5) { top.push([x, centerY(row, x) - 6]); bottom.unshift([x, centerY(row, x) + 6]); }
+      c.poly([...top, ...bottom], weft[row]);
+    };
+    for (let row = 0; row < 5; row++) horizontal(row, 2, 74);
+    for (let lane = 0; lane < 3; lane++) {
+      const left = [], right = [];
+      for (let y = 5; y <= 179; y += 1) { left.push([centerX(lane, y) - 6, y]); right.unshift([centerX(lane, y) + 6, y]); }
+      c.poly([...left, ...right], warp[lane]);
+    }
+    for (let row = 0; row < 5; row++) for (let lane = 0; lane < 3; lane++) if ((row + lane) % 2 === 0) {
+      const x = centerX(lane, 20 + row * 34);
+      horizontal(row, x - 7.6, x + 7.6);
+    }
+    // Open ends and alternating overlap make sequences visible without labels.
+    c.rect(7, 173, 4, 6, '#E8C88D');
+    c.rect(33, 2, 4, 7, '#E8C88D');
+  },
+  resonance(c) {
+    for (let lane = 0; lane < 11; lane++) {
+      const points = [];
+      for (let y = 3; y <= 180; y += 1) {
+        const spread = 3.9 + 1.7 * Math.sin(y / 23);
+        const sweep = 13 * Math.sin(y / 30 + .25) + 3 * Math.cos(y / 13);
+        points.push([38 + (lane - 5) * spread + sweep + 2.6 * Math.sin(y / 18 + lane * .3), y]);
+      }
+      c.path(points, lane === 5 ? 2.9 : 1.7, lane < 5 ? '#487EAC' : lane === 5 ? '#DFB76C' : '#C86D68');
+    }
+  },
   // Six original compositions study cut edges, pigment, cadence, counterform,
   // print overlap, and brush weight. They are drawn for the 76×182 display size,
   // with a single composition per strip and no borrowed artwork or UI symbols.

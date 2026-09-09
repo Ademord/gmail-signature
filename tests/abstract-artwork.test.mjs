@@ -71,7 +71,7 @@ test('six distinct decodable portrait PNGs are public alongside every preserved 
     pixelHashes.add(hash);
     assert.ok(decoded.rgba.some((value,index) => index % 4 === 3 && value > 0), name + ' contains visible pixels');
   }
-  assert.equal(PUBLIC_FILES.length, 65);
+  assert.equal(PUBLIC_FILES.length, 69);
 });
 
 test('every abstract pattern supports all seven designs and photo sizes in wide and tall formats', () => {

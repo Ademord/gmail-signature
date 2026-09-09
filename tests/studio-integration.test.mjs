@@ -51,6 +51,9 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   assert.deepEqual(Object.fromEntries(['artworkPlacement','artworkScale','artworkPositionX','artworkPositionY'].map(key=>[key,restored.draft[key]])), {
     artworkPlacement:'auto',artworkScale:100,artworkPositionX:50,artworkPositionY:50
   });
+  assert.deepEqual(Object.fromEntries(['motifScale','motifPositionX','motifPositionY'].map(key=>[key,restored.draft[key]])), {
+    motifScale:100,motifPositionX:50,motifPositionY:0
+  });
   const again = session.parse(session.serialize(restored));
   assert.deepEqual(again, restored);
   assert.match(signature.render(again.draft), /href="mailto:zoe@example.com"/);
@@ -62,7 +65,7 @@ test('every named design round-trips photo bytes, independent pattern, legacy de
   const photo = 'data:image/png;base64,' + (await read('sig/icon-web.png')).toString('base64');
   for (const design of designs) {
     const draft = { ...legacyDraft, design, pattern: 'contour', customLayout:'', customPattern:'',
-      artworkPlacement:'auto',artworkScale:100,artworkPositionX:50,artworkPositionY:50,portraitData: photo,
+      artworkPlacement:'auto',artworkScale:100,artworkPositionX:50,artworkPositionY:50,motifScale:73,motifPositionX:18,motifPositionY:86,portraitData: photo,
       portraitUrl: 'https://example.com/cropped-photo.png?v=2', portraitShape: 'rounded', portraitSize: 96 };
     const input = { draft, themes: [savedTheme], ui: { ...oldUI, editorTab: 'photo' } };
     const text = session.serialize(input), restored = session.parse(text);
@@ -110,6 +113,7 @@ const expectedPublicFiles = [
   'sig/pattern-orbit.png', 'sig/pattern-studio.png', 'sig/pattern-contour.png',
   'sig/pattern-prism.png', 'sig/pattern-editorial.png', 'sig/pattern-signal.png',
   'sig/pattern-galaxy.png', 'sig/pattern-starlight.png', 'sig/pattern-moonlight.png', 'sig/pattern-frost.png',
+  'sig/pattern-neural.png', 'sig/pattern-latent.png', 'sig/pattern-tokenweave.png', 'sig/pattern-resonance.png',
   'sig/pattern-cutpaper.png', 'sig/pattern-colorfield.png', 'sig/pattern-chromatic.png',
   'sig/pattern-counterform.png', 'sig/pattern-overprint.png', 'sig/pattern-gesture.png',
   'sig/pattern-cutpaper-wide.png', 'sig/pattern-cutpaper-tall.png',
@@ -141,7 +145,7 @@ async function sourceFixture(t) {
 }
 
 test('actual public build retains the complete reviewed runtime and excludes test photos, private files, and docs', async t => {
-  assert.equal(expectedPublicFiles.length, 65);
+  assert.equal(expectedPublicFiles.length, 69);
   assert.deepEqual([...PUBLIC_FILES].sort(), [...expectedPublicFiles].sort());
   const root = await sourceFixture(t), { output } = await buildSite(root), files = [];
   async function walk(directory) {

@@ -13,6 +13,7 @@
     location: 'Zurich, Switzerland', tags: 'SOFTWARE · DATA · AI',
     width: 321, height: 208, layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
     artworkPlacement: 'auto', artworkScale: 100, artworkPositionX: 50, artworkPositionY: 50,
+    motifScale: 100, motifPositionX: 50, motifPositionY: 0,
     portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64,
     frontBackground: '#f3f0ea', backBackground: '#1c1c1c',
     websiteIcon: 'web', emailIcon: 'mail', phoneIcon: 'phone', linkedinIcon: 'linkedin', locationIcon: 'pin',
@@ -25,7 +26,7 @@
   var sans = 'Arial,Helvetica,sans-serif', mono = "'Courier New',Courier,monospace";
   var roleMono = "'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace";
   var icons = Object.freeze({web:'Globe', mail:'Envelope', phone:'Phone', linkedin:'LinkedIn', pin:'Location pin', none:'None'});
-  var patterns = Object.freeze({auto:'Design default', cutpaper:'Cut paper', colorfield:'Color field', chromatic:'Chromatic', counterform:'Counterform', overprint:'Overprint', gesture:'Gesture', dots:'Dots', orbit:'Orbits', studio:'Shapes', contour:'Contours', prism:'Ribbons', editorial:'Rules', signal:'Grid', galaxy:'Galaxy', starlight:'Starlight', moonlight:'Moonlight', frost:'Frost', custom:'Custom artwork', none:'None'});
+  var patterns = Object.freeze({auto:'Design default', cutpaper:'Cut paper', colorfield:'Color field', chromatic:'Chromatic', counterform:'Counterform', overprint:'Overprint', gesture:'Gesture', neural:'Neural bloom', latent:'Latent field', tokenweave:'Token weave', resonance:'Resonance', dots:'Dots', orbit:'Orbits', studio:'Shapes', contour:'Contours', prism:'Ribbons', editorial:'Rules', signal:'Grid', galaxy:'Galaxy', starlight:'Starlight', moonlight:'Moonlight', frost:'Frost', custom:'Custom artwork', none:'None'});
   var designs = Object.freeze([
     {id:'original', name:'Original', description:'The original two-card signature, with its quiet dot field.', frontBackground:'#f3f0ea', backBackground:'#1c1c1c', accent:'#c8362a', pattern:'auto'},
     {id:'orbit', name:'Orbit', description:'Open space, orbital arcs and a floating typographic composition.', frontBackground:'#edf2fb', backBackground:'#152849', accent:'#496aca', pattern:'auto'},
@@ -104,6 +105,9 @@
     result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 75, 150);
     result.artworkPositionX = dimension(input.artworkPositionX, defaults.artworkPositionX, 0, 100);
     result.artworkPositionY = dimension(input.artworkPositionY, defaults.artworkPositionY, 0, 100);
+    result.motifScale = dimension(input.motifScale, defaults.motifScale, 25, 100);
+    result.motifPositionX = dimension(input.motifPositionX, defaults.motifPositionX, 0, 100);
+    result.motifPositionY = dimension(input.motifPositionY, defaults.motifPositionY, 0, 100);
     result.portraitSize = dimension(input.portraitSize, defaults.portraitSize, 40, 96);
     ['accent', 'frontBackground', 'backBackground'].forEach(function (key) { result[key] = result[key].toLowerCase(); });
     result.imageBase = result.imageBase.replace(/\/+$/, '');
@@ -408,7 +412,7 @@
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320],['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100]].forEach(function (rule) {
+    [['width',280,420],['height',180,320],['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
         String(raw).trim() === '' || !Number.isInteger(Number(raw)) || Number(raw) < rule[1] || Number(raw) > rule[2])) {
@@ -513,11 +517,11 @@
   function portraitSource(v, options) {
     return options && (options.preview === true || options.allowPortraitData === true) ? v.portraitData || v.portraitUrl : v.portraitUrl;
   }
-  function mosaic(recipe, maxWidth, maxHeight) {
+  function mosaic(recipe, maxWidth, maxHeight, exactSize) {
     var cols = recipe.rows[0].length, count = recipe.rows.length, unit = Math.min(maxWidth / cols,maxHeight / count);
     // At least one email pixel per cell. A large portrait can replace the artwork.
     if (unit < 1) return '';
-    var width = Math.floor(cols * unit), height = Math.floor(count * unit), columns = '', rows = '';
+    var width = exactSize ? exactSize.width : Math.floor(cols * unit), height = exactSize ? exactSize.height : Math.floor(count * unit), columns = '', rows = '';
     for (var col = 0; col < cols; col++) columns += '<col width="' + (Math.round((col + 1) * width / cols) - Math.round(col * width / cols)) + '">';
     for (var y = 0; y < count;) {
       var repeat = 1;
@@ -534,6 +538,26 @@
     }
     return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="' + width + '" height="' + height + '" style="border-collapse:collapse;table-layout:fixed;width:' + width + 'px;height:' + height + 'px;font-size:0;line-height:0"><colgroup>' + columns + '</colgroup>' + rows + '</table>';
   }
+  function motifGeometry(v, p) {
+    var pattern = selectedPattern(v), availableW = p.dotW, availableH = Math.max(0,p.dotH - (hasPortrait(v) ? v.portraitSize + 10 : 0));
+    if (isFlow(v) || pattern === 'none' || availableW < 1 || availableH < 1) return {width:0,height:0,x:0,y:0,availableWidth:availableW,availableHeight:availableH};
+    var width, height;
+    if (pattern === 'custom') {
+      var recipe = parseCustomPattern(v.customPattern), cols = recipe.rows[0].length, count = recipe.rows.length;
+      var unit = Math.min(availableW / cols,availableH / count);
+      if (unit < 1) return {width:0,height:0,x:0,y:0,availableWidth:availableW,availableHeight:availableH};
+      unit = Math.max(1,unit * v.motifScale / 100);
+      width = Math.floor(cols * unit); height = Math.floor(count * unit);
+    } else {
+      height = Math.max(1,Math.floor(Math.min(availableH,Math.floor(availableW * 182 / 76)) * v.motifScale / 100));
+      width = Math.max(1,Math.round(height * 76 / 182));
+    }
+    return {width:width,height:height,x:Math.round((availableW - width) * v.motifPositionX / 100),y:Math.round((availableH - height) * v.motifPositionY / 100),availableWidth:availableW,availableHeight:availableH};
+  }
+  function motifBounds(values) {
+    var v = compositionValues(normalize(values));
+    return motifGeometry(v,plan(v));
+  }
   function decoration(v, p, assetBase, options) {
     var pattern = isFlow(v) ? 'none' : selectedPattern(v), source = portraitSource(v, options), rows = '', remaining = p.dotH;
     if (source) {
@@ -549,14 +573,21 @@
       rows += spacer(v.portraitSize + (pattern !== 'none' && remaining > 0 ? 10 : 0));
     }
     if (pattern !== 'none' && remaining > 0) {
-      if (pattern === 'custom') {
-        var artwork = mosaic(parseCustomPattern(v.customPattern),p.dotW,remaining);
-        return rows + (artwork ? '<tr><td align="center" style="padding:0;font-size:0;line-height:0">' + artwork + '</td></tr>' : '');
+      var bounds = motifGeometry(v,p), neutral = v.motifScale === 100 && v.motifPositionX === 50 && v.motifPositionY === 0;
+      if (!bounds.width || !bounds.height) return rows;
+      function place(artwork) {
+        if (!artwork) return '';
+        if (neutral) return '<tr><td align="center" style="padding:0;font-size:0;line-height:0">' + artwork + '</td></tr>';
+        return '<tr><td align="left" style="padding:' + bounds.y + 'px ' + (p.dotW - bounds.width - bounds.x) + 'px ' + (remaining - bounds.height - bounds.y) + 'px ' + bounds.x + 'px;font-size:0;line-height:0">' + artwork + '</td></tr>';
       }
-      var h = Math.min(remaining, Math.floor(p.dotW * 182 / 76)), w = Math.max(1, Math.round(h * 76 / 182));
+      if (pattern === 'custom') {
+        var artwork = mosaic(parseCustomPattern(v.customPattern),neutral ? p.dotW : bounds.width,neutral ? remaining : bounds.height,neutral ? null : bounds);
+        return rows + place(artwork);
+      }
+      var h = bounds.height, w = bounds.width;
       var file = pattern === 'dots' ? 'dots.png' : 'pattern-' + pattern + '.png';
-      rows += '<tr><td align="center" style="padding:0;font-size:0;line-height:0"><img src="' + escape(assetBase + '/' + file) +
-        '" width="' + w + '" height="' + h + '" alt="" style="display:block;width:' + w + 'px;height:' + h + 'px;border:0"></td></tr>';
+      rows += place('<img src="' + escape(assetBase + '/' + file) +
+        '" width="' + w + '" height="' + h + '" alt="" style="display:block;width:' + w + 'px;height:' + h + 'px;border:0">');
     }
     return rows;
   }
@@ -729,5 +760,5 @@
     if (v.tags) lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, validate:validate, render:render, plainText:plainText});
+  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, validate:validate, render:render, plainText:plainText});
 }));

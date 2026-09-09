@@ -1,6 +1,12 @@
-# Signature editor — progress and handoff
+# Progress
 
-Updated: 2026-09-09. Published: simpler choosing and editing, guided by the user's purpose-led methodology reference, with the existing Plum default and warm stone editor. Keep the existing public repository/Pages audience; do not rewrite history or change visibility.
+## Artwork controls milestone — ready for release, then stopped
+
+The requested milestone is complete: visible side-artwork size/position controls, four AI-inspired patterns, and a separately selectable Classic red/Plum editor appearance. The user requested a documented checkpoint, push, and stop; no further feature implementation is running.
+
+Final local suite:239 tests,238 passed,0 failures,1 expected Windows symlink skip. Runtime601766014a69fa59; strict build69files. Desktop and391px phone journeys, Undo/reload, photo-space reservation, unchanged signature fields across appearance changes, and1284×1744PNG generation were checked in Codex's browser. Neutral legacy artwork markup remains byte-identical. CI/Pages tracks delivery for this checkpoint's commit.
+
+[Complete scoped evidence and resume limits](docs/reviews/artwork-controls-2026-09-09.md). Built-in PNG shape/ink edits require replacement via drawing or AI; received Gmail/Outlook remains unverified. Stop after push and deployment verification; wait for a new request.
 
 ## Interaction simplification — 9 September 2026
 

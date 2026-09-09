@@ -6,25 +6,25 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=58e82c029a055915">
-  <link rel="stylesheet" href="portrait.css?v=58e82c029a055915">
-  <link rel="stylesheet" href="ai-extension.css?v=58e82c029a055915">
-  <link rel="stylesheet" href="library.css?v=58e82c029a055915">
-  <link rel="stylesheet" href="artwork.css?v=58e82c029a055915">
-  <script src="portrait-core.js?v=58e82c029a055915" defer></script>
-  <script src="signature-core.js?v=58e82c029a055915" defer></script>
-  <script src="editor-history.js?v=58e82c029a055915" defer></script>
-  <script src="signature-image.js?v=58e82c029a055915" defer></script>
-  <script src="session-data.js?v=58e82c029a055915" defer></script>
-  <script src="session-controls.js?v=58e82c029a055915" defer></script>
-  <script src="portrait-controls.js?v=58e82c029a055915" defer></script>
-  <script src="design-collections.js?v=58e82c029a055915" defer></script>
-  <script src="ai-extension-core.js?v=58e82c029a055915" defer></script>
-  <script src="ai-extension-controls.js?v=58e82c029a055915" defer></script>
-  <script src="library-controls.js?v=58e82c029a055915" defer></script>
-  <script src="artwork-core.js?v=58e82c029a055915" defer></script>
-  <script src="artwork-controls.js?v=58e82c029a055915" defer></script>
-  <script src="app.js?v=58e82c029a055915" defer></script>
+  <link rel="stylesheet" href="editor.css?v=601766014a69fa59">
+  <link rel="stylesheet" href="portrait.css?v=601766014a69fa59">
+  <link rel="stylesheet" href="ai-extension.css?v=601766014a69fa59">
+  <link rel="stylesheet" href="library.css?v=601766014a69fa59">
+  <link rel="stylesheet" href="artwork.css?v=601766014a69fa59">
+  <script src="portrait-core.js?v=601766014a69fa59" defer></script>
+  <script src="signature-core.js?v=601766014a69fa59" defer></script>
+  <script src="editor-history.js?v=601766014a69fa59" defer></script>
+  <script src="signature-image.js?v=601766014a69fa59" defer></script>
+  <script src="session-data.js?v=601766014a69fa59" defer></script>
+  <script src="session-controls.js?v=601766014a69fa59" defer></script>
+  <script src="portrait-controls.js?v=601766014a69fa59" defer></script>
+  <script src="design-collections.js?v=601766014a69fa59" defer></script>
+  <script src="ai-extension-core.js?v=601766014a69fa59" defer></script>
+  <script src="ai-extension-controls.js?v=601766014a69fa59" defer></script>
+  <script src="library-controls.js?v=601766014a69fa59" defer></script>
+  <script src="artwork-core.js?v=601766014a69fa59" defer></script>
+  <script src="artwork-controls.js?v=601766014a69fa59" defer></script>
+  <script src="app.js?v=601766014a69fa59" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -34,6 +34,7 @@
       <span>Signature<span class="brand-descriptor">STUDIO</span></span>
     </a>
     <div class="header-actions">
+      <details id="appearance-menu" class="appearance-menu"><summary id="appearance-toggle">Appearance</summary><div class="appearance-options"><p>Editor appearance</p><div role="group" aria-label="Editor appearance"><button id="skin-red" type="button" data-editor-skin="red" aria-pressed="true"><span class="skin-swatch skin-red" aria-hidden="true"></span>Classic red</button><button id="skin-plum" type="button" data-editor-skin="plum" aria-pressed="false"><span class="skin-swatch skin-plum" aria-hidden="true"></span>Plum</button></div><small>Only changes the editor, not your signature.</small><p id="appearance-notice" role="status" hidden></p></div></details>
       <span class="save-state" id="save-status" role="status"><span class="status-dot" aria-hidden="true"></span>Draft saved</span>
       <button class="button button-quiet help-button" id="install-help" type="button" aria-label="How to install your signature">
         <svg viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.4"/><path d="M8.1 7.5a2 2 0 0 1 3.8.9c0 1.4-1.9 1.6-1.9 2.9M10 13.9v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -80,17 +81,25 @@
             <legend>Artwork</legend>
             <div class="field"><label class="sr-only" for="pattern">Artwork</label><div class="cycle-control"><button id="previous-pattern" class="cycle-button" type="button" data-cycle-field="pattern" data-cycle-step="-1" aria-label="Previous artwork"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><select id="pattern" name="pattern" aria-describedby="pattern-note"></select><button id="next-pattern" class="cycle-button" type="button" data-cycle-field="pattern" data-cycle-step="1" aria-label="Next artwork"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>
 
-            <div class="design-link-row"><button type="button" class="text-button" data-open-library="artwork">Browse artwork</button><button type="button" class="text-button" data-edit-artwork>Edit artwork</button></div>
-            <details class="artwork-refinements"><summary>Artwork placement</summary>
+            <div class="design-link-row"><button type="button" class="text-button" data-open-library="artwork">Browse artwork</button></div>
+            <div id="artwork-adjustments" class="artwork-refinements" role="group" aria-label="Adjust artwork">
+              <h3>Adjust artwork</h3>
               <p class="field-note" id="pattern-note">Design default follows your composition.</p>
-              <div class="field"><label for="artworkPlacement">Placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Automatic</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div>
+              <div id="artwork-placement-field" class="field"><label for="artworkPlacement">Placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Automatic</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div>
               <div id="artwork-flow-settings" hidden>
                 <div class="range-field"><label for="artworkScale">Scale <output id="artworkScale-value" for="artworkScale">100%</output></label><input id="artworkScale" name="artworkScale" type="range" min="75" max="150" step="1" value="100"></div>
                 <div class="range-field"><label for="artworkPositionX">Horizontal position <output id="artworkPositionX-value" for="artworkPositionX">50%</output></label><input id="artworkPositionX" name="artworkPositionX" type="range" min="0" max="100" step="1" value="50"></div>
                 <div class="range-field"><label for="artworkPositionY">Vertical position <output id="artworkPositionY-value" for="artworkPositionY">50%</output></label><input id="artworkPositionY" name="artworkPositionY" type="range" min="0" max="100" step="1" value="50"></div>
                 <p id="artwork-position-note" class="field-note">The artwork fits one edge exactly. Change Scale to move it along that edge.</p>
               </div>
-            </details>
+              <div id="artwork-motif-settings">
+                <div class="range-field"><label for="motifScale">Size <output id="motifScale-value" for="motifScale">100%</output></label><input id="motifScale" name="motifScale" type="range" min="25" max="100" step="1" value="100"></div>
+                <div class="range-field"><label for="motifPositionX">Horizontal position <output id="motifPositionX-value" for="motifPositionX">50%</output></label><input id="motifPositionX" name="motifPositionX" type="range" min="0" max="100" step="1" value="50"></div>
+                <div class="range-field"><label for="motifPositionY">Vertical position <output id="motifPositionY-value" for="motifPositionY">0%</output></label><input id="motifPositionY" name="motifPositionY" type="range" min="0" max="100" step="1" value="0"></div>
+                <p id="motif-position-note" class="field-note">Reduce Size to make room to move the artwork.</p>
+              </div>
+            </div>
+            <div class="artwork-create"><span>Create artwork</span><div class="design-link-row"><button type="button" class="text-button" data-edit-artwork>Draw your own</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div></div>
           </fieldset>
           <details id="size-disclosure" class="editor-disclosure">
             <summary>Size &amp; arrangement</summary>
@@ -218,10 +227,10 @@
       </section>
       <section id="library-panel-artwork" role="tabpanel" aria-labelledby="library-tab-artwork" data-library-panel="artwork" hidden>
         <h3 class="library-section-title">Abstract studies</h3>
-        <p class="library-note">Choose artwork, then adjust its placement in Design. Draw a side detail to make your own shapes.</p>
-        <div class="design-link-row"><button type="button" class="text-button" data-edit-artwork>Edit shapes and colors</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div>
+        <p class="library-note">Choose artwork, then use Adjust artwork in Design to resize and position it.</p>
+        <div class="design-link-row"><button type="button" class="text-button" data-edit-artwork>Draw your own</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div>
         <div id="abstract-pattern-choices" class="pattern-choices abstract-pattern-choices" role="group" aria-label="Choose abstract artwork"></div>
-        <h3 class="library-section-title library-section-divider">Graphic &amp; fantasy</h3>
+        <h3 class="library-section-title library-section-divider">Graphic &amp; AI-inspired</h3>
         <div id="pattern-choices" class="pattern-choices" role="group" aria-label="Choose a graphic pattern"></div>
       </section>
     </div>

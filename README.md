@@ -1,10 +1,10 @@
 # Signature Studio
 
-A browser-local email signature editor with seven layouts, flowing abstract artwork, eighteen color palettes, private photo cropping, and HTML or high-resolution PNG export. Adjust artwork placement or draw an editable side detail, then export the result. New drafts start with the **Avery Morgan** example in **Plum** and stay in your browser.
+A browser-local email signature editor with seven layouts, flowing abstract and AI-inspired artwork, eighteen color palettes, private photo cropping, and HTML or high-resolution PNG export. Resize and position the artwork, or draw an editable side detail, then export the result. New drafts start with the **Avery Morgan** example in **Plum** and stay in your browser.
 
 [Open the published demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml) · [Design roadmap](docs/DESIGN-ROADMAP.md)
 
-![Signature Studio with four editor tabs, direct layout and artwork controls, and the Plum palette](docs/interaction-studio.jpg)
+![Visible artwork adjustments and editor Appearance](docs/artwork-controls.jpg)
 
 This README describes the implemented source. See [PROGRESS.md](PROGRESS.md) for the latest browser, release, and email checks; feature availability does not imply that every release check has passed. Browser verification uses the Codex in-app browser. Gmail paste/send verification remains blocked on an authenticated send test.
 
@@ -24,7 +24,7 @@ The server serves only the app, artwork, and detector files listed in `scripts/p
 
 ## Choose a design
 
-The editor has four tabs: **Design**, **Colors**, **Details**, and **Photo**. Warm stone surfaces and plum controls stay independent of your signature's palette. In **Design**, use the arrows beside the layout or artwork dropdown to try the previous or next available choice. Each click moves one enabled entry, wraps at the ends, and creates one Undo step. The native dropdowns remain available for direct selection.
+The editor has four tabs: **Design**, **Colors**, **Details**, and **Photo**. The header's **Appearance** menu selects **Classic red** or **Plum** for the editor. Classic red is the default, with red controls and a dark canvas; Plum uses violet controls and a light stone canvas. This browser preference is saved separately from signature drafts and does not change your palette, exported HTML, draft links, or session backups. New signatures still start with the **Plum signature palette**. In **Design**, use the arrows beside the layout or artwork dropdown to try the previous or next available choice. Each click moves one enabled entry, wraps at the ends, and creates one Undo step. The native dropdowns remain available for direct selection.
 
 **Browse designs** opens the **Layouts** and **Artwork** library with larger previews and descriptions. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
 
@@ -40,7 +40,9 @@ The editor has four tabs: **Design**, **Colors**, **Details**, and **Photo**. Wa
 
 A layout change preserves your details, selected colors, and pattern. Choose artwork separately, use **None** to remove it, or use **Design default** to follow the composition's default motif. The quiet footer below the editing panels keeps **Surprise me**, **Extend with AI**, **Reset design**, and **Load example** available from every tab. **Surprise me** combines a layout, palette, and pattern; **Undo** returns to the previous choice. **Reset design** explicitly restores the selected composition's default palette and pattern. **Load example** restores the Avery Morgan example.
 
-The six abstract studies use artwork composed for the whole Wide or Tall signature. With **Artwork placement → Automatic**, their shapes flow across the card while names and contacts remain separate text. Choose **Across signature** explicitly or **Side detail** for the smaller motif. Flowing artwork has **Scale** (75–150%), **Horizontal position**, and **Vertical position** (0–100%) controls. Position controls enable when the scaled image has room to move along that axis. Other patterns and custom drawn grids use a side detail.
+**Design → Adjust artwork** stays visible beneath the artwork choice. Side motifs—including **Dots**, **Orbits**, **Grid**, and custom drawings—have **Size** (25–100%), **Horizontal position**, and **Vertical position** (0–100%). Size is a percentage of the largest artwork that fits the current side area; it does not change the signature dimensions. Reduce Size to make room to move an artwork along an axis that already fits exactly. An unavailable axis is disabled.
+
+The six abstract studies use artwork composed for the whole Wide or Tall signature. With **Adjust artwork → Placement → Automatic**, their shapes flow across the card while names and contacts remain separate text. Choose **Across signature** explicitly or **Side detail** for the smaller motif. Flowing artwork has **Scale** (75–150%), **Horizontal position**, and **Vertical position** (0–100%) controls. Position controls enable when the scaled image has room to move along that axis. Other patterns and custom drawn grids use a side detail.
 
 | Abstract study | Visual direction |
 | --- | --- |
@@ -53,9 +55,20 @@ The six abstract studies use artwork composed for the whole Wide or Tall signatu
 
 These are original procedural compositions, informed by the economy of cut forms and postwar abstraction. References: [MoMA’s Matisse cut-outs](https://www.moma.org/calendar/exhibitions/1429) and [Kunsthaus’s Art after 1945](https://kunsthaus.ch/en/sammlung/nachkriegskunst/).
 
+Four additional procedural motifs draw on AI-related visual ideas. They use fixed-ink transparent PNGs, fit the side area, and share the same Size and position controls:
+
+| Motif | Visual direction |
+| --- | --- |
+| Neural bloom | Curving branches and connected nodes |
+| Latent field | Nested, displaced regions of color |
+| Token weave | Interlaced sequences with alternating overlap |
+| Resonance | A continuous field of converging waves |
+
+These are AI-inspired graphic studies generated by the project’s geometry code; selecting one does not call an AI service. Their shapes and ink colors are fixed. Size and position change their placement; to change the shapes or inks, replace the motif with a custom drawing or an AI recipe through the workflows below.
+
 ### Make your own artwork
 
-**Design → Edit artwork** opens a separate editor. Start with Cut forms, Interlock, Color blocks, Counterspace, Offset planes, or Rhythm. Change the inks, paint or erase cells, mirror the shapes, or try another variation. Undo and Redo inside the editor affect the study; **Apply** changes your signature in one step that the main Undo can reverse. Cancel keeps the signature as it was.
+**Design → Draw your own** opens a separate editor; an existing custom pattern uses **Edit your drawing**. Start with Cut forms, Interlock, Color blocks, Counterspace, Offset planes, or Rhythm. Change the inks, paint or erase cells, mirror the shapes, or try another variation. Undo and Redo inside the editor affect the study; **Apply** changes your signature in one step that the main Undo can reverse. Cancel keeps the signature as it was.
 
 The drawing editor makes a **side detail**. It does not edit the flowing PNG background. The original PNG studies have fixed inks; drawing starts a separate shape study. Existing custom artwork—including a recipe brought back from AI—opens with its colors and grid intact. The signature preview shows its fit with your current composition and photo.
 
@@ -135,11 +148,11 @@ Expand **Saved palettes** to choose your own saved colors. Older Spruce sessions
 
 Saved palettes contain **only a name and three colors**. They persist in this browser and preserve the current layout, artwork, photo, and contacts when applied. Draft links include the active choices; session JSON also includes saved palettes. Existing backups retain their compatible `themes` field name.
 
-The sixteen generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
+The twenty generated decorative motifs and Original's dot field use fixed inks and transparent PNGs. Their colors do not change with the accent. Arbitrary custom colors can obscure some decorative strokes. Choose another pattern or **None** when needed. The AI helper also accepts small custom pixel-art recipes, rendered as native email table cells without requiring a new image host.
 
 Open **Details → Contact icons** to select a globe, envelope, phone, LinkedIn mark, location pin, or **None** per contact row. The disclosure starts closed. None hides only the icon. The renderer chooses cream or charcoal artwork for the actual surface, using a calculated 3:1 contrast threshold. Custom icon uploads are planned.
 
-Publish all `sig/` assets, including the icons, sixteen motifs, and twelve Wide/Tall abstract backgrounds. Regenerate them with:
+Publish all `sig/` assets, including the icons, twenty motifs, and twelve Wide/Tall abstract backgrounds. Regenerate them with:
 
 ```sh
 node scripts/prepare-icons.mjs
@@ -149,7 +162,7 @@ node scripts/prepare-flow-patterns.mjs
 node scripts/prepare-flow-patterns.mjs --check
 ```
 
-The motif check covers sixteen 304 × 728 PNGs, equivalent to 4× detail at 76 × 182 px. The flow check covers twelve separate `*-wide.png` and `*-tall.png` backgrounds. Checks inspect real image bytes and deterministic regeneration. The original `dots.png` remains a separate bundled asset.
+The motif check covers twenty 304 × 728 PNGs, equivalent to 4× detail at 76 × 182 px. The flow check covers twelve separate `*-wide.png` and `*-tall.png` backgrounds. Checks inspect real image bytes and deterministic regeneration. The original `dots.png` remains a separate bundled asset.
 
 ## Extend a section with your own AI
 
@@ -179,7 +192,7 @@ On another browser or device, open **Backup & restore → Import data**, choose 
 | Design only | Layout, colors, artwork placement/recipe, icons, photo shape/size, image base, saved palettes, and view settings | Current identity, wording, contacts, and photo data/URL |
 | Both | The complete signature and imported design settings | Existing saved palettes are retained and merged |
 
-Both options start selected; at least one is required. Imported palettes are merged when Design is selected: duplicates are reused and conflicting names receive an imported suffix. The full file and resulting combined signature must validate before anything changes. Older plain draft JSON is accepted too, with defaults for the new artwork controls. Recognizable pasted code fences, copied Markdown URL wrappers, and an escaped `@` in an email can be cleaned; the dialog reports those repairs and still applies normal validation.
+Both options start selected; at least one is required. Imported palettes are merged when Design is selected: duplicates are reused and conflicting names receive an imported suffix. The full file and resulting combined signature must validate before anything changes. Older plain draft JSON is accepted too. The three optional side-motif fields default to the previous fitted size, centered horizontally and top-aligned, so existing drafts retain their appearance until adjusted. Recognizable pasted code fences, copied Markdown URL wrappers, and an escaped `@` in an email can be cleaned; the dialog reports those repairs and still applies normal validation.
 
 Older sessions that selected the former Layout tab open **Design → Size & arrangement**; former Icons sessions open **Details → Contact icons**. Their signature fields and rendered output retain the existing format.
 
@@ -240,7 +253,7 @@ npm run build
 
 Tests cover validation and dimensions, design rendering, undo/redo, photo crop geometry and file limits, icons, PNG export, session restore, storage recovery, and the public-file boundary. The seven exported AI examples have also been checked through proposal validation and actual rendering. Detector checks have used a NASA portrait fixture and a multi-face composite; browser smart cropping has been observed. [PROGRESS.md](PROGRESS.md) records exact current evidence, test counts, failures, release status, and received-email coverage.
 
-The build replaces `dist` with the 65 files in `scripts/public-files.mjs`, including the manual artwork editor, twelve flowing backgrounds, AI helper, and licensed detector. Nineteen editor script/style links carry the runtime version. Documentation, test fixtures, and repository metadata are excluded.
+The build replaces `dist` with the 69 files in `scripts/public-files.mjs`, including the manual artwork editor, twelve flowing backgrounds, AI helper, and licensed detector. Nineteen editor script/style links carry the runtime version. Documentation, test fixtures, and repository metadata are excluded.
 
 | File | Purpose |
 | --- | --- |

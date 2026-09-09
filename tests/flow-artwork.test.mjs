@@ -205,8 +205,8 @@ test('the real public server delivers all twelve flow images as their exact revi
   }
 });
 
-test('35-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
-  assert.equal(Object.keys(core.defaults).length,35);
+test('38-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
+  assert.equal(Object.keys(core.defaults).length,38);
   for(const key of fields) {assert.ok(codec.designFields.includes(key),key);assert.ok(!codec.informationFields.includes(key),key);}
   const current={draft:draft({nameLine1:'Current',pattern:'gesture',artworkPlacement:'motif',artworkScale:75,artworkPositionX:2,artworkPositionY:4}),themes:[],ui:{}};
   const incoming={draft:draft({nameLine1:'Incoming',pattern:'overprint',artworkPlacement:'flow',artworkScale:150,artworkPositionX:97,artworkPositionY:81}),themes:[],ui:{}};

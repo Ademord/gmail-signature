@@ -22,7 +22,7 @@
     document.body.append(dialog);
     const $ = id => dialog.querySelector('#' + id);
     let section = 'colors', proposal = null, opener = null, generation = 0;
-    const fieldLabels = {frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',layout:'Arrangement',width:'Panel width',height:'Panel height',pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork zoom',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'};
+    const fieldLabels = {frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',layout:'Arrangement',width:'Panel width',height:'Panel height',pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork zoom',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',motifScale:'Side artwork size',motifPositionX:'Side artwork horizontal position',motifPositionY:'Side artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'};
     function describeChange(key,value) {
       if (key === 'customPattern') return 'New pixel artwork';
       if (key === 'customLayout') { const recipe = JSON.parse(value); return recipe.composition + ' · ' + recipe.font + ' type · ' + recipe.align + ' aligned'; }
@@ -36,7 +36,7 @@
     }
     const ideas = {
       design:['A midnight galaxy with tiny gold stars','A pastel moon with a magical girl feel','An icy throne with blue crystal accents'],
-      artwork:['Bold cut-paper shapes with generous negative space','Interlocking color bands in cobalt and ochre','Overlapping translucent planes in vermilion and blue'],
+      artwork:['Neural bloom at 70% size, centered in the side area','An abstract token weave in cobalt and warm coral','A quiet latent field with generous negative space'],
       layout:['A centered editorial layout','A compact technical layout','A bold serif name in a wide layout'],
       colors:['Midnight blue and pale gold','Lilac, blush and moonlight','Icy blue and deep indigo'],
       details:['Make the example role sound clear and concise','Give the example a friendly creative tone','Simplify the example subtitle and tags'],

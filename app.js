@@ -4,6 +4,25 @@
   const core = window.SignatureCore;
   const $ = (id) => document.getElementById(id);
   const form = $('editor-form');
+  const appearanceKey = 'signature-studio:appearance:v1';
+  function setAppearance(skin, persist = false) {
+    const value = skin === 'plum' ? 'plum' : 'red';
+    document.documentElement.dataset.editorSkin = value;
+    for (const button of document.querySelectorAll('button[data-editor-skin]')) button.setAttribute('aria-pressed', String(button.dataset.editorSkin === value));
+    if (persist) {
+      try { localStorage.setItem(appearanceKey,value); $('appearance-notice').hidden = true; }
+      catch { $('appearance-notice').textContent = 'Applied for this visit. Browser storage is unavailable.'; $('appearance-notice').hidden = false; }
+    }
+  }
+  let savedAppearance = 'red';
+  try { savedAppearance = localStorage.getItem(appearanceKey); } catch {}
+  setAppearance(savedAppearance);
+  const closeAppearance = () => { $('appearance-menu').open = false; $('appearance-toggle').focus(); };
+  for (const button of document.querySelectorAll('button[data-editor-skin]')) button.addEventListener('click', () => {
+    setAppearance(button.dataset.editorSkin,true);
+    if ($('appearance-notice').hidden) closeAppearance();
+  });
+  $('appearance-menu').addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeAppearance(); } });
   const iconKeys = ['websiteIcon', 'emailIcon', 'phoneIcon', 'linkedinIcon', 'locationIcon'];
   for (const key of iconKeys) {
     for (const [value, label] of Object.entries(core.icons)) {
@@ -26,7 +45,7 @@
   // Fresh drafts use the new palette; legacy normalization keeps its original defaults.
   const newDraft = () => ({...core.defaults,...Object.fromEntries(colorKeys.map(key => [key,plumPalette[key]]))});
   const flowingPatterns = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
-  const artworkNumbers = ['artworkScale','artworkPositionX','artworkPositionY'];
+  const artworkNumbers = ['artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
   const hexColor = /^#[0-9a-f]{6}$/i;
   const presets = [
     { id: 'preset-original', name: 'Original', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -240,14 +259,20 @@
     const canFlow = flowingPatterns.includes(draft.pattern), isFlow = canFlow && draft.artworkPlacement !== 'motif';
     $('artwork-flow-option').disabled = !canFlow;
     $('artworkPlacement').value = draft.artworkPlacement;
+    $('artwork-placement-field').hidden = !canFlow;
     $('artwork-flow-settings').hidden = !isFlow;
+    const motif = core.motifBounds(draft), hasMotif = !isFlow && motif.width > 0 && motif.height > 0;
+    $('artwork-motif-settings').hidden = !hasMotif;
+    $('motifPositionX').disabled = !hasMotif || motif.availableWidth - motif.width < 1;
+    $('motifPositionY').disabled = !hasMotif || motif.availableHeight - motif.height < 1;
+    $('motif-position-note').hidden = !hasMotif || (!$('motifPositionX').disabled && !$('motifPositionY').disabled);
     const tallArt = draft.layout === 'stacked', canvasW = tallArt ? draft.width : draft.width * 2 + 20, canvasH = tallArt ? draft.height * 2 + 20 : draft.height;
     const artW = tallArt ? 420 : 860, artH = tallArt ? 660 : 320, artScale = Math.max(canvasW / artW, canvasH / artH) * draft.artworkScale / 100;
     $('artworkPositionX').disabled = Math.abs(canvasW - artW * artScale) < 0.01;
     $('artworkPositionY').disabled = Math.abs(canvasH - artH * artScale) < 0.01;
     $('artwork-position-note').hidden = !isFlow || (!$('artworkPositionX').disabled && !$('artworkPositionY').disabled);
-    $('pattern-note').textContent = isFlow ? 'Artwork flows across the signature. Adjust its scale and position below.' : 'A side detail keeps the artwork separate from your text. Abstract studies can flow across the signature.';
-    for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = isFlow ? 'Draw a side detail' : 'Edit artwork';
+    $('pattern-note').textContent = isFlow ? 'Adjust the artwork across your signature.' : draft.pattern === 'none' ? 'Choose artwork above to start adjusting.' : !hasMotif ? 'Your photo fills the artwork space. Reduce the photo size to show artwork alongside it.' : 'Resize and move the artwork within its side area.';
+    for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
     for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
     $('design-description').textContent = selected.description;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';

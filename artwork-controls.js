@@ -150,7 +150,7 @@
         opener = document.activeElement; base = {...settings.getDraft()}; const loaded = api.fromDraft(base);
         state = {recipe:loaded.recipe,studyId:loaded.studyId,seed:0}; original = snapshot(); undo = []; redo = []; selectedInk = '0'; focusedCell = 0; invalidHex = false; proposal = null;
         $('art-study').replaceChildren(...[{id:'',name:'Your current artwork'},...api.studies].map(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; option.disabled = item.id === ''; return option; }));
-        $('art-intro').textContent = loaded.isCustom ? 'Edit your saved side detail, one ink or shape at a time. Nothing changes until you apply.' : 'Draw a new side detail from editable shapes. Apply replaces the current artwork with this smaller motif. To move or resize a full-canvas study, use Artwork placement in Design.';
+        $('art-intro').textContent = loaded.isCustom ? 'Edit your saved side detail, one ink or shape at a time. Nothing changes until you apply.' : 'Draw a new side detail from editable shapes. Apply replaces the current artwork with this smaller motif. To resize or move your current artwork, use Adjust artwork in Design.';
         $('art-reset').textContent = loaded.isCustom ? 'Reset to opening artwork' : 'Reset to opening study';
         dialog.showModal(); refresh(true); $('art-study').focus();
       } catch (error) { if (settings.onError) settings.onError(error.message || 'The artwork editor could not open.'); }

@@ -12,13 +12,13 @@ const ids = ['original','orbit','studio','contour','prism','editorial','signal']
 
 test('design and pattern catalogs are immutable and old 23-field sessions inherit the original',()=>{
   assert.deepEqual(core.designs.map(d=>d.id),ids);
-  assert.deepEqual(Object.keys(core.patterns),['auto','cutpaper','colorfield','chromatic','counterform','overprint','gesture','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','custom','none']);
+  assert.deepEqual(Object.keys(core.patterns),['auto','cutpaper','colorfield','chromatic','counterform','overprint','gesture','neural','latent','tokenweave','resonance','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','custom','none']);
   assert.ok(Object.isFrozen(core.designs) && core.designs.every(Object.isFrozen) && Object.isFrozen(core.patterns));
   for(const d of core.designs){
     assert.equal(typeof d.name,'string');assert.equal(typeof d.description,'string');assert.equal(d.pattern,'auto');
     for(const k of ['accent','frontBackground','backBackground'])assert.match(d[k],/^#[a-f0-9]{6}$/);
   }
-  const old={...core.defaults};for(const key of ['design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY'])delete old[key];
+  const old={...core.defaults};for(const key of ['design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'])delete old[key];
   assert.equal(Object.keys(old).length,23);
   assert.equal(core.normalize(old).design,'original');assert.equal(core.normalize(old).pattern,'auto');
   assert.equal(core.normalize(old).portraitData,'');assert.equal(core.normalize(old).portraitSize,64);

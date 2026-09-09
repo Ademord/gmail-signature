@@ -31,10 +31,11 @@ const localPortrait = 'data:image/png;base64,' + readFileSync(resolve(projectRoo
 const plumColors = {frontBackground:'#ffffff',backBackground:'#faf8f4',accent:'#583da6'};
 const freshDraft = {...core.defaults,...plumColors};
 
-function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
+function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, initialAppearance = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
   const nodes = new Map(), downloads = [], objectURLs = new Map(), revoked = [], timers = [], clipboardTexts = [], clipboardItems = [];
   const storage = new Map(initialDraft ? [[storageKey, JSON.stringify(initialDraft)]] : []);
   if (initialThemes) storage.set('signature-studio:themes:v1', JSON.stringify(initialThemes));
+  if (initialAppearance !== null) storage.set('signature-studio:appearance:v1',initialAppearance);
   const globalEvents = new Map(), documentEvents = new Map();
   let selectedRanges = [], clipboardAttempts = 0, legacyAttempts = 0, nextWriteFailure = null, previewTransformWrites=0;
   const on = (events, type, listener) => events.set(type, [...(events.get(type) || []), listener]);
@@ -147,10 +148,11 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   // included in the generic selector so confusing it with buttons fails here.
   const cycleButtons = pageElements.filter(element => element.dataset.cycleField);
   const arrangementButtons = pageElements.filter(element => element.dataset.arrangement);
-  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices],['[data-cycle-field]',cycleButtons],['button[data-cycle-field]',cycleButtons],['[data-arrangement]',arrangementButtons],['button[data-arrangement]',arrangementButtons]]);
+  const skinButtons = pageElements.filter(element => element.tagName==='BUTTON'&&element.dataset.editorSkin);
+  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices],['[data-cycle-field]',cycleButtons],['button[data-cycle-field]',cycleButtons],['[data-arrangement]',arrangementButtons],['button[data-arrangement]',arrangementButtons],['button[data-editor-skin]',skinButtons]]);
   const location = new URL('http://127.0.0.1:4173/?source=regression' + initialHash);
   const document = {
-    activeElement: null, body: new Element('body'),
+    activeElement: null, body: new Element('body'),documentElement:pageElements.find(element=>element.tagName==='HTML'),
     getElementById: id => nodes.get(id) || null,
     createElement: tag => new Element(tag),
     querySelector(selector) { assert.ok(one.has(selector), 'Unsupported document selector: ' + selector); return one.get(selector); },
@@ -200,6 +202,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   return {
     node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,
     get activeElement() { return document.activeElement; },
+    get editorSkin() { return document.documentElement.dataset.editorSkin; },
     hasNode: id => nodes.has(id),
     failNextWrite(key) { nextWriteFailure = key; },
     get imageSettings() { return imageSettings; },
@@ -472,7 +475,7 @@ test('layout arrows wrap, preserve the complete draft and create one undo entry 
 
 test('artwork arrows follow all enabled choices, skip unavailable Custom and preserve flow framing through undo', async () => {
   const initial={...core.defaults,nameLine1:'Jordan',design:'signal',portraitData:localPortrait,artworkPlacement:'motif',artworkScale:129,artworkPositionX:14,artworkPositionY:87};
-  const expected=['cutpaper','colorfield','chromatic','counterform','overprint','gesture','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','none','auto'];
+  const expected=['cutpaper','colorfield','chromatic','counterform','overprint','gesture','neural','latent','tokenweave','resonance','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','none','auto'];
   const app=harness({initialDraft:initial});
   for(const pattern of expected) {
     await app.click('next-pattern');
@@ -483,7 +486,7 @@ test('artwork arrows follow all enabled choices, skip unavailable Custom and pre
   await app.click('previous-pattern');assert.equal(app.node('pattern').value,'frost','unavailable Custom is skipped backwards');
   const flowInitial={...initial,pattern:'gesture',artworkPlacement:'flow'}, flow=harness({initialDraft:flowInitial});
   await flow.click('next-pattern');
-  assert.deepEqual(JSON.parse(flow.storage.get(storageKey)),{...flowInitial,pattern:'dots',artworkPlacement:'auto'});
+  assert.deepEqual(JSON.parse(flow.storage.get(storageKey)),{...flowInitial,pattern:'neural',artworkPlacement:'auto'});
   await flow.click('undo-change');assert.deepEqual(JSON.parse(flow.storage.get(storageKey)),flowInitial);
   assert.equal(flow.node('undo-change').disabled,true,'the placement fallback is part of the same undo action');
 });
@@ -626,6 +629,90 @@ test('flow controls change numeric draft values, retain one gesture undo and fol
   await app.input('pattern','none');assert.equal(app.node('artworkPlacement').value,'auto');assert.equal(app.node('artwork-flow-option').disabled,true);
   await app.click('choose-pattern-overprint');assert.equal(app.node('artwork-flow-settings').hidden,false);
   assert.equal(Number(app.node('artworkScale').value),130,'returning to flow keeps the previous framing');
+});
+
+test('Studio Tall Grid exposes side-artwork controls and every slider changes rendered geometry with gesture undo and persistence',async()=>{
+  const initial={...core.defaults,design:'studio',layout:'stacked',pattern:'signal'},app=harness({initialDraft:initial});
+  assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-motif-settings').hidden,false);
+  for(const key of ['motifScale','motifPositionX','motifPositionY']) {
+    const field=app.node(key);assert.equal(field.closest('details'),null,key+' is discoverable without opening a disclosure');
+    for(let parent=field.parentElement;parent;parent=parent.parentElement)assert.equal(Boolean(parent.hidden),false,key+' starts visible');
+  }
+  assert.equal(app.node('motifPositionY').disabled,true,'the fitted vertical edge does not offer a dead motion control');
+  assert.equal(app.node('motif-position-note').hidden,false);
+  const baseline=app.node('signature-preview').innerHTML;
+  await app.input('motifScale',90);await app.input('motifScale',75);await app.finishEdit();
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,motifScale:75});
+  assert.notEqual(app.node('signature-preview').innerHTML,baseline,'the slider changes the artwork, not just its saved number');
+  assert.match(app.node('signature-preview').innerHTML,/<img[^>]*pattern-signal\.png" width="51" height="123"/);
+  assert.equal(app.node('motifScale-value').textContent,'75%');
+  assert.equal(app.node('motifPositionX').disabled,false);assert.equal(app.node('motifPositionY').disabled,false);
+  assert.equal(app.node('motif-position-note').hidden,true);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'one native slider gesture is one undo action');
+  await app.click('redo-change');
+  for(const [key,value] of [['motifPositionX',100],['motifPositionY',100]]) {
+    const before=app.node('signature-preview').innerHTML;await app.input(key,value);await app.finishEdit();
+    assert.notEqual(app.node('signature-preview').innerHTML,before,key+' moves the actual artwork');
+    assert.equal(app.node(key+'-value').textContent,value+'%');
+  }
+  const positioned={...initial,motifScale:75,motifPositionX:100,motifPositionY:100};
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),positioned);
+  assert.match(app.node('signature-preview').innerHTML,/padding:42px 0px 0px 25px/);
+  const reloaded=harness({initialDraft:JSON.parse(app.storage.get(storageKey))});
+  assert.equal(reloaded.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);
+  await app.click('export-data');const backup=app.node('session-json').value;
+  await app.click('close-session');await app.click('reset-draft');await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),positioned);
+  assert.equal(app.node('artwork-motif-settings').hidden,false);
+});
+
+test('side, flowing, custom and absent artwork show only useful controls while preserving both sets of adjustments',async()=>{
+  const initial={...core.defaults,design:'studio',layout:'stacked',pattern:'signal',motifScale:65,motifPositionX:13,motifPositionY:87,artworkScale:125,artworkPositionX:20,artworkPositionY:90};
+  const app=harness({initialDraft:initial});
+  for(const pattern of ['dots','orbit','studio','contour','prism','editorial','signal','neural','latent','tokenweave','resonance','galaxy','starlight','moonlight','frost','auto']) {
+    await app.input('pattern',pattern);
+    assert.equal(app.node('artwork-motif-settings').hidden,false,pattern+' exposes side-artwork adjustments');
+    assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-placement-field').hidden,true);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern});
+  }
+  await app.input('pattern','gesture');
+  assert.equal(app.node('artwork-motif-settings').hidden,true);assert.equal(app.node('artwork-flow-settings').hidden,false);
+  assert.equal(app.node('artwork-placement-field').hidden,false);
+  await app.input('artworkPlacement','motif');
+  assert.equal(app.node('artwork-motif-settings').hidden,false);assert.equal(app.node('artwork-flow-settings').hidden,true);
+  const recipe=JSON.stringify({palette:['#2348c7'],rows:['00..','00..','....','....']});
+  app.artworkSettings.applyChanges({customPattern:recipe});
+  assert.equal(app.node('artwork-motif-settings').hidden,false,'drawn artwork can also be resized and moved');
+  assert.equal(Number(app.node('motifScale').value),65);assert.equal(Number(app.node('artworkScale').value),125);
+  await app.input('pattern','none');
+  assert.equal(app.node('artwork-motif-settings').hidden,true);assert.equal(app.node('artwork-flow-settings').hidden,true);
+  await app.click('undo-change');assert.equal(app.node('pattern').value,'custom');assert.equal(app.node('artwork-motif-settings').hidden,false);
+  const filled=harness({initialDraft:{...core.defaults,design:'contour',layout:'paired',pattern:'signal',width:280,height:180,portraitSize:96,portraitUrl:'https://example.com/photo.png'}});
+  assert.equal(filled.node('artwork-motif-settings').hidden,true,'a photo-occupied slot has no working artwork controls');
+  assert.match(filled.node('pattern-note').textContent,/photo.*fills|photo.*space/i);
+});
+
+test('editor appearance defaults to red and persists independently of draft colors, exports and undo',async()=>{
+  const app=harness(),before=app.storage.get(storageKey),html=app.node('signature-preview').innerHTML;
+  assert.equal(app.editorSkin,'red');assert.equal(app.node('skin-red').getAttribute('aria-pressed'),'true');
+  assert.equal(app.node('accent').value,'#583da6','red editor skin does not turn the starting Plum signature red');
+  await app.click('skin-plum');
+  assert.equal(app.editorSkin,'plum');assert.equal(app.node('skin-plum').getAttribute('aria-pressed'),'true');
+  assert.equal(app.node('skin-red').getAttribute('aria-pressed'),'false');
+  assert.equal(app.storage.get('signature-studio:appearance:v1'),'plum');
+  assert.equal(app.storage.get(storageKey),before);assert.equal(app.node('signature-preview').innerHTML,html);
+  assert.equal(app.node('undo-change').disabled,true);
+  await app.click('export-data');const session=JSON.parse(app.node('session-json').value);
+  assert.deepEqual(session.draft,freshDraft);assert.equal('editorSkin' in session.ui,false,'appearance is not part of a shared signature session');
+  await app.click('close-session');await app.click('choose-palette-forest');assert.equal(app.editorSkin,'plum');
+  await app.click('skin-red');assert.equal(app.editorSkin,'red');assert.equal(app.node('accent').value,'#a64435');
+  const restored=harness({initialDraft:JSON.parse(app.storage.get(storageKey)),initialAppearance:'plum'});
+  assert.equal(restored.editorSkin,'plum');assert.equal(restored.node('accent').value,'#a64435');
+  const unavailable=harness({storageFails:true});await unavailable.click('skin-plum');
+  assert.equal(unavailable.editorSkin,'plum');assert.equal(unavailable.node('appearance-notice').hidden,false);
+  assert.match(unavailable.node('appearance-notice').textContent,/visit|storage/i);
+  assert.equal(harness({initialAppearance:'unknown'}).editorSkin,'red','unknown old preferences have a stable visual fallback');
 });
 
 test('import cards apply information, design or both and leave unselected parts unchanged', async () => {

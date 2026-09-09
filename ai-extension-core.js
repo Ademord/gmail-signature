@@ -8,7 +8,7 @@
 
   var colorKeys = ['frontBackground', 'backBackground', 'accent'];
   var layoutKeys = ['design', 'customLayout', 'layout', 'width', 'height'];
-  var artworkKeys = ['pattern', 'customPattern', 'artworkPlacement', 'artworkScale', 'artworkPositionX', 'artworkPositionY'];
+  var artworkKeys = ['pattern', 'customPattern', 'artworkPlacement', 'artworkScale', 'artworkPositionX', 'artworkPositionY', 'motifScale', 'motifPositionX', 'motifPositionY'];
   var iconKeys = ['websiteIcon', 'emailIcon', 'phoneIcon', 'linkedinIcon', 'locationIcon'];
   var photoKeys = ['portraitShape', 'portraitSize'];
   var textKeys = ['title', 'subtitle', 'tags'];
@@ -52,8 +52,8 @@
   }
   function strictField(key, value) {
     if (key === 'customPattern' || key === 'customLayout') return recipe(key, value);
-    if (['width','height','portraitSize','artworkScale','artworkPositionX','artworkPositionY'].includes(key)) {
-      var bounds = key === 'width' ? [280,420] : key === 'height' ? [180,320] : key === 'artworkScale' ? [75,150] : key.startsWith('artworkPosition') ? [0,100] : [40,96];
+    if (['width','height','portraitSize','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'].includes(key)) {
+      var bounds = key === 'width' ? [280,420] : key === 'height' ? [180,320] : key === 'artworkScale' ? [75,150] : key === 'motifScale' ? [25,100] : (key.startsWith('artworkPosition') || key.startsWith('motifPosition')) ? [0,100] : [40,96];
       if (typeof value !== 'number' || !Number.isInteger(value) || value < bounds[0] || value > bounds[1]) fail(key + ' must be a whole number from ' + bounds[0] + ' to ' + bounds[1] + '.');
       return value;
     }
@@ -138,7 +138,7 @@
       lines.push('layout:"paired" is wide; layout:"stacked" is tall. width is an integer 280–420; height is an integer 180–320. The final wide signature is (width*2+20) by height; tall is width by (height*2+20). Avoid reducing dimensions for unknown text lengths.');
     }
     if (keys.includes('pattern')) lines.push('pattern choices: ' + Object.keys(core.patterns).join(', ') + '. To create new artwork use pattern:"custom" and customPattern:{"palette":["#b6a1ed","#ffe9a5"],"rows":["....00..","....00..","........","..11....","..11....","........","......00","......00"]}. palette contains 1–8 six-digit hex colors; rows contains 4–32 equal strings, each 4–16 characters wide, no more than 384 cells total. A dot is transparent; digits 0–7 select an existing palette entry. Prefer sparse pixel art and long contiguous color runs: email HTML must stay under 10,000 characters. Avoid noisy checkerboards. Custom grid artwork occupies a side motif; the six built-in abstract studies also support full-canvas placement.');
-    if (keys.includes('artworkPlacement')) lines.push('artworkPlacement is auto|motif|flow. Auto uses full-canvas artwork for cutpaper|colorfield|chromatic|counterform|overprint|gesture; all other patterns and custom recipes use a side motif. Explicit flow is only for those six abstract patterns. artworkScale is an integer 75–150 percent; artworkPositionX and artworkPositionY are integers 0–100 for the full-canvas focal position. Set artworkPlacement:"motif" when switching to a custom recipe from flow. Keep flowing marks clear of readable text.');
+    if (keys.includes('artworkPlacement')) lines.push('artworkPlacement is auto|motif|flow. Auto uses full-canvas artwork for cutpaper|colorfield|chromatic|counterform|overprint|gesture; all other patterns and custom recipes use a side motif. Explicit flow is only for those six abstract patterns. artworkScale is an integer 75–150 percent; artworkPositionX and artworkPositionY are integers 0–100 for the full-canvas focal position. Set artworkPlacement:"motif" when switching to a custom recipe from flow. Side motifs use motifScale (integer 25–100 percent of the fitted maximum), motifPositionX (0–100, left to right), and motifPositionY (0–100, top to bottom). Reduce motifScale to leave room for movement; never crop the motif. The four AI-inspired built-ins are neural (Neural bloom), latent (Latent field), tokenweave (Token weave), and resonance (Resonance). Choose a built-in or create a customPattern recipe to replace it; existing PNG shapes cannot be edited individually. Preserve the panel colors unless the brief explicitly requests changing them. Keep flowing marks clear of readable text.');
     if (keys.some(function (key) { return iconKeys.includes(key); })) lines.push('Each icon field accepts web|mail|phone|linkedin|pin|none. These use the built-in PNG icon set; no custom URLs or icon code.');
     if (keys.includes('portraitShape')) lines.push('portraitShape is circle|rounded|square. portraitSize is an integer 40–96 pixels. My photo is preserved and is never included in this prompt. Cropping and brightness are adjusted privately in the editor, not by this JSON.');
     if (section === 'details') lines.push('Text length limits: ' + keys.map(function (key) { return key + '=' + core.limits[key]; }).join(', ') + '. Use plain, single-line text. Keep identity and contact information factual; do not insert markup.');
