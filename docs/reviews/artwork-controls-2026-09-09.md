@@ -2,7 +2,7 @@
 
 ## Milestone checkpoint
 
-Implementation is complete and frozen at the user's requested stopping point. No further feature work is running. Runtime asset token: `601766014a69fa59`. Delivery is tracked by the repository's CI and Pages workflow for the commit containing this checkpoint.
+Implementation is complete and frozen at the user's requested stopping point. No further feature work is running. Runtime asset token: `601766014a69fa59`. App commit `c89e051c3045f986a27f26be3240252e50d22ef1` is pushed and live. [CI and Pages succeeded](https://github.com/Ademord/gmail-signature/actions/runs/34293224682). All 104 checked deployed URLs match the app commit; the live browser confirmed the new runtime and preserved all 35 pre-existing form fields. This documentation follow-up does not change the runtime.
 
 ## What changed
 
@@ -31,4 +31,4 @@ Implementation is complete and frozen at the user's requested stopping point. No
 
 Built-in PNG shapes and inks are fixed; use a custom drawing or AI recipe to replace them for shape/color editing. Size/position controls fit side motifs within the allocated artwork area; they do not turn all patterns into full-card backgrounds. No actual received Gmail/Outlook message was tested in this milestone. No offline package was selected.
 
-Stop after the checkpoint is pushed and deployment is checked. Resume only on a new user request; prioritize any reported regression before adding features.
+The checkpoint is pushed and deployment checked; work is stopped. Resume only on a new user request; prioritize any reported regression before adding features.

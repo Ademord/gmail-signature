@@ -1,12 +1,12 @@
 # Progress
 
-## Artwork controls milestone — ready for release, then stopped
+## Artwork controls milestone — released; work stopped
 
 The requested milestone is complete: visible side-artwork size/position controls, four AI-inspired patterns, and a separately selectable Classic red/Plum editor appearance. The user requested a documented checkpoint, push, and stop; no further feature implementation is running.
 
-Final local suite:239 tests,238 passed,0 failures,1 expected Windows symlink skip. Runtime601766014a69fa59; strict build69files. Desktop and391px phone journeys, Undo/reload, photo-space reservation, unchanged signature fields across appearance changes, and1284×1744PNG generation were checked in Codex's browser. Neutral legacy artwork markup remains byte-identical. CI/Pages tracks delivery for this checkpoint's commit.
+Final local suite:239 tests,238 passed,0 failures,1 expected Windows symlink skip. Runtime601766014a69fa59; strict build69files. Desktop and391px phone journeys, Undo/reload, photo-space reservation, unchanged signature fields across appearance changes, and1284×1744PNG generation were checked in Codex's browser. Neutral legacy artwork markup remains byte-identical. App commit `c89e051c3045f986a27f26be3240252e50d22ef1` was pushed to main. [CI and Pages succeeded](https://github.com/Ademord/gmail-signature/actions/runs/34293224682); all 104 checked public URLs match that commit (69 canonical files, 19 versioned resources, 16 raw email artwork URLs). The live browser loaded the new controls and Classic red skin and preserved all 35 existing form fields, adding only the three optional motif controls.
 
-[Complete scoped evidence and resume limits](docs/reviews/artwork-controls-2026-09-09.md). Built-in PNG shape/ink edits require replacement via drawing or AI; received Gmail/Outlook remains unverified. Stop after push and deployment verification; wait for a new request.
+[Complete scoped evidence and resume limits](docs/reviews/artwork-controls-2026-09-09.md). Built-in PNG shape/ink edits require replacement via drawing or AI; received Gmail/Outlook remains unverified. Work is stopped. Wait for a new request.
 
 ## Interaction simplification — 9 September 2026
 
