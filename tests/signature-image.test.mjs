@@ -57,9 +57,10 @@ test('corrupt PNG assets stop export before a missing icon can become a successf
   assert.equal(rasterizations,0);
 });
 
-function paintedExportHarness({imageAlias=true,broken=false}={}) {
+function paintedExportHarness({imageAlias=true,broken=false,backgroundImage}={}) {
   const requests=[], decoded=[], source='https://example.com/sig/pattern-counterform-wide.png';
-  const surface={style:{backgroundImage:'url("'+source+'")',backgroundSize:'662px 246px',backgroundPosition:'-341px -19px'}};
+  const originalBackground=backgroundImage===undefined?'url("'+source+'")':backgroundImage;
+  const surface={style:{backgroundImage:originalBackground,backgroundSize:'662px 246px',backgroundPosition:'-341px -19px'}};
   const textMat={style:{backgroundImage:'initial',backgroundColor:'#f3f0ea'}};
   const icon={src:source,setAttribute(key,value){this[key]=value;}};
   let serialized=false;
@@ -72,10 +73,10 @@ function paintedExportHarness({imageAlias=true,broken=false}={}) {
     fetch:async url=>{requests.push(url);return {ok:!broken,blob:async()=>new Blob(['PNG fixture'],{type:'image/png'})};},
     FileReader:class {readAsDataURL(blob){blob.arrayBuffer().then(buffer=>{this.result='data:'+blob.type+';base64,'+Buffer.from(buffer).toString('base64');this.onload();});}},
     Image:class {set src(value){decoded.push(value);queueMicrotask(()=>this.onload?.());}},
-    XMLSerializer:class {serializeToString(){serialized=true;assert.match(surface.style.backgroundImage,/^url\("data:image\/png;base64,/);assert.equal(surface.style.backgroundSize,'662px 246px');assert.equal(surface.style.backgroundPosition,'-341px -19px');if(imageAlias)assert.match(icon.src,/^data:image\/png;base64,/);return '<div xmlns="http://www.w3.org/1999/xhtml"></div>';}}
+    XMLSerializer:class {serializeToString(){serialized=true;if(originalBackground.includes('url('))assert.match(surface.style.backgroundImage,/url\("data:image\/png;base64,/);else assert.equal(surface.style.backgroundImage,originalBackground);assert.equal(surface.style.backgroundSize,'662px 246px');assert.equal(surface.style.backgroundPosition,'-341px -19px');if(imageAlias)assert.match(icon.src,/^data:image\/png;base64,/);return '<div xmlns="http://www.w3.org/1999/xhtml"></div>';}}
   };
   vm.runInNewContext(readFileSync(new URL('../signature-image.js',import.meta.url),'utf8'),context);
-  return {render:()=>context.window.SignatureImage.render(core.defaults),requests,decoded,serialized:()=>serialized};
+  return {render:()=>context.window.SignatureImage.render(core.defaults),requests,decoded,surface,serialized:()=>serialized};
 }
 
 test('PNG embeds painted backgrounds before rasterization and deduplicates shared image URLs',async()=>{
@@ -91,4 +92,46 @@ test('a background-only artwork is embedded, and unavailable paint blocks raster
   const bad=paintedExportHarness({imageAlias:false,broken:true});
   await assert.rejects(bad.render(),/Could not load pattern-counterform-wide.png/);
   assert.equal(bad.serialized(),false);
+});
+
+test('PNG retains an opacity wash and embeds every URL layer once without altering artwork geometry',async()=>{
+  const source='https://example.com/sig/pattern-counterform-wide.png',second='https://example.com/sig/dots.png?palette=red,blue';
+  const wash='linear-gradient(rgba(243, 240, 234, 0.65), rgba(243, 240, 234, 0.65))';
+  const h=paintedExportHarness({backgroundImage: wash+', url("'+source+'"), url("'+second+'"), url("'+source+'")'});
+  await h.render();
+  assert.deepEqual(h.requests,[source,second]);
+  assert.equal(h.decoded.filter(value=>value.startsWith('data:image/png')).length,2);
+  assert.ok(h.surface.style.backgroundImage.startsWith(wash+', '));
+  assert.equal([...h.surface.style.backgroundImage.matchAll(/url\("data:image\/png;base64,/g)].length,3);
+  assert.doesNotMatch(h.surface.style.backgroundImage,/https:/);
+  assert.equal(h.serialized(),true);
+});
+
+test('custom artwork gradients render without fetching new assets',async()=>{
+  const backgroundImage='linear-gradient(#cc3322, #cc3322), linear-gradient(90deg, rgba(20, 30, 40, 0.4) 0%, transparent 100%)';
+  const h=paintedExportHarness({imageAlias:false,backgroundImage});
+  await h.render();
+  assert.deepEqual(h.requests,[]);
+  assert.equal(h.surface.style.backgroundImage,backgroundImage);
+  assert.equal(h.serialized(),true);
+});
+
+test('unsupported or incomplete background layers fail instead of producing an incomplete PNG',async()=>{
+  for(const backgroundImage of [
+    'image-set(url("https://example.com/paint.png") 1x)',
+    'radial-gradient(red, blue)',
+    'linear-gradient(red, blue),',
+    'linear-gradient(red, blue',
+    'linear-gradient(url("https://example.com/paint.png"), blue)',
+    'linear-gradient(red, blue), image-set(url("https://example.com/paint.png") 1x)',
+    'url("https://example.com/paint.png)',
+  ]) {
+    const h=paintedExportHarness({imageAlias:false,backgroundImage});
+    await assert.rejects(h.render(),/artwork background could not be embedded/,backgroundImage);
+    assert.equal(h.serialized(),false,backgroundImage);
+    assert.deepEqual(h.requests,[],backgroundImage);
+  }
+  const broken=paintedExportHarness({imageAlias:false,broken:true,backgroundImage:'linear-gradient(#ffffff, #ffffff), url("https://example.com/paint.png")'});
+  await assert.rejects(broken.render(),/Could not load paint.png/);
+  assert.equal(broken.serialized(),false);
 });

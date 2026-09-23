@@ -6,26 +6,26 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=f476c4330d39bf73">
-  <link rel="stylesheet" href="portrait.css?v=f476c4330d39bf73">
-  <link rel="stylesheet" href="ai-extension.css?v=f476c4330d39bf73">
-  <link rel="stylesheet" href="library.css?v=f476c4330d39bf73">
-  <link rel="stylesheet" href="artwork.css?v=f476c4330d39bf73">
-  <script src="portrait-core.js?v=f476c4330d39bf73" defer></script>
-  <script src="signature-core.js?v=f476c4330d39bf73" defer></script>
-  <script src="editor-history.js?v=f476c4330d39bf73" defer></script>
-  <script src="signature-image.js?v=f476c4330d39bf73" defer></script>
-  <script src="session-data.js?v=f476c4330d39bf73" defer></script>
-  <script src="session-controls.js?v=f476c4330d39bf73" defer></script>
-  <script src="portrait-controls.js?v=f476c4330d39bf73" defer></script>
-  <script src="design-collections.js?v=f476c4330d39bf73" defer></script>
-  <script src="ai-extension-core.js?v=f476c4330d39bf73" defer></script>
-  <script src="ai-extension-controls.js?v=f476c4330d39bf73" defer></script>
-  <script src="library-controls.js?v=f476c4330d39bf73" defer></script>
-  <script src="artwork-core.js?v=f476c4330d39bf73" defer></script>
-  <script src="artwork-controls.js?v=f476c4330d39bf73" defer></script>
-  <script src="preview-dom.js?v=f476c4330d39bf73" defer></script>
-  <script src="app.js?v=f476c4330d39bf73" defer></script>
+  <link rel="stylesheet" href="editor.css?v=ded346349a6a7ecb">
+  <link rel="stylesheet" href="portrait.css?v=ded346349a6a7ecb">
+  <link rel="stylesheet" href="ai-extension.css?v=ded346349a6a7ecb">
+  <link rel="stylesheet" href="library.css?v=ded346349a6a7ecb">
+  <link rel="stylesheet" href="artwork.css?v=ded346349a6a7ecb">
+  <script src="portrait-core.js?v=ded346349a6a7ecb" defer></script>
+  <script src="signature-core.js?v=ded346349a6a7ecb" defer></script>
+  <script src="editor-history.js?v=ded346349a6a7ecb" defer></script>
+  <script src="signature-image.js?v=ded346349a6a7ecb" defer></script>
+  <script src="session-data.js?v=ded346349a6a7ecb" defer></script>
+  <script src="session-controls.js?v=ded346349a6a7ecb" defer></script>
+  <script src="portrait-controls.js?v=ded346349a6a7ecb" defer></script>
+  <script src="design-collections.js?v=ded346349a6a7ecb" defer></script>
+  <script src="ai-extension-core.js?v=ded346349a6a7ecb" defer></script>
+  <script src="ai-extension-controls.js?v=ded346349a6a7ecb" defer></script>
+  <script src="library-controls.js?v=ded346349a6a7ecb" defer></script>
+  <script src="artwork-core.js?v=ded346349a6a7ecb" defer></script>
+  <script src="artwork-controls.js?v=ded346349a6a7ecb" defer></script>
+  <script src="preview-dom.js?v=ded346349a6a7ecb" defer></script>
+  <script src="app.js?v=ded346349a6a7ecb" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -205,18 +205,19 @@
               <button class="gallery-jump browse-artwork" type="button" data-open-library="artwork">Browse all artwork <span aria-hidden="true">→</span></button>
               <div id="artwork-adjustments" class="artwork-refinements" role="group" aria-label="Adjust artwork">
                 <h3>Adjust artwork</h3>
+                <div id="artwork-placement-field" class="field"><label for="artworkPlacement">Placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Template default</option><option value="background">Behind content</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div>
                 <div id="artwork-flow-settings" hidden>
-                  <div class="range-field"><label for="artworkScale">Artwork size <output id="artworkScale-value" for="artworkScale">100%</output></label><input id="artworkScale" name="artworkScale" type="range" min="75" max="150" step="1" value="100"></div>
-                  <p class="field-note">Only the artwork changes. Your photo stays in place.</p>
+                  <div class="range-field"><label for="artworkScale">Artwork size <output id="artworkScale-value" for="artworkScale">100%</output></label><input id="artworkScale" name="artworkScale" type="range" min="25" max="400" step="1" value="100"></div>
+                  <p id="artwork-layer-note" class="field-note">Artwork sits behind your details and photo. The card edges crop it.</p>
+                  <div id="artwork-opacity-field" class="range-field" hidden><label for="artworkOpacity">Opacity <output id="artworkOpacity-value" for="artworkOpacity">100%</output></label><input id="artworkOpacity" name="artworkOpacity" type="range" min="0" max="100" step="1" value="100"></div>
                   <details id="artwork-position-disclosure" class="nested-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="artworkPositionX">Horizontal position <output id="artworkPositionX-value" for="artworkPositionX">50%</output></label><input id="artworkPositionX" name="artworkPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="artworkPositionY">Vertical position <output id="artworkPositionY-value" for="artworkPositionY">50%</output></label><input id="artworkPositionY" name="artworkPositionY" type="range" min="0" max="100" step="1" value="50"></div><p id="artwork-position-note" class="field-note">The artwork fits one edge exactly. Change Artwork size to move it along that edge.</p></div></details>
                 </div>
                 <div id="artwork-motif-settings">
                   <div class="range-field"><label for="motifScale">Artwork size <output id="motifScale-value" for="motifScale">100%</output></label><input id="motifScale" name="motifScale" type="range" min="25" max="100" step="1" value="100"></div>
-                  <p class="field-note">Only the artwork changes. Your photo stays in place.</p>
+                  <p class="field-note">For larger artwork behind your details, choose Behind content.</p>
                   <details id="motif-position-disclosure" class="nested-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="motifPositionX">Horizontal position <output id="motifPositionX-value" for="motifPositionX">50%</output></label><input id="motifPositionX" name="motifPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="motifPositionY">Vertical position <output id="motifPositionY-value" for="motifPositionY">0%</output></label><input id="motifPositionY" name="motifPositionY" type="range" min="0" max="100" step="1" value="0"></div><p id="motif-position-note" class="field-note">Reduce Artwork size to make room to move it.</p></div></details>
                 </div>
                 <p id="pattern-note" class="field-note" hidden></p>
-                <details id="artwork-placement-field" class="nested-disclosure"><summary>Placement</summary><div class="disclosure-content"><div class="field"><label for="artworkPlacement">Artwork placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Automatic</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div></div></details>
               </div>
               </div>
               <details class="editor-disclosure artwork-create"><summary>Create artwork</summary><div class="disclosure-content design-link-row"><button type="button" class="text-button" data-edit-artwork>Draw your own</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div></details>

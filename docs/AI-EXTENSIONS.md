@@ -43,8 +43,8 @@ Omit unchanged fields. A response never accepts raw HTML, CSS, JavaScript, SVG, 
 
 | Section | Allowed fields |
 | --- | --- |
-| `design` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
-| `artwork` | `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent` |
+| `design` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkOpacity`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
+| `artwork` | `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkOpacity`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent` |
 | `layout` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap` |
 | `colors` | `frontBackground`, `backBackground`, `accent` |
 | `details`, option off | `title`, `subtitle`, `tags` |
@@ -61,8 +61,9 @@ The broad Design section changes visual settings only. It cannot change personal
 | Surface/accent colors | Six-digit hex strings such as `#18283e` |
 | `design` | `original`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, or `custom` |
 | `pattern` | `auto`, `dots`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, `gesture`, `galaxy`, `starlight`, `moonlight`, `frost`, `custom`, `none` |
-| `artworkPlacement` | `auto`, `motif`, or `flow` |
-| `artworkScale` | JSON integer 75–150, percent |
+| `artworkPlacement` | `auto`, `motif`, `flow`, or `background` |
+| `artworkScale` | JSON integer 25–400, percent |
+| `artworkOpacity` | JSON integer 0–100, percent; default 100, used for background placement |
 | `artworkPositionX`, `artworkPositionY` | JSON integers 0–100, percent |
 | `cardFormat` | `auto` for the legacy template format; `single` for one card; `front-back` for two separate cards |
 | `layout` | `paired` for Horizontal; `stacked` for Vertical |
@@ -109,9 +110,9 @@ A proposal containing a `customLayout` must also set `design` to `custom`. Selec
 
 ## Artwork placement
 
-`auto` uses full-card artwork for `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, and `gesture`; other patterns and custom grids use a side detail. `flow` explicitly requires one of those six abstract patterns. `motif` selects a side detail. Scale and position affect the flowing background and remain saved when another placement is selected.
+`auto` uses full-card artwork for `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, and `gesture`; other patterns and custom grids use a side detail. `flow` explicitly requires one of those six abstract patterns. `motif` selects a side detail. `background` places any built-in pattern or custom grid behind the content, with no reserved side area. It fits the entire artwork at 100%, grows beyond the card at higher scales, and clips at the card edges. Opacity affects only the artwork. Size and position affect background/flow placement and remain saved when another placement is selected.
 
-When changing from flowing artwork to a custom grid, include `artworkPlacement: "motif"`. A proposal with explicit `flow` and an unsupported pattern is rejected. The dedicated Wide/Tall images remain PNG assets; custom grids do not edit those images.
+When changing from flowing artwork to a custom grid, include `artworkPlacement: "motif"` or `"background"`. A proposal with explicit `flow` and an unsupported pattern is rejected. The dedicated Wide/Tall images remain PNG assets; custom grids do not edit those images.
 
 ## Custom pixel-art recipe
 

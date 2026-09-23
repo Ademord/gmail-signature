@@ -71,7 +71,7 @@ test('every named design round-trips photo bytes, independent pattern, legacy de
       portraitUrl: 'https://example.com/cropped-photo.png?v=2', portraitShape: 'rounded', portraitSize: 96 };
     const input = { draft, themes: [savedTheme], ui: { ...oldUI, editorTab: 'photo' } };
     const text = session.serialize(input), restored = session.parse(text);
-    assert.deepEqual(restored, {...input, draft:{...draft, cardGap:20, cardFormat:'auto'}}, design);
+    assert.deepEqual(restored, {...input, draft:{...draft, cardGap:20, cardFormat:'auto', artworkOpacity:100}}, design);
     assert.equal(Buffer.byteLength(text) < 1024 * 1024, true);
     assert.ok(signature.render(restored.draft, { preview: true }).includes(photo), design);
     const email = signature.render(restored.draft);

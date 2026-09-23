@@ -122,6 +122,49 @@ test('all card formats round-trip in version 1 and unsupported formats fail stri
   }
 });
 
+test('older drafts and version 1 sessions gain full artwork opacity without changing their existing output',()=>{
+  for(const artworkPlacement of ['auto','motif','flow']) {
+    const legacy=draft({pattern:'gesture',artworkPlacement,artworkScale:125});delete legacy.artworkOpacity;
+    const before=structuredClone(legacy);
+    for(const input of [legacy,envelope({draft:legacy})]) {
+      const restored=parseValue(input);
+      assert.equal(restored.draft.artworkOpacity,100);
+      assert.equal(core.render(restored.draft),core.render(legacy));
+      assert.deepEqual(codec.parse(codec.serialize(restored)),restored);
+    }
+    assert.deepEqual(legacy,before);
+  }
+});
+
+test('background framing and opacity round-trip with strict types and ranges',()=>{
+  for(const artworkScale of [25,100,250,400]) for(const artworkOpacity of [0,35,100]) {
+    const value=draft({cardFormat:'single',artworkPlacement:'background',artworkScale,artworkOpacity,artworkPositionX:0,artworkPositionY:100});
+    assert.deepEqual(codec.parse(codec.serialize({draft:value})).draft,value);
+  }
+  const customPattern=JSON.stringify({palette:['#2348c7'],rows:['00..','00..','....','....']});
+  const custom=draft({pattern:'custom',customPattern,artworkPlacement:'background',artworkOpacity:45});
+  assert.deepEqual(codec.parse(codec.serialize({draft:custom})).draft,custom);
+  for(const [key,values] of [['artworkScale',[24,401,1.5,'250',null,true,{},[]]],['artworkOpacity',[-1,101,1.5,'35',null,true,{},[]]],['artworkPlacement',['Background','overlay',false,null,{},[]]]]) {
+    for(const value of values) {
+      assert.throws(()=>parseValue(envelope({draft:draft({[key]:value})})),new RegExp(key));
+      assert.throws(()=>codec.serialize({draft:draft({[key]:value})}),new RegExp(key));
+    }
+  }
+  for(const value of [NaN,Infinity])assert.throws(()=>codec.serialize({draft:draft({artworkOpacity:value})}),/artworkOpacity/);
+});
+
+test('selective design import owns background settings while information import leaves the current artwork intact',()=>{
+  const current={draft:draft({nameLine1:'Existing',artworkPlacement:'motif',artworkOpacity:80,artworkScale:100}),themes:[],ui:{}};
+  const incoming={draft:draft({nameLine1:'Incoming',pattern:'dots',artworkPlacement:'background',artworkScale:400,artworkOpacity:35,artworkPositionX:0,artworkPositionY:100}),themes:[],ui:{}};
+  const keys=['pattern','artworkPlacement','artworkScale','artworkOpacity','artworkPositionX','artworkPositionY'];
+  for(const selection of [{information:false,design:true},{information:true,design:false},{information:true,design:true}]) {
+    const result=codec.selectParts(incoming,current,selection);
+    for(const key of keys)assert.equal(result.draft[key],(selection.design?incoming:current).draft[key],key+' belongs to Design');
+    assert.equal(result.draft.nameLine1,(selection.information?incoming:current).draft.nameLine1);
+  }
+  assert.ok(codec.designFields.includes('artworkOpacity'));assert.ok(!codec.informationFields.includes('artworkOpacity'));
+});
+
 test('only known fields are returned and outputs do not alias inputs or one another', () => {
   const input = {draft:{...draft(), extra:'discard me'}, themes:[{...theme(), extra:'discard me'}], ui:{extra:'discard me'}};
   const before = structuredClone(input), text = codec.serialize(input), a = codec.parse(text), b = codec.parse(text);

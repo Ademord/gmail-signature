@@ -12,7 +12,7 @@
     email: '', phone: '+41 00 000 00 00', linkedin: 'https://www.linkedin.com/',
     location: 'Zurich, Switzerland', tags: 'SOFTWARE · DATA · AI',
     width: 321, height: 208, cardGap: 20, cardFormat: 'auto', layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
-    artworkPlacement: 'auto', artworkScale: 100, artworkPositionX: 50, artworkPositionY: 50,
+    artworkPlacement: 'auto', artworkScale: 100, artworkOpacity: 100, artworkPositionX: 50, artworkPositionY: 50,
     motifScale: 100, motifPositionX: 50, motifPositionY: 0,
     portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64,
     frontBackground: '#f3f0ea', backBackground: '#1c1c1c',
@@ -103,7 +103,8 @@
     result.width = dimension(input.width, defaults.width, 280, 420);
     result.height = dimension(input.height, defaults.height, 180, 320);
     result.cardGap = dimension(input.cardGap, defaults.cardGap, 0, 60);
-    result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 75, 150);
+    result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 25, 400);
+    result.artworkOpacity = dimension(input.artworkOpacity, defaults.artworkOpacity, 0, 100);
     result.artworkPositionX = dimension(input.artworkPositionX, defaults.artworkPositionX, 0, 100);
     result.artworkPositionY = dimension(input.artworkPositionY, defaults.artworkPositionY, 0, 100);
     result.motifScale = dimension(input.motifScale, defaults.motifScale, 25, 100);
@@ -228,6 +229,8 @@
       'pattern-' + selectedPattern(v) + (v.layout === 'stacked' ? '-tall.png' : '-wide.png') : '';
   }
   function isFlow(v) { return resolveArtworkPlacement(v) === 'flow' && flowingPatterns.includes(selectedPattern(v)); }
+  function isBackground(v) { return resolveArtworkPlacement(v) === 'background'; }
+  function isCanvasArtwork(v) { return isFlow(v) || isBackground(v); }
   function hasPortrait(v) { return Boolean(v.portraitData || v.portraitUrl); }
   function lineWidth(lines,font,fixed,spacing,factor) {
     return Math.ceil(Math.max.apply(null,lines.map(function (text) { return units(text,fixed) * font * (factor || 1) + Array.from(text).length * (spacing || 0); }).concat(0)));
@@ -313,7 +316,7 @@
     if (v.design !== 'original' && v.cardFormat !== 'front-back') return designPlan(v);
     var pad = Math.round(18 + (v.width - 280) * 0.1), top = v.height < 200 ? 18 : 22;
     var dotH = Math.min(v.height - 26, 182), dotW = Math.round(dotH * 76 / 182);
-    if (selectedPattern(v) === 'none' || isFlow(v)) dotW = 0;
+    if (selectedPattern(v) === 'none' || isCanvasArtwork(v)) dotW = 0;
     if (hasPortrait(v)) dotW = Math.max(dotW, v.portraitSize);
     var right = 11, gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
     var matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
@@ -363,7 +366,7 @@
     var pad = v.width < 300 ? 18 : 22, bodyW = W - frame * 2 - rail, innerW = bodyW - pad * 2;
     var sectionGap = tall ? 18 : 24, idW = tall ? innerW : Math.floor((innerW - sectionGap) * .5);
     var contactPanelW = tall ? innerW : innerW - idW - sectionGap;
-    var motif = selectedPattern(v) !== 'none' && !isFlow(v);
+    var motif = selectedPattern(v) !== 'none' && !isCanvasArtwork(v);
     var dotW = motif ? 76 : 0, dotH = motif ? Math.min(160,v.height - 26) : 0;
     if (hasPortrait(v)) { dotW = Math.max(dotW,v.portraitSize); dotH = Math.max(dotH,v.portraitSize); }
     var gap = dotW ? 14 : 0, textW = idW - dotW - gap, matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
@@ -410,7 +413,7 @@
     var cPad = tall ? pad : compact ? (v.design === 'signal' ? 7 : 8) : 12, rowGap = compact ? 4 : 10, gridGap = 18;
     var matPad = isFlow(v) ? 7 : 0;
     idPad -= matPad; cPad -= matPad;
-    var artW = selectedPattern(v) === 'none' || isFlow(v) ? 0 : (v.design === 'editorial' ? 46 : 76);
+    var artW = selectedPattern(v) === 'none' || isCanvasArtwork(v) ? 0 : (v.design === 'editorial' ? 46 : 76);
     if (hasPortrait(v)) artW = Math.max(artW, v.portraitSize);
     var artGap = artW ? 16 : 0, rail = v.design === 'studio' ? 14 : 0, frame = v.design === 'signal' ? 4 : 0;
     var bodyW = W - rail - frame * 2, bodyH = H - frame * 2, mainW = bodyW;
@@ -487,7 +490,7 @@
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
+    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
         String(raw).trim() === '' || !Number.isInteger(Number(raw)) || Number(raw) < rule[1] || Number(raw) > rule[2])) {
@@ -508,7 +511,7 @@
     if (!['auto','single','front-back'].includes(v.cardFormat)) errors.cardFormat = 'Choose Single card or Front & back.';
     if (v.design !== 'custom' && !designs.some(function (design) { return design.id === v.design; })) errors.design = 'Choose an available design.';
     if (!Object.prototype.hasOwnProperty.call(patterns, v.pattern)) errors.pattern = 'Choose an available pattern or None.';
-    if (!['auto','motif','flow'].includes(v.artworkPlacement)) errors.artworkPlacement = 'Choose automatic, motif or flowing artwork.';
+    if (!['auto','motif','flow','background'].includes(v.artworkPlacement)) errors.artworkPlacement = 'Choose automatic, motif, flowing or background artwork.';
     if (v.artworkPlacement === 'flow' && !flowingPatterns.includes(selectedPattern(v))) errors.artworkPlacement = 'Flow is available for the six abstract artworks. Choose automatic or motif for this pattern.';
     [['customPattern',parseCustomPattern],['customLayout',parseCustomLayout]].forEach(function (entry) {
       if (v[entry[0]]) try { entry[1](v[entry[0]]); } catch (error) { errors[entry[0]] = error.message; }
@@ -558,7 +561,75 @@
   // All painted panels sample one canvas transform. In particular, the second
   // Original card continues the first painting instead of restarting the image.
   // Only backgrounds are decorative: removing them leaves every text/link intact.
+  function artworkGeometry(v) {
+    var size = canvasSize(v), W = size.width, H = size.height, pattern = selectedPattern(v);
+    if (!isCanvasArtwork(v) || pattern === 'none') return {width:0,height:0,x:0,y:0,availableWidth:W,availableHeight:H};
+    var tall = v.layout === 'stacked', wideAsset = flowingPatterns.includes(pattern);
+    var baseW = wideAsset ? (tall ? 420 : 860) : 76, baseH = wideAsset ? (tall ? 660 : 320) : 182;
+    if (pattern === 'custom') {
+      var recipe = parseCustomPattern(v.customPattern);
+      baseW = recipe.rows[0].length; baseH = recipe.rows.length;
+    }
+    var scale = (isBackground(v) ? Math.min(W / baseW,H / baseH) : Math.max(W / baseW,H / baseH)) * v.artworkScale / 100;
+    var width = baseW * scale, height = baseH * scale;
+    return {width:width,height:height,x:(W - width) * v.artworkPositionX / 100,y:(H - height) * v.artworkPositionY / 100,availableWidth:W,availableHeight:H};
+  }
+  function artworkBounds(values) {
+    var v = normalize(values);
+    try { return artworkGeometry(compositionValues(v)); }
+    catch (_) {
+      // Incomplete recipes still need stable slider limits while being edited.
+      var size = canvasSize(v);
+      return {width:0,height:0,x:0,y:0,availableWidth:size.width,availableHeight:size.height};
+    }
+  }
+  // Native CSS rectangles keep hand-drawn art editable and avoid embedded SVG,
+  // data URLs or an extra hosted upload. Equal rows and contiguous pixels merge
+  // into one rectangle; validation still enforces the complete email budget.
+  function backgroundRectangles(recipe) {
+    var rectangles = [], cols = recipe.rows[0].length, count = recipe.rows.length;
+    for (var y = 0; y < count;) {
+      var repeat = 1;
+      while (y + repeat < count && recipe.rows[y + repeat] === recipe.rows[y]) repeat++;
+      for (var x = 0; x < cols;) {
+        var run = 1, color = recipe.rows[y][x];
+        while (x + run < cols && recipe.rows[y][x + run] === color) run++;
+        if (color !== '.') rectangles.push({x:x / cols,y:y / count,width:run / cols,height:repeat / count,color:recipe.palette[Number(color)]});
+        x += run;
+      }
+      y += repeat;
+    }
+    return rectangles;
+  }
+  function backgroundSurface(v, assetBase) {
+    var pattern = selectedPattern(v);
+    if (pattern === 'none' || !v.artworkOpacity) return table;
+    var bounds = artworkGeometry(v), rectangles = pattern === 'custom' ? backgroundRectangles(parseCustomPattern(v.customPattern)) : null;
+    var file = pattern === 'dots' ? 'dots.png' : 'pattern-' + pattern + (flowingPatterns.includes(pattern) ? (v.layout === 'stacked' ? '-tall' : '-wide') : '') + '.png';
+    var source = (assetBase + '/' + file).replace(/[\\'"()]/g,function (character) { return '%' + character.charCodeAt(0).toString(16).toUpperCase(); });
+    function px(value) { return Math.round(value * 1000) / 1000; }
+    function paintStyle(x,y,background,width,height) {
+      var color = background || v.frontBackground, alpha = (100 - v.artworkOpacity) / 100;
+      var wash = 'rgba(' + [1,3,5].map(function (i) { return parseInt(color.slice(i,i + 2),16); }).join(',') + ',' + alpha + ')';
+      var images = ['linear-gradient(' + wash + ',' + wash + ')'], sizes = ['100% 100%'], positions = ['0px 0px'];
+      function layer(image,w,h,left,top) {
+        images.push(image); sizes.push(px(w) + 'px ' + px(h) + 'px'); positions.push(px(left) + 'px ' + px(top) + 'px');
+      }
+      if (rectangles) rectangles.forEach(function (rect) {
+        var left = bounds.x + rect.x * bounds.width - (x || 0), top = bounds.y + rect.y * bounds.height - (y || 0);
+        var w = rect.width * bounds.width, h = rect.height * bounds.height;
+        if (left >= width || top >= height || left + w <= 0 || top + h <= 0) return;
+        layer('linear-gradient(' + rect.color + ',' + rect.color + ')',w,h,left,top);
+      });
+      else layer('url(&quot;' + escape(source) + '&quot;)',bounds.width,bounds.height,bounds.x - (x || 0),bounds.y - (y || 0));
+      return 'background-image:' + images.join(',') + ';background-repeat:no-repeat;background-size:' + sizes.join(',') + ';background-position:' + positions.join(',') + ';';
+    }
+    return function (width,height,content,background,x,y) {
+      return table(width,height,content,background).replace('style="','style="' + paintStyle(x,y,background,width,height));
+    };
+  }
   function flowSurface(v, assetBase) {
+    if (isBackground(v)) return backgroundSurface(v,assetBase);
     if (!isFlow(v)) return table;
     var tall = v.layout === 'stacked', size = canvasSize(v), W = size.width, H = size.height;
     var baseW = tall ? 420 : 860, baseH = tall ? 660 : 320;
@@ -617,7 +688,7 @@
   }
   function motifGeometry(v, p) {
     var pattern = selectedPattern(v), availableW = p.dotW, availableH = Math.max(0,p.dotH - (hasPortrait(v) ? v.portraitSize + 10 : 0));
-    if (isFlow(v) || pattern === 'none' || availableW < 1 || availableH < 1) return {width:0,height:0,x:0,y:0,availableWidth:availableW,availableHeight:availableH};
+    if (isCanvasArtwork(v) || pattern === 'none' || availableW < 1 || availableH < 1) return {width:0,height:0,x:0,y:0,availableWidth:availableW,availableHeight:availableH};
     var width, height;
     if (pattern === 'custom') {
       var recipe = parseCustomPattern(v.customPattern), cols = recipe.rows[0].length, count = recipe.rows.length;
@@ -636,7 +707,7 @@
     return motifGeometry(v,plan(v));
   }
   function decoration(v, p, assetBase, options) {
-    var pattern = isFlow(v) ? 'none' : selectedPattern(v), source = portraitSource(v, options), rows = '', remaining = p.dotH;
+    var pattern = isCanvasArtwork(v) ? 'none' : selectedPattern(v), source = portraitSource(v, options), rows = '', remaining = p.dotH;
     if (source) {
       var radius = v.portraitShape === 'circle' ? '50%' : v.portraitShape === 'rounded' ? '12px' : '0';
       rows += '<tr><td align="center" style="padding:0;font-size:0;line-height:0"><img src="' + escape(source) + '" width="' + v.portraitSize +
@@ -700,7 +771,7 @@
       var identity = flow ? informationMat(p.identityW,rows,v.frontBackground,p.matPad) : table(p.textW,0,rows);
       if (flow && (v.customAlign ? v.customAlign === 'center' : v.design === 'contour')) identity = identity.replace('<table ','<table align="center" ');
       var text = cell(p.textW,identity,'','middle'), art = '';
-      if (!p.artRail && p.dotW) art = cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),v.design === 'studio' && !flow ? v.backBackground : '', 'middle');
+      if (!p.artRail && p.dotW) art = cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),v.design === 'studio' && !isCanvasArtwork(v) ? v.backBackground : '', 'middle');
       var contents = v.design === 'orbit' || v.design === 'studio' ? art + (art ? blankCol(p.gap) : '') + text : text + (art ? blankCol(p.gap) : '') + art;
       return surface(p.idW,height,'<tr>' + blankCol(p.idPad) + contents + blankCol(p.idPad) + '</tr>',v.frontBackground,identityX,identityY);
     }
@@ -825,11 +896,11 @@
     // Flow leaves room for the decorative surface URLs inside Gmail's budget.
     if (v.cardFormat === 'single') {
       var single = renderSingle(v,p,assetBase,options);
-      return isFlow(v) ? single.replace(/border-collapse:collapse;/g,'') : single;
+      return isCanvasArtwork(v) ? single.replace(/border-collapse:collapse;/g,'') : single;
     }
     if (v.design !== 'original' && v.cardFormat !== 'front-back') {
       var designed = renderDesign(v, p, assetBase, options);
-      return isFlow(v) ? designed.replace(/border-collapse:collapse;/g,'') : designed;
+      return isCanvasArtwork(v) ? designed.replace(/border-collapse:collapse;/g,'') : designed;
     }
     var flow = isFlow(v), surface = flowSurface(v,assetBase);
     var faceTypography = v.cardFormat === 'front-back' ? nameTypography(v) : {family:sans,weight:600};
@@ -844,8 +915,8 @@
       spacer(Math.min(Math.round(v.height * 0.19), p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + faceMat + '</td></tr>' : identityRows);
     var dots = spacer(13) + '<tr><td style="padding:0;font-size:0;line-height:0"><img src="' + escape(assetBase + '/dots.png') +
       '" width="' + p.dotW + '" height="' + p.dotH + '" alt="" style="display:block;width:' + p.dotW + 'px;height:' + p.dotH + 'px;border:0"></td></tr>';
-    if (selectedPattern(v) !== 'dots' || hasPortrait(v)) dots = spacer(13) + decoration(v, p, assetBase, options);
-    var artworkCell = flow && !p.dotW ? '' : blankCol(p.gap) + '<td width="' + p.dotW + '" valign="top" style="padding:0;vertical-align:top">' + table(p.dotW, 0, dots) + '</td>';
+    if (selectedPattern(v) !== 'dots' || hasPortrait(v) || isBackground(v)) dots = spacer(13) + decoration(v, p, assetBase, options);
+    var artworkCell = isCanvasArtwork(v) && !p.dotW ? '' : blankCol(p.gap) + '<td width="' + p.dotW + '" valign="top" style="padding:0;vertical-align:top">' + table(p.dotW, 0, dots) + '</td>';
     var front = surface(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.textW + '" valign="top" style="padding:0;vertical-align:top">' +
       table(p.textW, 0, frontRows) + '</td>' + artworkCell + blankCol(p.right) + '</tr>', v.frontBackground,0,0);
     var contacts = p.rows.map(function (row, i) {
@@ -867,9 +938,10 @@
       table(p.innerW, 0, backRows) + '</td>' + blankCol(p.pad) + '</tr>', v.backBackground,v.layout === 'stacked' ? 0 : v.width + v.cardGap,v.layout === 'stacked' ? v.height + v.cardGap : 0);
     var cell = function (html) { return '<td valign="top" style="padding:0;vertical-align:top">' + html + '</td>'; };
     var size = canvasSize(v);
-    var output = v.layout === 'stacked' ? surface(size.width, size.height, '<tr>' + cell(front) + '</tr>' + (v.cardGap ? spacer(v.cardGap) : '') + '<tr>' + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0) :
-      surface(size.width, size.height, '<tr>' + cell(front) + (v.cardGap ? blankCol(v.cardGap) : '') + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0);
-    return flow ? output.replace(/border-collapse:collapse;/g,'') : output;
+    var outer = isBackground(v) ? table : surface;
+    var output = v.layout === 'stacked' ? outer(size.width, size.height, '<tr>' + cell(front) + '</tr>' + (v.cardGap ? spacer(v.cardGap) : '') + '<tr>' + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0) :
+      outer(size.width, size.height, '<tr>' + cell(front) + (v.cardGap ? blankCol(v.cardGap) : '') + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0);
+    return isCanvasArtwork(v) ? output.replace(/border-collapse:collapse;/g,'') : output;
   }
   function render(values, options) {
     var v = checked(values);
@@ -891,5 +963,5 @@
     if (v.tags) lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, plainText:plainText});
+  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, plainText:plainText});
 }));
