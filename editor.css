@@ -314,7 +314,8 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 .studio-shell .editor-rail,.studio-shell .inspector-column{min-width:0}
 .studio-shell .design-columns{display:grid;grid-template-columns:minmax(0,1fr)}
 .studio-shell .inspector-column+.inspector-column{border-top:1px solid var(--line)}
-.studio-shell .editor-tabs{max-width:var(--editor-column-width)}
+.studio-shell .editor-tabs{max-width:var(--editor-column-width);border-bottom:0}
+.studio-shell .history-actions{border-top:1px solid var(--line)}
 .studio-shell .artwork-create{margin-top:0;padding-top:0}
 .studio-shell .save-state{white-space:normal;max-width:220px}
 @media(min-width:1181px){
