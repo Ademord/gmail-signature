@@ -214,8 +214,10 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     static revokeObjectURL(url) { revoked.push(url); }
   }
   let imageSettings = null, artworkSettings = null, artworkOpened = 0;
+  const portraitReveals = [];
   const context = {
     window: { SignatureCore: core, ClipboardItem, SignatureImage: { attach(settings) { imageSettings = settings; } },
+      PortraitControls: {attach() {return {sync() {},revealLink() {portraitReveals.push(node('photo-tab').getAttribute('aria-selected'));}};}},
       SignatureArtworkControls: {attach(settings) {artworkSettings = settings; return {open() {artworkOpened++;}};}} }, document, location,
     history: { replaceState(_state, _title, path) { location.href = new URL(path, location).href; } },
     localStorage: {
@@ -241,7 +243,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   vm.runInNewContext(appSource, context, { filename: 'app.js' });
   if (expectPreview) assert.ok(node('signature-preview').innerHTML.includes('<table'), 'Startup must render successfully; swallowed runtime errors are not a pass.');
   return {
-    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,
+    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,portraitReveals,
     get activeElement() { return document.activeElement; },
     focusBody() { document.body.focus(); },
     get editorSkin() { return document.documentElement.dataset.editorSkin; },
@@ -732,9 +734,10 @@ test('Layout exposes primary orientation and template cards while secondary sett
   assert.equal(templateSelect.closest('details')?.parentElement.parentElement.id,'size-disclosure','custom template controls remain accessible in secondary settings');
   for(const tab of ['design','details','photo']) {
     await app.click(tab+'-tab');
-    assert.equal(app.node('editor-heading').textContent,tab==='details'?'Details':'Edit signature');
-    assert.equal(app.node('editor-description').hidden,tab!=='details');
+    assert.equal(app.node('editor-heading').textContent,tab==='details'?'Details':tab==='photo'?'Photo':'Edit signature');
+    assert.equal(app.node('editor-description').hidden,tab==='design');
     if(tab==='details')assert.equal(app.node('editor-description').textContent,'Your name and contact information.');
+    if(tab==='photo')assert.equal(app.node('editor-description').textContent,'Make your signature feel personal.');
   }
 });
 
@@ -1225,8 +1228,11 @@ test('uploaded-only portraits never silently become broken email HTML or oversiz
   assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait));
   await app.click('copy-signature'); assert.equal(app.clipboardItems.length,0);
   assert.equal(app.node('photo-tab').getAttribute('aria-selected'),'true');
+  assert.deepEqual(app.portraitReveals,['true'],'Copy selects Photo before revealing its hosted URL controls');
   assert.match(app.node('status').textContent,/photo|portrait|hosted/i);
+  await app.click('details-tab');
   await app.click('download-html'); assert.equal(app.downloads.length,0);
+  assert.deepEqual(app.portraitReveals,['true','true'],'HTML export also selects Photo and reveals the URL field');
   await app.click('share-link'); assert.equal(app.clipboardTexts.length,0);
   assert.match(app.node('status').textContent,/Export data/);
   await app.click('export-data'); assert.equal(JSON.parse(app.node('session-json').value).draft.portraitData,localPortrait);

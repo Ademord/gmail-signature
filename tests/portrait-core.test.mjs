@@ -197,6 +197,7 @@ function controlsHarness(coreOverrides = {}, initial = {portraitData: photo}) {
   const source = read('portrait-controls.js').toString();
   for (const match of source.matchAll(/id="([^"]+)"/g)) nodes.set(match[1], {id: match[1], value: '', checked: false, hidden: false, dataset: {}, style: {}, events: {},
     getAttribute(key) {return this[key] ?? null;},
+    setAttribute(key, value) {this[key] = String(value);}, focus() {context.document.activeElement = this;},
     addEventListener(type, fn) {this.events[type] = fn;}, replaceChildren() {}, removeAttribute(key) {delete this[key];}, setPointerCapture() {}});
   nodes.set('portrait-panel-content', {});
   nodes.get('portrait-editor').hidden = true;
@@ -296,6 +297,8 @@ test('empty, saved local and hosted photos have accurate guidance and square URL
   const pending = h.emit('portrait-use-url', 'click');
   h.images[0].naturalWidth = 384; h.images[0].naturalHeight = 384; h.images[0].onload(); await pending;
   assert.equal(h.draft().portraitUrl, 'https://example.com/square.jpg'); assert.equal(h.draft().portraitData, '');
+  h.get('portrait-current-image').naturalWidth = 384; h.get('portrait-current-image').naturalHeight = 384;
+  await h.emit('portrait-current-image', 'load');
   assert.match(h.get('portrait-hosting-status').textContent, /hosted square photo is ready/);
   assert.equal(h.get('portrait-editor').hidden, true); assert.equal(h.get('portrait-download').disabled, true);
   h.restore({portraitData: photo});

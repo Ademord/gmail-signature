@@ -565,7 +565,7 @@
     if (name === 'icons') { name = 'details'; $('icons-disclosure').setAttribute('open', ''); }
     if (!['layout','details','photo','design'].includes(name)) name = 'design';
     activeTab = name;
-    const headings = { layout: ['Layout', 'Arrange your signature.'], details: ['Details', 'Your name and contact information.'] };
+    const headings = { layout: ['Layout', 'Arrange your signature.'], details: ['Details', 'Your name and contact information.'], photo: ['Photo', 'Make your signature feel personal.'] };
     $('editor-heading').textContent = headings[name]?.[0] || 'Edit signature';
     $('editor-description').textContent = headings[name]?.[1] || '';
     $('editor-description').hidden = !headings[name];
@@ -619,7 +619,8 @@
       const input = form.elements.namedItem(keys[0]);
       if (keys[0].startsWith('portrait')) {
         setTab('photo');
-        const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-control' }[keys[0]] || 'portrait-file';
+        if (keys[0] === 'portraitUrl') portraitControls?.revealLink?.();
+        const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-circle' }[keys[0]] || 'portrait-file';
         ($(visibleId) || $('photo-tab')).focus();
       } else if (input) {
         const focusTarget = ['nameLine1', 'nameLine2'].includes(keys[0]) ? $('full-name') : $(keys[0] + '-hex') || input;
@@ -776,7 +777,7 @@
     if (!validate(true)) return;
     let html;
     try { html = core.render(draft); }
-    catch (error) { if (draft.portraitData && !draft.portraitUrl) setTab('photo'); announce(error.message || 'This signature could not be copied.', true); return; }
+    catch (error) { if (draft.portraitData && !draft.portraitUrl) { setTab('photo'); portraitControls?.revealLink?.(); } announce(error.message || 'This signature could not be copied.', true); return; }
     const text = core.plainText(draft);
     if (await copyContent(html, text)) announce('Signature copied. Paste it into Gmail’s signature settings.');
     else {
@@ -791,7 +792,7 @@
     if (!validate(true)) return;
     let rendered;
     try { rendered = core.render(draft); }
-    catch (error) { if (draft.portraitData && !draft.portraitUrl) setTab('photo'); announce(error.message || 'This signature could not be exported.', true); return; }
+    catch (error) { if (draft.portraitData && !draft.portraitUrl) { setTab('photo'); portraitControls?.revealLink?.(); } announce(error.message || 'This signature could not be exported.', true); return; }
     const html = '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Email signature</title><body>' + rendered + '</body></html>';
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'my-signature.html'; document.body.append(link); link.click(); link.remove();
@@ -865,6 +866,11 @@
   portraitControls = window.PortraitControls?.attach({ getDraft: () => ({ ...draft }), setPortrait: patch => {
     const before = { ...draft }; draft = { ...draft, ...patch }; preserveUnreadableDraft = false;
     recordEdit(before); fill(); render(); save();
+  }, refreshPortrait: () => {
+    const source = draft.portraitData || draft.portraitUrl;
+    $('signature-preview').querySelectorAll('img').forEach(image => {
+      if (image.getAttribute('src') === source && image.complete && !image.naturalWidth) image.src = source;
+    });
   }, onError: message => announce(message, true) });
   aiControls = window.SignatureAIControls?.attach({getDraft: () => ({...draft}), applyChanges: patch => {
     const candidate = {...draft,...patch}, errors = core.validate(candidate);
