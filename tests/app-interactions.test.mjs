@@ -171,7 +171,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   }
   for (const key of ['frontBackground', 'backBackground', 'accent']) node(key + '-hex').dataset.colorField = key;
   node('image-scale').value = '4'; node('image-background').value = 'transparent';
-  node('editor-form').elements = { namedItem: key => inputs[key] || null };
+  node('editor-form').elements = { namedItem: key => inputs[key] || pageElements.find(element=>element.name===key) || null };
   const footer = new Element(), workspace = new Element(), column = new Element();
   workspace.dataset.emailDevice='desktop';
   const views = ['card', 'email'].map(view => { const element = new Element('button'); element.dataset.view = view; return element; });
@@ -732,7 +732,9 @@ test('Layout exposes primary orientation and template cards while secondary sett
   assert.equal(templateSelect.closest('details')?.parentElement.parentElement.id,'size-disclosure','custom template controls remain accessible in secondary settings');
   for(const tab of ['design','details','photo']) {
     await app.click(tab+'-tab');
-    assert.equal(app.node('editor-heading').textContent,'Edit signature');assert.equal(app.node('editor-description').hidden,true);
+    assert.equal(app.node('editor-heading').textContent,tab==='details'?'Details':'Edit signature');
+    assert.equal(app.node('editor-description').hidden,tab!=='details');
+    if(tab==='details')assert.equal(app.node('editor-description').textContent,'Your name and contact information.');
   }
 });
 
@@ -827,7 +829,144 @@ test('direct invalid text edits refresh orientation availability and allow repai
   assert.match(app.node('orientation-note').textContent,/highlighted fields/);
   await app.input('website',initial.website);
   assert.equal(app.node('orientation-horizontal').disabled,false);
-  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,title,layout:'paired'});
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,title,layout:'paired',websiteLabel:''});
+});
+
+test('Details keeps full name and primary contacts visible while footer and manual line controls are secondary',async()=>{
+  const app=harness();await app.click('details-tab');
+  assert.equal(app.node('editor-heading').textContent,'Details');
+  assert.equal(app.node('editor-description').textContent,'Your name and contact information.');
+  assert.equal(app.node('editor-description').hidden,false);
+  const full=app.node('full-name');assert.equal(full.name,'fullName');assert.equal(full.closest('details'),null);
+  const contacts=['website','email','phone','linkedin','location'];
+  const section=app.node('website').parentElement.parentElement;
+  assert.equal(section.tagName,'FIELDSET');
+  for(const key of contacts) {
+    const field=app.node(key);assert.equal(field.closest('details'),null);
+    assert.equal(field.parentElement.parentElement,section,key+' occupies its own primary contact row');
+  }
+  assert.deepEqual(section.children.filter(child=>child.children.some(field=>contacts.includes(field.id))).map(child=>child.children.find(field=>contacts.includes(field.id)).id),contacts);
+  assert.equal(Boolean(app.node('icons-disclosure').open),false);
+  assert.match(pageSource,/<details\b[^>]*id="icons-disclosure"[^>]*>\s*<summary>Footer &amp; icons<\/summary>/);
+  for(const key of ['websiteLabel','tags'])assert.equal(app.node(key).closest('details')?.id,'icons-disclosure');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.node(key).closest('details')?.id,'name-lines-disclosure');
+  assert.equal(app.node('name-lines-disclosure').parentElement.closest('details')?.id,'icons-disclosure');
+});
+
+test('viewing or restyling a saved full name never rewrites its intentional line break',async()=>{
+  const initial={...core.defaults,width:420,height:300,nameLine1:'Zoë María',nameLine2:'de la Cruz'};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey);
+  assert.equal(app.node('full-name').value,'Zoë María de la Cruz');
+  for(const tab of ['details','photo','layout','design','details'])await app.click(tab+'-tab');
+  await app.input('full-name','Zoë María de la Cruz');
+  assert.equal(app.storage.get(storageKey),saved);assert.equal(app.node('undo-change').disabled,true);
+  await app.click('choose-palette-cobalt');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.imageSettings.getDraft()[key],initial[key]);
+  const reloaded=harness({initialDraft:JSON.parse(app.storage.get(storageKey))});
+  assert.equal(reloaded.node('full-name').value,'Zoë María de la Cruz');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(reloaded.imageSettings.getDraft()[key],initial[key]);
+});
+
+test('full-name edits preserve Unicode words and update both stored lines in one undo group',async()=>{
+  const initial={...core.defaults,width:420,height:300,nameLine1:'Avery Morgan',nameLine2:'',portraitData:localPortrait};
+  const app=harness({initialDraft:initial}),name='María José 李 O’Connor';
+  for(const value of ['María','María José',name])await app.input('full-name',value);
+  const edited=JSON.parse(app.storage.get(storageKey)),lines=[edited.nameLine1,edited.nameLine2].filter(Boolean);
+  assert.equal(lines.join(' '),name);assert.deepEqual(lines.flatMap(line=>line.split(' ')),name.split(' '));
+  assert.equal(Object.keys(core.validate(edited)).length,0);
+  assert.deepEqual({...edited,nameLine1:initial.nameLine1,nameLine2:initial.nameLine2},initial,'editing the full name changes no other draft field');
+  assert.equal(app.node('full-name').getAttribute('aria-invalid'),'false');
+  assert.equal(app.node('nameLine1').value,edited.nameLine1);assert.equal(app.node('nameLine2').value,edited.nameLine2);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'all keystrokes and both name lines undo together');
+  assert.equal(app.node('full-name').value,'Avery Morgan');
+  await app.click('redo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),edited);
+  assert.equal(app.node('full-name').value,name);
+});
+
+test('an unfinished email does not prevent a fitting name split or silently replace the invalid email',async()=>{
+  const initial={...core.defaults,design:'original',width:280,portraitData:localPortrait,portraitSize:40};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey),email='avery@';
+  await app.input('email',email);
+  await app.input('full-name','William Maximilian Wilhelm');
+  const split={nameLine1:'William Maximilian',nameLine2:'Wilhelm'};
+  assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),{...initial,...split,email},'measurement must choose a fitting word boundary without altering any unrelated edit');
+  assert.equal(app.node('email').value,email);assert.equal(app.node('email').getAttribute('aria-invalid'),'true');
+  assert.equal(app.node('error-email').hidden,false);assert.ok(app.node('error-email').textContent.length>0);
+  assert.equal(app.storage.get(storageKey),saved,'an unfinished email remains unsaved');
+  await app.input('email',initial.email);
+  const repaired=JSON.parse(app.storage.get(storageKey));
+  assert.deepEqual(repaired,{...initial,...split});assert.equal(Object.keys(core.validate(repaired)).length,0);
+  assert.equal(app.node('full-name').value,'William Maximilian Wilhelm');
+  assert.equal(app.node('full-name').getAttribute('aria-invalid'),'false');
+  assert.equal(app.node('email').getAttribute('aria-invalid'),'false');assert.equal(app.node('error-email').hidden,true);
+  assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait),'repair retains the selected photo');
+});
+
+test('an overlong single-word name stays intact and reports its error on the visible full-name field',async()=>{
+  const app=harness(),saved=app.storage.get(storageKey),name='Alexanderthegreat'.repeat(4);
+  await app.input('full-name',name);
+  const draft=app.imageSettings.getDraft();
+  assert.equal([draft.nameLine1,draft.nameLine2].filter(Boolean).join(' '),name);
+  assert.equal(app.node('full-name').value,name,'validation must not truncate the entered word');
+  assert.equal(app.storage.get(storageKey),saved);
+  assert.equal(app.node('full-name').getAttribute('aria-invalid'),'true');
+  assert.equal(app.node('error-full-name').hidden,false);assert.match(app.node('error-full-name').textContent,/36 characters|shorten/i);
+  await app.click('layout-tab');await app.click('copy-signature');
+  assert.equal(app.node('details-tab').getAttribute('aria-selected'),'true');assert.equal(app.activeElement.id,'full-name');
+  assert.equal(app.node('full-name').closest('details'),null);
+  assert.equal(app.attempts.modern,0);assert.equal(Boolean(app.node('name-lines-disclosure').open),false);
+});
+
+test('re-entering an unchanged full name repairs an invalid manual or saved line split',async()=>{
+  const initial={...freshDraft,portraitData:localPortrait},invalid={...initial,nameLine1:''};
+  for(const source of ['manual','saved']) {
+    const app=harness({initialDraft:source==='saved'?invalid:initial,expectPreview:source!=='saved'});
+    if(source==='manual'){await app.input('nameLine1','');await app.finishEdit();}
+    assert.equal(app.node('full-name').value,'Morgan');
+    assert.equal(app.node('full-name').getAttribute('aria-invalid'),'true');
+    assert.equal(app.node('error-full-name').hidden,false);
+    assert.match(app.node('error-full-name').textContent,/Re-enter your name.*Name line breaks/);
+    const storedBefore=app.storage.get(storageKey);
+    await app.click('photo-tab');await app.click('details-tab');
+    assert.equal(app.storage.get(storageKey),storedBefore,'viewing the invalid name must not rewrite its lines');
+    assert.equal(app.imageSettings.getDraft().nameLine1,'');
+    await app.input('full-name','Morgan');
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,nameLine1:'Morgan',nameLine2:''},source+' split is repaired without changing other fields');
+    assert.equal(app.node('nameLine1').value,'Morgan');assert.equal(app.node('nameLine2').value,'');
+    assert.equal(app.node('full-name').getAttribute('aria-invalid'),'false');
+    assert.equal(app.node('error-full-name').hidden,true);
+    assert.ok(app.node('signature-preview').innerHTML.includes('Morgan'));
+  }
+});
+
+test('hash imports session restores and manual line edits synchronize full name without resplitting',async()=>{
+  const app=harness(),imported={...core.defaults,width:420,height:300,nameLine1:'María José',nameLine2:'O’Connor'};
+  await app.navigateHash(draftHash(imported));assert.equal(app.node('full-name').value,'María José O’Connor');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.imageSettings.getDraft()[key],imported[key]);
+  const restored={...imported,nameLine1:'Zoë',nameLine2:'李 de la Cruz'};
+  await app.click('import-data');await app.pasteSession(JSON.stringify(restored));await app.click('session-restore');
+  assert.equal(app.node('full-name').value,'Zoë 李 de la Cruz');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.imageSettings.getDraft()[key],restored[key]);
+  app.node('icons-disclosure').open=true;app.node('name-lines-disclosure').open=true;
+  await app.input('nameLine1','Zoë María');await app.finishEdit();await app.input('nameLine2','李');
+  assert.equal(app.node('full-name').value,'Zoë María 李');
+  assert.equal(app.imageSettings.getDraft().nameLine1,'Zoë María');assert.equal(app.imageSettings.getDraft().nameLine2,'李');
+  await app.click('undo-change');assert.equal(app.node('full-name').value,'Zoë María 李 de la Cruz');
+});
+
+test('website edits replace only the exact example label and preserve all custom link text',async()=>{
+  const website='https://rivera.example/work';
+  for(const [initial,label] of [[{...freshDraft},''],[{...freshDraft,websiteLabel:'Portfolio'},'Portfolio'],
+    [{...freshDraft,website:'https://different.example'},core.defaults.websiteLabel]]) {
+    const app=harness({initialDraft:initial});await app.input('website',website);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,website,websiteLabel:label});
+    assert.equal(app.node('websiteLabel').value,label);
+    const html=app.node('signature-preview').innerHTML;assert.ok(html.includes('href="'+website+'"'));
+    if(!label){assert.ok(html.includes('rivera.example/work'));assert.doesNotMatch(html,/>example\.com<\/a>/);}
+    else assert.ok(html.includes('>'+label+'</a>'));
+    await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  }
 });
 
 test('Layout and legacy Colors or Icons sessions restore visible sections and re-export canonical tabs',async()=>{

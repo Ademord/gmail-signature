@@ -473,6 +473,36 @@
     });
     $('theme-notice').append(undo);
   });
+  const cleanName = value => value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const joinedName = () => [draft.nameLine1, draft.nameLine2].filter(Boolean).join(' ');
+  function syncName() { $('full-name').value = joinedName(); }
+  function updateName(value) {
+    const name = cleanName(value);
+    // Viewing or re-entering a saved name must preserve its intentional line break.
+    if (name === cleanName(joinedName())) {
+      const errors = core.validate(draft);
+      if (!errors.nameLine1 && !errors.nameLine2) return;
+    }
+    const candidates = [{ nameLine1: name, nameLine2: '' }];
+    for (let index = name.indexOf(' '); index !== -1; index = name.indexOf(' ', index + 1)) {
+      candidates.push({ nameLine1: name.slice(0, index), nameLine2: name.slice(index + 1) });
+    }
+    // An unfinished URL or email would short-circuit the core's fit check. Use
+    // its last valid value only for measurement; keep the actual edit and error.
+    const measuredDraft = { ...draft };
+    for (const key of Object.keys(core.validate(draft))) {
+      if (!['nameLine1', 'nameLine2'].includes(key)) measuredDraft[key] = (lastValid || core.defaults)[key];
+    }
+    const ranked = candidates.map(lines => ({
+      lines,
+      fits: Object.keys(core.validate({ ...draft, ...lines })).length === 0,
+      measuredFit: Object.keys(core.validate({ ...measuredDraft, ...lines })).length === 0,
+      balance: Math.abs(Array.from(lines.nameLine1).length - Array.from(lines.nameLine2).length)
+    })).sort((a, b) => Number(b.fits) - Number(a.fits) || Number(b.measuredFit) - Number(a.measuredFit) || a.balance - b.balance);
+    // Keep every word even when no split fits; validation explains the adjustment.
+    Object.assign(draft, ranked[0].lines);
+    for (const key of ['nameLine1', 'nameLine2']) form.elements.namedItem(key).value = draft[key];
+  }
   function fill() {
     for (const key of Object.keys(core.defaults)) {
       const input = form.elements.namedItem(key);
@@ -481,6 +511,7 @@
         if (core.limits?.[key]) input.maxLength = core.limits[key];
       }
     }
+    syncName();
     syncSizeControls();
     syncColors(); syncIcons(); renderThemeMenu(); syncStudio(); portraitControls?.sync?.();
   }
@@ -534,9 +565,10 @@
     if (name === 'icons') { name = 'details'; $('icons-disclosure').setAttribute('open', ''); }
     if (!['layout','details','photo','design'].includes(name)) name = 'design';
     activeTab = name;
-    $('editor-heading').textContent = name === 'layout' ? 'Layout' : 'Edit signature';
-    $('editor-description').textContent = name === 'layout' ? 'Arrange your signature.' : '';
-    $('editor-description').hidden = name !== 'layout';
+    const headings = { layout: ['Layout', 'Arrange your signature.'], details: ['Details', 'Your name and contact information.'] };
+    $('editor-heading').textContent = headings[name]?.[0] || 'Edit signature';
+    $('editor-description').textContent = headings[name]?.[1] || '';
+    $('editor-description').hidden = !headings[name];
     document.querySelectorAll('[data-editor-tab]').forEach(button => {
       const active = button.dataset.editorTab === name;
       button.setAttribute('aria-selected', String(active));
@@ -549,6 +581,16 @@
   }
   function validate(focus = false) {
     const errors = core.validate(draft);
+    const nameError = errors.nameLine1 || errors.nameLine2;
+    const nameMessage = !nameError ? '' : !cleanName(draft.nameLine1)
+      ? (cleanName(joinedName()) ? 'Re-enter your name here or adjust Name line breaks below.' : 'Enter your name.')
+      : [draft.nameLine1, draft.nameLine2].some(line => line.length > core.limits.nameLine1)
+        ? 'Use up to 36 characters per name line. Adjust the line break below or shorten the name.'
+        : 'Shorten the name or increase the card width for readable text.';
+    $('full-name').setCustomValidity(nameMessage);
+    $('full-name').setAttribute('aria-invalid', String(Boolean(nameMessage)));
+    $('error-full-name').textContent = nameMessage;
+    $('error-full-name').hidden = !nameMessage;
     for (const key of Object.keys(core.defaults)) {
       const input = form.elements.namedItem(key);
       if (!input) continue;
@@ -580,7 +622,7 @@
         const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-control' }[keys[0]] || 'portrait-file';
         ($(visibleId) || $('photo-tab')).focus();
       } else if (input) {
-        const focusTarget = $(keys[0] + '-hex') || input;
+        const focusTarget = ['nameLine1', 'nameLine2'].includes(keys[0]) ? $('full-name') : $(keys[0] + '-hex') || input;
         const panel = focusTarget.closest('[data-editor-panel]');
         if (panel) setTab(panel.dataset.editorPanel);
         for (let ancestor = focusTarget.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
@@ -588,7 +630,7 @@
         }
         focusTarget.focus();
       }
-      announce(errors[keys[0]], true);
+      announce(['nameLine1', 'nameLine2'].includes(keys[0]) ? nameMessage : errors[keys[0]], true);
     }
     return keys.length === 0;
   }
@@ -640,7 +682,9 @@
     if (input.name === 'design') { applyDesign(input.value); return; }
     const before = { ...draft };
     announce('');
-    if (input.dataset.colorField) {
+    if (input.name === 'fullName') {
+      updateName(input.value);
+    } else if (input.dataset.colorField) {
       const key = input.dataset.colorField;
       if (!colorKeys.includes(key)) return;
       draft[key] = input.value.toLowerCase();
@@ -650,7 +694,13 @@
       draft[key] = Number(input.value);
       form.elements.namedItem(key).value = input.value;
     } else if (Object.hasOwn(core.defaults, input.name)) {
+      // The bundled example label is automatic. Preserve every other saved label.
+      if (input.name === 'website' && draft.website === core.defaults.website && draft.websiteLabel === core.defaults.websiteLabel) {
+        draft.websiteLabel = '';
+        $('websiteLabel').value = '';
+      }
       draft[input.name] = ['width', 'height', ...artworkNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
+      if (['nameLine1', 'nameLine2'].includes(input.name)) syncName();
       if (input.name === 'pattern' && !flowingPatterns.includes(draft.pattern) && draft.artworkPlacement === 'flow') draft.artworkPlacement = 'auto';
       if (colorKeys.includes(input.name)) $(input.name + '-hex').value = input.value.toUpperCase();
     } else return;

@@ -6,26 +6,26 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=680c4424b807edf9">
-  <link rel="stylesheet" href="portrait.css?v=680c4424b807edf9">
-  <link rel="stylesheet" href="ai-extension.css?v=680c4424b807edf9">
-  <link rel="stylesheet" href="library.css?v=680c4424b807edf9">
-  <link rel="stylesheet" href="artwork.css?v=680c4424b807edf9">
-  <script src="portrait-core.js?v=680c4424b807edf9" defer></script>
-  <script src="signature-core.js?v=680c4424b807edf9" defer></script>
-  <script src="editor-history.js?v=680c4424b807edf9" defer></script>
-  <script src="signature-image.js?v=680c4424b807edf9" defer></script>
-  <script src="session-data.js?v=680c4424b807edf9" defer></script>
-  <script src="session-controls.js?v=680c4424b807edf9" defer></script>
-  <script src="portrait-controls.js?v=680c4424b807edf9" defer></script>
-  <script src="design-collections.js?v=680c4424b807edf9" defer></script>
-  <script src="ai-extension-core.js?v=680c4424b807edf9" defer></script>
-  <script src="ai-extension-controls.js?v=680c4424b807edf9" defer></script>
-  <script src="library-controls.js?v=680c4424b807edf9" defer></script>
-  <script src="artwork-core.js?v=680c4424b807edf9" defer></script>
-  <script src="artwork-controls.js?v=680c4424b807edf9" defer></script>
-  <script src="preview-dom.js?v=680c4424b807edf9" defer></script>
-  <script src="app.js?v=680c4424b807edf9" defer></script>
+  <link rel="stylesheet" href="editor.css?v=63d86005c3cd51f8">
+  <link rel="stylesheet" href="portrait.css?v=63d86005c3cd51f8">
+  <link rel="stylesheet" href="ai-extension.css?v=63d86005c3cd51f8">
+  <link rel="stylesheet" href="library.css?v=63d86005c3cd51f8">
+  <link rel="stylesheet" href="artwork.css?v=63d86005c3cd51f8">
+  <script src="portrait-core.js?v=63d86005c3cd51f8" defer></script>
+  <script src="signature-core.js?v=63d86005c3cd51f8" defer></script>
+  <script src="editor-history.js?v=63d86005c3cd51f8" defer></script>
+  <script src="signature-image.js?v=63d86005c3cd51f8" defer></script>
+  <script src="session-data.js?v=63d86005c3cd51f8" defer></script>
+  <script src="session-controls.js?v=63d86005c3cd51f8" defer></script>
+  <script src="portrait-controls.js?v=63d86005c3cd51f8" defer></script>
+  <script src="design-collections.js?v=63d86005c3cd51f8" defer></script>
+  <script src="ai-extension-core.js?v=63d86005c3cd51f8" defer></script>
+  <script src="ai-extension-controls.js?v=63d86005c3cd51f8" defer></script>
+  <script src="library-controls.js?v=63d86005c3cd51f8" defer></script>
+  <script src="artwork-core.js?v=63d86005c3cd51f8" defer></script>
+  <script src="artwork-controls.js?v=63d86005c3cd51f8" defer></script>
+  <script src="preview-dom.js?v=63d86005c3cd51f8" defer></script>
+  <script src="app.js?v=63d86005c3cd51f8" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -118,40 +118,38 @@
         </div>
         <div id="photo-panel" class="inspector-column" role="tabpanel" aria-labelledby="photo-tab" data-editor-panel="photo" hidden><div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="photo">Suggest a photo format with AI ↗</button></div><div id="portrait-panel-content"></div></div>
         <div id="details-panel" class="inspector-column" role="tabpanel" aria-labelledby="details-tab" data-editor-panel="details" hidden>
-          <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="details">Refine wording with AI ↗</button></div>
           <fieldset class="field-section">
-            <legend><span class="section-index">01</span> Identity</legend>
-            <div class="field-grid">
-              <div class="field"><label for="nameLine1">First name</label><input id="nameLine1" name="nameLine1" type="text" value="Avery" maxlength="36" autocomplete="given-name" placeholder="Avery"></div>
-              <div class="field"><label for="nameLine2">Last name</label><input id="nameLine2" name="nameLine2" type="text" value="Morgan" maxlength="36" autocomplete="family-name" placeholder="Morgan"></div>
-            </div>
-            <div class="field"><label for="title">Job title</label><input id="title" name="title" type="text" value="Software Engineer" maxlength="54" autocomplete="organization-title" placeholder="Software Engineer"></div>
+            <legend>About you</legend>
+            <div class="field"><label for="full-name">Name</label><input id="full-name" name="fullName" type="text" value="Avery Morgan" maxlength="73" autocomplete="name" placeholder="Avery Morgan" aria-describedby="error-full-name"><small id="error-full-name" class="field-error" hidden></small></div>
+            <div class="field"><label for="title">Role</label><input id="title" name="title" type="text" value="Software Engineer" maxlength="64" autocomplete="organization-title" placeholder="Software Engineer"></div>
             <div class="field"><label for="subtitle">Specialty <span>Optional</span></label><input id="subtitle" name="subtitle" type="text" value="AI &amp; AUTOMATION" maxlength="76" placeholder="AI &amp; AUTOMATION"></div>
           </fieldset>
 
           <fieldset class="field-section">
-            <legend><span class="section-index">02</span> Contact</legend>
-            <p class="section-note">Leave a field empty to hide it.</p>
-            <div class="field-grid website-grid">
-              <div class="field"><label for="website">Website URL</label><input id="website" name="website" type="text" value="example.com" inputmode="url" autocomplete="url" spellcheck="false" placeholder="example.com"></div>
-              <div class="field"><label for="websiteLabel">Link text</label><input id="websiteLabel" name="websiteLabel" type="text" value="example.com" maxlength="42" spellcheck="false" placeholder="example.com"></div>
-            </div>
-            <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" value="avery@example.com" autocomplete="email" spellcheck="false" placeholder="avery@example.com"></div>
-            <div class="field-grid">
-              <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" value="+1 415 555 0128" autocomplete="tel" placeholder="+1 415 555 0128"></div>
-              <div class="field"><label for="location">Location</label><input id="location" name="location" type="text" value="San Francisco, CA" maxlength="48" autocomplete="address-level2" placeholder="San Francisco, CA"></div>
-            </div>
-            <div class="field"><label for="linkedin">LinkedIn</label><input id="linkedin" name="linkedin" type="text" value="linkedin.com/in/averymorgan" inputmode="url" spellcheck="false" placeholder="linkedin.com/in/yourname"></div>
-            <div class="field"><label for="tags">Footer text <span>Optional</span></label><input id="tags" name="tags" type="text" value="SOFTWARE · AI · AUTOMATION" maxlength="76" placeholder="SOFTWARE · AI · AUTOMATION"></div>
+            <legend>Contact</legend>
+            <p class="section-note">Only filled fields appear.</p>
+            <div class="field contact-field"><label for="website"><img src="sig/icon-web-dark.png" width="18" height="18" alt="">Website</label><input id="website" name="website" type="text" value="example.com" inputmode="url" autocomplete="url" spellcheck="false" placeholder="example.com"></div>
+            <div class="field contact-field"><label for="email"><img src="sig/icon-mail-dark.png" width="18" height="18" alt="">Email</label><input id="email" name="email" type="email" value="avery@example.com" autocomplete="email" spellcheck="false" placeholder="avery@example.com"></div>
+            <div class="field contact-field"><label for="phone"><img src="sig/icon-phone-dark.png" width="18" height="18" alt="">Phone</label><input id="phone" name="phone" type="tel" value="+1 415 555 0128" autocomplete="tel" placeholder="+1 415 555 0128"></div>
+            <div class="field contact-field"><label for="linkedin"><img src="sig/icon-linkedin-dark.png" width="18" height="18" alt="">LinkedIn</label><input id="linkedin" name="linkedin" type="text" value="linkedin.com/in/averymorgan" inputmode="url" spellcheck="false" placeholder="linkedin.com/in/yourname"></div>
+            <div class="field contact-field"><label for="location"><img src="sig/icon-pin-dark.png" width="18" height="18" alt="">Location</label><input id="location" name="location" type="text" value="San Francisco, CA" maxlength="48" autocomplete="address-level2" placeholder="San Francisco, CA"></div>
           </fieldset>
-          <details id="icons-disclosure" class="editor-disclosure"><summary>Contact icons</summary><div class="disclosure-content">
-            <p class="section-note">None hides an icon and keeps the text.</p>
+          <details id="icons-disclosure" class="editor-disclosure"><summary>Footer &amp; icons</summary><div class="disclosure-content">
+            <div class="field"><label for="tags">Footer text <span>Optional</span></label><input id="tags" name="tags" type="text" value="SOFTWARE · AI · AUTOMATION" maxlength="76" placeholder="SOFTWARE · AI · AUTOMATION"></div>
+            <div class="field"><label for="websiteLabel">Website link text <span>Optional</span></label><input id="websiteLabel" name="websiteLabel" type="text" value="example.com" maxlength="40" spellcheck="false" placeholder="Automatic from website" aria-describedby="website-label-note"><p id="website-label-note" class="field-note">Leave empty to use your website address.</p></div>
+            <details id="name-lines-disclosure" class="nested-disclosure"><summary>Name line breaks</summary>
+              <p class="section-note">Fine-tune where your name breaks on the card.</p>
+              <div class="field"><label for="nameLine1">First line</label><input id="nameLine1" name="nameLine1" type="text" value="Avery" maxlength="36" autocomplete="off" placeholder="Avery"></div>
+              <div class="field"><label for="nameLine2">Second line <span>Optional</span></label><input id="nameLine2" name="nameLine2" type="text" value="Morgan" maxlength="36" autocomplete="off" placeholder="Morgan"></div>
+            </details>
+            <p class="field-note contact-icons-note">Choose contact icons. None keeps just the text.</p>
             <div class="field"><label for="websiteIcon">Website icon</label><div class="icon-control"><span class="icon-sample" aria-hidden="true"><img id="websiteIcon-preview" src="sig/icon-web.png" width="20" height="20" alt=""><span id="websiteIcon-none" hidden>—</span></span><select id="websiteIcon" name="websiteIcon"></select></div></div>
             <div class="field"><label for="emailIcon">Email icon</label><div class="icon-control"><span class="icon-sample" aria-hidden="true"><img id="emailIcon-preview" src="sig/icon-mail.png" width="20" height="20" alt=""><span id="emailIcon-none" hidden>—</span></span><select id="emailIcon" name="emailIcon"></select></div></div>
             <div class="field"><label for="phoneIcon">Phone icon</label><div class="icon-control"><span class="icon-sample" aria-hidden="true"><img id="phoneIcon-preview" src="sig/icon-phone.png" width="20" height="20" alt=""><span id="phoneIcon-none" hidden>—</span></span><select id="phoneIcon" name="phoneIcon"></select></div></div>
             <div class="field"><label for="linkedinIcon">LinkedIn icon</label><div class="icon-control"><span class="icon-sample" aria-hidden="true"><img id="linkedinIcon-preview" src="sig/icon-linkedin.png" width="20" height="20" alt=""><span id="linkedinIcon-none" hidden>—</span></span><select id="linkedinIcon" name="linkedinIcon"></select></div></div>
             <div class="field"><label for="locationIcon">Location icon</label><div class="icon-control"><span class="icon-sample" aria-hidden="true"><img id="locationIcon-preview" src="sig/icon-pin.png" width="20" height="20" alt=""><span id="locationIcon-none" hidden>—</span></span><select id="locationIcon" name="locationIcon"></select></div></div>
             <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="icons">Choose icons with AI ↗</button></div>
+            <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="details">Refine wording with AI ↗</button></div>
           </div></details>
         </div>
 
