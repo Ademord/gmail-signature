@@ -60,10 +60,10 @@
     return layers.map(function (layer) {
       var url = layer.match(/^url\((["']?)(.*?)\1\)$/);
       if (url && url[2] && !/[\r\n\\]/.test(url[2])) return { source: url[2] };
-      // The renderer emits only solid washes or cell gradients, using CSS color
+      // The renderer emits washes, opacity fades and cell gradients using CSS color
       // tokens and numeric positions. Other image functions need explicit support.
-      if (/^linear-gradient\([a-z\d#%+.,()\s-]+\)$/i.test(layer) &&
-        (layer.match(/[a-z-]+\s*\(/gi) || []).every(function (name) { return /^(?:linear-gradient|rgb|rgba)\s*\($/i.test(name); })) return { css: layer };
+      if (/^(?:linear|radial)-gradient\([a-z\d#%+.,()\s-]+\)$/i.test(layer) &&
+        (layer.match(/[a-z-]+\s*\(/gi) || []).every(function (name) { return /^(?:(?:linear|radial)-gradient|rgb|rgba)\s*\($/i.test(name); })) return { css: layer };
       invalid();
     });
   }

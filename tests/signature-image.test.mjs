@@ -57,26 +57,28 @@ test('corrupt PNG assets stop export before a missing icon can become a successf
   assert.equal(rasterizations,0);
 });
 
-function paintedExportHarness({imageAlias=true,broken=false,backgroundImage}={}) {
+function paintedExportHarness({imageAlias=true,broken=false,backgroundImage,backgroundSize='662px 246px',backgroundPosition='-341px -19px',portraitSource=''}={}) {
   const requests=[], decoded=[], source='https://example.com/sig/pattern-counterform-wide.png';
   const originalBackground=backgroundImage===undefined?'url("'+source+'")':backgroundImage;
-  const surface={style:{backgroundImage:originalBackground,backgroundSize:'662px 246px',backgroundPosition:'-341px -19px'}};
+  const surface={style:{backgroundImage:originalBackground,backgroundSize,backgroundPosition}};
   const textMat={style:{backgroundImage:'initial',backgroundColor:'#f3f0ea'}};
   const icon={src:source,setAttribute(key,value){this[key]=value;}};
+  const portrait=portraitSource?{src:portraitSource,setAttribute(key,value){this[key]=value;}}:null;
+  const images=[...(imageAlias?[icon]:[]),...(portrait?[portrait]:[])];
   let serialized=false;
   const fixtureCore={...core,validate:()=>({}),render:()=>'<table></table>'};
   const context={window:{SignatureCore:fixtureCore},URL,DOMException,AbortController,Blob,setTimeout,clearTimeout,
     document:{baseURI:'https://example.com/',createElement(tag){
-      if(tag==='div')return {baseURI:'https://example.com/',setAttribute(){},set innerHTML(value){},querySelectorAll(selector){return selector==='img'?(imageAlias?[icon]:[]):selector==='[style]'?[surface,textMat]:[];}};
+      if(tag==='div')return {baseURI:'https://example.com/',setAttribute(){},set innerHTML(value){},querySelectorAll(selector){return selector==='img'?images:selector==='[style]'?[surface,textMat]:[];}};
       assert.equal(tag,'canvas');return {getContext:()=>({drawImage(){},fillRect(){}}),toBlob(callback){callback(new Blob(['encoded PNG'],{type:'image/png'}));}};
     }},
     fetch:async url=>{requests.push(url);return {ok:!broken,blob:async()=>new Blob(['PNG fixture'],{type:'image/png'})};},
     FileReader:class {readAsDataURL(blob){blob.arrayBuffer().then(buffer=>{this.result='data:'+blob.type+';base64,'+Buffer.from(buffer).toString('base64');this.onload();});}},
     Image:class {set src(value){decoded.push(value);queueMicrotask(()=>this.onload?.());}},
-    XMLSerializer:class {serializeToString(){serialized=true;if(originalBackground.includes('url('))assert.match(surface.style.backgroundImage,/url\("data:image\/png;base64,/);else assert.equal(surface.style.backgroundImage,originalBackground);assert.equal(surface.style.backgroundSize,'662px 246px');assert.equal(surface.style.backgroundPosition,'-341px -19px');if(imageAlias)assert.match(icon.src,/^data:image\/png;base64,/);return '<div xmlns="http://www.w3.org/1999/xhtml"></div>';}}
+    XMLSerializer:class {serializeToString(){serialized=true;if(originalBackground.includes('url('))assert.match(surface.style.backgroundImage,/url\("data:image\/png;base64,/);else assert.equal(surface.style.backgroundImage,originalBackground);assert.equal(surface.style.backgroundSize,backgroundSize);assert.equal(surface.style.backgroundPosition,backgroundPosition);for(const image of images)assert.match(image.src,/^data:image\/png;base64,/);return '<div xmlns="http://www.w3.org/1999/xhtml"></div>';}}
   };
   vm.runInNewContext(readFileSync(new URL('../signature-image.js',import.meta.url),'utf8'),context);
-  return {render:()=>context.window.SignatureImage.render(core.defaults),requests,decoded,surface,serialized:()=>serialized};
+  return {render:()=>context.window.SignatureImage.render(core.defaults),requests,decoded,surface,portrait,serialized:()=>serialized};
 }
 
 test('PNG embeds painted backgrounds before rasterization and deduplicates shared image URLs',async()=>{
@@ -116,10 +118,38 @@ test('custom artwork gradients render without fetching new assets',async()=>{
   assert.equal(h.serialized(),true);
 });
 
+test('radial opacity fades retain computed CSS color stops and full-canvas sampling while photos embed independently',async()=>{
+  const source='https://example.com/sig/pattern-counterform-wide.png',portraitSource='https://example.com/profile.png';
+  // CSSOM may omit default ellipse/farthest-corner keywords or preserve explicit
+  // geometry. Each form must survive embedding, including reversed color stops.
+  for(const geometry of ['at 25% 75%','circle at 0% 100%','ellipse farthest-corner at 50% 50%']) for(const reverse of [false,true]) {
+    const stops=reverse?'rgb(243, 240, 234) 0%, rgba(243, 240, 234, 0.35) 100%':'rgba(243, 240, 234, 0.35) 0%, rgb(243, 240, 234) 100%';
+    const fade='radial-gradient('+geometry+', '+stops+')';
+    const backgroundSize='662px 208px, 900px 400px',backgroundPosition='-341px 0px, -410px -96px';
+    const h=paintedExportHarness({imageAlias:false,portraitSource,backgroundImage:fade+', url("'+source+'")',backgroundSize,backgroundPosition});
+    await h.render();
+    assert.deepEqual(h.requests,[portraitSource,source]);
+    assert.ok(h.surface.style.backgroundImage.startsWith(fade+', '),'fade color stops stay in their original order');
+    assert.equal(h.surface.style.backgroundSize,backgroundSize);assert.equal(h.surface.style.backgroundPosition,backgroundPosition);
+    assert.match(h.portrait.src,/^data:image\/png;base64,/);
+    assert.doesNotMatch(h.surface.style.backgroundImage,/https:/);assert.equal(h.serialized(),true);
+  }
+});
+
+test('custom painted rectangles and a radial wash export together without artwork asset requests',async()=>{
+  const backgroundImage='radial-gradient(ellipse at 65% 35%, rgba(243, 240, 234, 0.2), rgb(243, 240, 234)), linear-gradient(rgb(204, 51, 34), rgb(204, 51, 34))';
+  const h=paintedExportHarness({imageAlias:false,backgroundImage,backgroundSize:'321px 290px, 180px 80px',backgroundPosition:'0px 0px, -25px 46px'});
+  await h.render();
+  assert.deepEqual(h.requests,[]);assert.equal(h.surface.style.backgroundImage,backgroundImage);assert.equal(h.serialized(),true);
+});
+
 test('unsupported or incomplete background layers fail instead of producing an incomplete PNG',async()=>{
   for(const backgroundImage of [
     'image-set(url("https://example.com/paint.png") 1x)',
-    'radial-gradient(red, blue)',
+    'conic-gradient(red, blue)',
+    'repeating-radial-gradient(red, blue)',
+    'radial-gradient(circle at 50% 50%, red, blue',
+    'radial-gradient(circle at 50% 50%, url("https://example.com/paint.png"), blue)',
     'linear-gradient(red, blue),',
     'linear-gradient(red, blue',
     'linear-gradient(url("https://example.com/paint.png"), blue)',

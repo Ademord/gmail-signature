@@ -45,7 +45,7 @@
   // Fresh drafts use the new palette; legacy normalization keeps its original defaults.
   const newDraft = () => ({...core.defaults,...Object.fromEntries(colorKeys.map(key => [key,plumPalette[key]]))});
   const flowingPatterns = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
-  const artworkNumbers = ['artworkScale','artworkOpacity','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
+  const artworkNumbers = ['artworkScale','artworkOpacity','artworkFadeAngle','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
   const hexColor = /^#[0-9a-f]{6}$/i;
   const presets = [
     { id: 'preset-original', name: 'Original', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -335,6 +335,15 @@
     $('artwork-placement-field').hidden = draft.pattern === 'none';
     $('artwork-flow-settings').hidden = !isSurface || draft.pattern === 'none';
     $('artwork-opacity-field').hidden = !isBackground;
+    $('artwork-fade-field').hidden = !isBackground;
+    $('artwork-linear-fade-fields').hidden = draft.artworkFade !== 'linear';
+    $('artwork-radial-fade-fields').hidden = draft.artworkFade !== 'radial';
+    $('reverse-artwork-fade').hidden = draft.artworkFade === 'none';
+    $('reverse-artwork-fade').setAttribute('aria-pressed', String(draft.artworkFadeDirection === 'reverse'));
+    $('artwork-fade-note').hidden = draft.artworkFade === 'none';
+    $('artwork-fade-note').textContent = draft.artworkFade === 'radial'
+      ? (draft.artworkFadeDirection === 'reverse' ? 'Clear at the center, visible toward the edges.' : 'Visible at the center, fading toward the edges.')
+      : 'Rotate the fade or reverse which end stays visible.';
     $('artwork-layer-note').textContent = isBackground ? 'Artwork sits behind your details and photo. The card edges crop it.' : 'Only the artwork changes. Your photo stays in place.';
     const motif = core.motifBounds(draft), hasMotif = !isSurface && motif.width > 0 && motif.height > 0;
     $('artwork-motif-settings').hidden = !hasMotif;
@@ -348,7 +357,7 @@
     $('pattern-note').textContent = draft.pattern === 'none' ? 'Choose artwork above to start adjusting.' : !hasMotif ? 'Choose Behind content to give the artwork its own space, independent of your photo.' : 'Resize and move the artwork within its side area.';
     $('pattern-note').hidden = isSurface || hasMotif;
     for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
-    for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
+    for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + (key === 'artworkFadeAngle' ? '°' : '%');
     $('design-description').textContent = designDescription(selected);
     $('current-template-name').textContent = selected.name;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';
@@ -743,6 +752,9 @@
   });
   form.addEventListener('change', () => editHistory.breakGroup());
   form.addEventListener('focusout', () => editHistory.breakGroup());
+  $('reverse-artwork-fade').addEventListener('click', () => {
+    applyStyle({artworkFadeDirection: draft.artworkFadeDirection === 'reverse' ? 'normal' : 'reverse'}, 'Artwork fade reversed.');
+  });
   document.querySelectorAll('[data-editor-tab]').forEach(button => {
     button.addEventListener('click', () => setTab(button.dataset.editorTab));
     button.addEventListener('keydown', event => {
