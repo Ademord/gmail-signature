@@ -22,7 +22,7 @@
     setAppearance(button.dataset.editorSkin,true);
     if ($('appearance-notice').hidden) closeAppearance();
   });
-  $('appearance-menu').addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeAppearance(); } });
+  $('appearance-menu').addEventListener('keydown', event => { if (event.key === 'Escape' && $('appearance-menu').open) { event.preventDefault(); event.stopPropagation(); closeAppearance(); } });
   const iconKeys = ['websiteIcon', 'emailIcon', 'phoneIcon', 'linkedinIcon', 'locationIcon'];
   for (const key of iconKeys) {
     for (const [value, label] of Object.entries(core.icons)) {
@@ -83,7 +83,29 @@
   const imageButton = document.createElement('button');
   imageButton.id = 'export-image'; imageButton.type = 'button'; imageButton.className = 'button button-secondary image-export-button';
   imageButton.innerHTML = '<svg viewBox="0 0 18 18" width="17" height="17" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6.5" r="1.2" stroke="currentColor" stroke-width="1.2"/><path d="m3 14 4-4 2.5 2 3-4 2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Export image</span><span class="format-badge">HD</span>';
-  document.querySelector('.preview-actions > div').append(imageButton);
+  $('export-options').prepend(imageButton);
+  for (const id of ['export-menu', 'editor-options']) {
+    const menu = $(id);
+    menu.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault(); event.stopPropagation(); menu.open = false; menu.querySelector('summary').focus();
+    });
+    menu.addEventListener('click', event => {
+      // Keep nested preferences/disclosures open, but dismiss after an action.
+      const button = event.target.closest('button');
+      if (button && !button.closest('#appearance-menu')) {
+        menu.open = false;
+        // Delegated AI launchers run later in this event. Restore focus to a
+        // visible menu trigger when any launched dialog closes.
+        queueMicrotask(() => {
+          const trigger = menu.querySelector('summary');
+          const dialog = document.querySelector('dialog[open]');
+          if (dialog) dialog.addEventListener('close', () => trigger.focus(), {once:true});
+          else if (document.activeElement === button || document.activeElement === document.body) trigger.focus();
+        });
+      }
+    });
+  }
   let draft = newDraft(), lastValid = null, view = 'card', emailDevice = 'desktop', activeTab = 'design', undoDraft = null;
   let portraitControls = null;
   let aiControls = null;
@@ -222,18 +244,24 @@
     const option = document.createElement('option'); option.value = 'custom'; option.id = 'custom-design-option'; option.textContent = 'Custom layout'; $('design').append(option);
   }
   function patternAsset(id) { return id === 'dots' || id === 'original' ? 'sig/dots.png' : 'sig/pattern-' + id + '.png'; }
-  for (const [id, label] of Object.entries(core.patterns || {})) {
-    const option = document.createElement('option'); option.value = id; option.textContent = label; if (id === 'custom') option.id = 'custom-pattern-option'; $('pattern').append(option);
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-pattern-' + id; button.className = 'pattern-choice';
+  function addPatternChoice(id, label, container, prefix) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = prefix + id; button.className = 'pattern-choice';
     button.setAttribute('aria-label', 'Use ' + label + ' pattern'); button.setAttribute('aria-pressed', 'false');
     const artwork = document.createElement('span'); artwork.className = 'pattern-artwork'; artwork.setAttribute('aria-hidden', 'true');
     if (id === 'none' || id === 'custom') artwork.textContent = id === 'custom' ? '✦' : '—';
     else { const img = document.createElement('img'); img.alt = ''; img.src = patternAsset(id === 'auto' ? 'original' : id); artwork.append(img); }
-    const caption = document.createElement('span'); caption.textContent = id === 'auto' ? 'Auto' : label;
-    const study = (window.SignatureCollections || []).find(item => item.category === 'abstract' && item.pattern === id);
-    button.append(artwork); button.append(caption); $(study ? 'abstract-pattern-choices' : 'pattern-choices').append(button);
+    const caption = document.createElement('span'); caption.textContent = id === 'auto' ? 'Design default' : label;
+    button.append(artwork); button.append(caption); $(container).append(button);
     button.addEventListener('click', () => { if (id === 'custom' && !draft.customPattern) artworkControls?.open(); else applyStyle({ pattern: id }, label + ' pattern applied.'); });
     patternButtons.push({ button, id, artwork });
+  }
+  for (const [id, label] of Object.entries(core.patterns || {})) {
+    const option = document.createElement('option'); option.value = id; option.textContent = label; if (id === 'custom') option.id = 'custom-pattern-option'; $('pattern').append(option);
+    const study = (window.SignatureCollections || []).find(item => item.category === 'abstract' && item.pattern === id);
+    addPatternChoice(id, label, study ? 'abstract-pattern-choices' : 'pattern-choices', 'choose-pattern-');
+  }
+  for (const id of ['none', 'auto', 'orbit', 'studio', 'contour', 'cutpaper']) {
+    addPatternChoice(id, core.patterns[id], 'compact-pattern-choices', 'quick-pattern-');
   }
   for (const item of [...studioPalettes, ...extraPalettes]) {
     const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-palette-' + (item.id?.replace(/^preset-/, '') || item.name.toLowerCase()); button.className = 'palette-choice';
@@ -273,6 +301,7 @@
     $('artworkPositionY').disabled = Math.abs(canvasH - artH * artScale) < 0.01;
     $('artwork-position-note').hidden = !isFlow || (!$('artworkPositionX').disabled && !$('artworkPositionY').disabled);
     $('pattern-note').textContent = isFlow ? 'Adjust the artwork across your signature.' : draft.pattern === 'none' ? 'Choose artwork above to start adjusting.' : !hasMotif ? 'Your photo fills the artwork space. Reduce the photo size to show artwork alongside it.' : 'Resize and move the artwork within its side area.';
+    $('pattern-note').hidden = isFlow || hasMotif;
     for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
     for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
     $('design-description').textContent = selected.description;
@@ -384,6 +413,10 @@
     syncThemeState(); themeNotice('');
   });
   $('save-theme').addEventListener('click', () => saveTheme(false));
+  $('save-palette-shortcut').addEventListener('click', () => {
+    $('saved-palettes').open = true;
+    $('theme-name').focus();
+  });
   $('update-theme').addEventListener('click', () => saveTheme(true));
   $('delete-theme').addEventListener('click', () => {
     const deleted = themes.find(theme => theme.id === selectedThemeId);
@@ -456,9 +489,9 @@
     }
   }
   function setTab(name) {
-    if (name === 'layout') { name = 'design'; $('size-disclosure').setAttribute('open', ''); }
+    if (name === 'colors') name = 'design';
     if (name === 'icons') { name = 'details'; $('icons-disclosure').setAttribute('open', ''); }
-    if (!['design','colors','details','photo'].includes(name)) name = 'design';
+    if (!['layout','details','photo','design'].includes(name)) name = 'design';
     activeTab = name;
     document.querySelectorAll('[data-editor-tab]').forEach(button => {
       const active = button.dataset.editorTab === name;
@@ -467,6 +500,8 @@
       button.classList.toggle('is-active', active);
     });
     document.querySelectorAll('[data-editor-panel]').forEach(panel => { panel.hidden = panel.dataset.editorPanel !== name; });
+    document.querySelector('[data-preview-view]').dataset.editorView = name;
+    fitPreview();
   }
   function validate(focus = false) {
     const errors = core.validate(draft);
@@ -501,12 +536,13 @@
         const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-control' }[keys[0]] || 'portrait-file';
         ($(visibleId) || $('photo-tab')).focus();
       } else if (input) {
-        const panel = input.closest('[data-editor-panel]');
+        const focusTarget = $(keys[0] + '-hex') || input;
+        const panel = focusTarget.closest('[data-editor-panel]');
         if (panel) setTab(panel.dataset.editorPanel);
-        for (let ancestor = input.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
+        for (let ancestor = focusTarget.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
           if (ancestor.tagName === 'DETAILS') ancestor.setAttribute('open', '');
         }
-        ($(keys[0] + '-hex') || input).focus();
+        focusTarget.focus();
       }
       announce(errors[keys[0]], true);
     }
@@ -531,7 +567,7 @@
     $('dimension-label').textContent = `${width} × ${height} px`;
     $('scale-label').textContent = scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%';
     $('preview-size-note').textContent = emailDevice === 'mobile'
-      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Tall in Design for larger text.')
+      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Tall in Layout for larger text.')
       : 'Preview your signature in a message. Export dimensions stay the same.';
     const column = document.querySelector('.preview-column');
     column.classList.toggle('is-tall', column.scrollHeight > innerHeight - 56);

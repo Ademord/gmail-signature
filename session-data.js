@@ -89,7 +89,10 @@
     object(value, 'UI settings');
     var result = {};
     Object.keys(uiDefaults).forEach(function (key) { result[key] = own(value, key) ? value[key] : uiDefaults[key]; });
-    var enums = {editorTab:['design','details','photo','layout','colors','icons'], previewView:['card','email'],
+    // Colors now shares the Design view with artwork. Keep version 1 backups
+    // usable and write the current tab name when an older session is re-exported.
+    if (result.editorTab === 'colors') result.editorTab = 'design';
+    var enums = {editorTab:['layout','details','photo','design','icons'], previewView:['card','email'],
       imageScale:[2,4,6], imageBackground:['transparent','white']};
     Object.keys(enums).forEach(function (key) { if (!enums[key].includes(result[key])) fail('UI ' + key + ' must be one of: ' + enums[key].join(', ') + '.'); });
     result.selectedThemeId = selectedId(result.selectedThemeId, themes);

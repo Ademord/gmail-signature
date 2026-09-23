@@ -44,7 +44,7 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   const restored = session.parse(JSON.stringify(envelope(legacyDraft)));
   for (const [key, value] of Object.entries(legacyDraft)) assert.equal(restored.draft[key], value, key);
   assert.deepEqual(restored.themes, [savedTheme]);
-  assert.deepEqual(restored.ui, oldUI);
+  assert.deepEqual(restored.ui, {...oldUI, editorTab: 'design'});
   assert.deepEqual(Object.fromEntries(['design', 'pattern', 'portraitData', 'portraitUrl', 'portraitShape', 'portraitSize'].map(key => [key, restored.draft[key]])), {
     design: 'original', pattern: 'auto', portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64
   });

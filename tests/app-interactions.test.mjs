@@ -40,9 +40,32 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   if (initialAppearance !== null) storage.set('signature-studio:appearance:v1',initialAppearance);
   const globalEvents = new Map(), documentEvents = new Map();
   let selectedRanges = [], clipboardAttempts = 0, legacyAttempts = 0, nextWriteFailure = null, previewTransformWrites=0;
-  const on = (events, type, listener) => events.set(type, [...(events.get(type) || []), listener]);
+  const on = (events, type, listener, options) => {
+    const registered=options?.once ? event=>{
+      events.set(type,(events.get(type)||[]).filter(item=>item!==registered));
+      return listener(event);
+    } : listener;
+    events.set(type,[...(events.get(type)||[]),registered]);
+  };
+  const eventFor=(type,details={})=>({type,defaultPrevented:false,cancelBubble:false,
+    preventDefault(){this.defaultPrevented=true;},stopPropagation(){this.cancelBubble=true;},...details});
   const emit = async (events, type, event = {}) => {
-    for (const listener of events.get(type) || []) await listener({ preventDefault() {}, ...event });
+    const dispatched=eventFor(type,event);
+    await Promise.all([...(events.get(type)||[])].map(listener=>listener(dispatched)));
+    return dispatched;
+  };
+  const dispatch = async (target,type,details={}) => {
+    const event=eventFor(type,{target,...details}),pending=[];
+    // Native listeners run synchronously through the complete bubbling path;
+    // promises returned by handlers do not defer a parent/document listener.
+    for(let current=target;current;current=current.parentElement) {
+      event.currentTarget=current;
+      for(const listener of [...(current.events.get(type)||[])]) pending.push(listener(event));
+      if(event.cancelBubble) break;
+    }
+    if(!event.cancelBubble) for(const listener of [...(documentEvents.get(type)||[])]) pending.push(listener(event));
+    await Promise.all(pending);
+    return event;
   };
 
   class Element {
@@ -71,7 +94,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     removeAttribute(name) { this.attributes.delete(name); if (name === 'open') this.open = false; }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
     setCustomValidity(value) { this.validationMessage = value; }
-    addEventListener(type, listener) { on(this.events, type, listener); }
+    addEventListener(type, listener, options) { on(this.events, type, listener, options); }
     append(child) { child.remove(); child.parentElement = this; this.children.push(child); }
     prepend(child) { child.parentElement = this; this.children.unshift(child); }
     remove() {
@@ -80,17 +103,28 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     }
     focus() { document.activeElement = this; }
     select() { document.activeElement = this; }
-    showModal() { this.open = true; }
-    close() { this.open = false; return emit(this.events, 'close'); }
+    showModal() { this._previousFocus=document.activeElement; this.open=true; this.focus(); }
+    close() {
+      if(!this.open) return Promise.resolve();
+      this.open=false;this._previousFocus?.focus();
+      return emit(this.events,'close',{target:this});
+    }
     get options() { return this.children.filter(child => child.tagName === 'OPTION'); }
     closest(selector) {
       let node = this;
       while (node) {
         if (selector === '[data-editor-panel]' && node.dataset.editorPanel) return node;
         if (selector === 'details' && node.tagName === 'DETAILS') return node;
+        if (selector === 'button' && node.tagName === 'BUTTON') return node;
+        if (selector.startsWith('#') && node.id === selector.slice(1)) return node;
         node = node.parentElement;
       }
       return null;
+    }
+    querySelector(selector) {
+      assert.equal(selector,'summary','Only explicit fixture selectors are supported');
+      const find=element=>{for(const child of element.children){if(child.tagName==='SUMMARY')return child;const nested=find(child);if(nested)return nested;}return null;};
+      return find(this);
     }
     querySelectorAll(selector) {
       if (selector === 'a' || selector === 'img') return []; // Link navigation and image loading are outside this harness.
@@ -99,7 +133,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     }
     click() {
       if (this.tagName === 'A') downloads.push({ href: this.href, filename: this.download });
-      return emit(this.events, 'click', { target: this });
+      return dispatch(this,'click');
     }
   }
 
@@ -137,7 +171,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   for (const key of ['frontBackground', 'backBackground', 'accent']) node(key + '-hex').dataset.colorField = key;
   node('image-scale').value = '4'; node('image-background').value = 'transparent';
   node('editor-form').elements = { namedItem: key => inputs[key] || null };
-  const footer = new Element(), actionGroup = new Element(), workspace = new Element(), column = new Element();
+  const footer = new Element(), workspace = new Element(), column = new Element();
   workspace.dataset.emailDevice='desktop';
   const views = ['card', 'email'].map(view => { const element = new Element('button'); element.dataset.view = view; return element; });
   const emailDevices=[...pageSource.matchAll(/<button\b[^>]*\bdata-email-device="([^"]+)"[^>]*>/g)].map(([tag,device])=>{
@@ -145,7 +179,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   });
   const artworkEditButtons=[...pageSource.matchAll(/<button\b[^>]*\bdata-edit-artwork\b[^>]*>/g)].map(()=>new Element('button'));
   assert.ok(artworkEditButtons.length>0,'the real page has a manual artwork entry point');
-  const one = new Map([['.rail-footer > span', footer], ['.preview-actions > div', actionGroup], ['[data-preview-view]', workspace], ['.preview-column', column]]);
+  const one = new Map([['.rail-footer > span', footer], ['[data-preview-view]', workspace], ['.preview-column', column]]);
   // The workspace carries the same data attribute for CSS. It is deliberately
   // included in the generic selector so confusing it with buttons fails here.
   const cycleButtons = pageElements.filter(element => element.dataset.cycleField);
@@ -157,9 +191,12 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     activeElement: null, body: new Element('body'),documentElement:pageElements.find(element=>element.tagName==='HTML'),
     getElementById: id => nodes.get(id) || null,
     createElement: tag => new Element(tag),
-    querySelector(selector) { assert.ok(one.has(selector), 'Unsupported document selector: ' + selector); return one.get(selector); },
+    querySelector(selector) {
+      if(selector==='dialog[open]') return pageElements.find(element=>element.tagName==='DIALOG'&&element.open)||null;
+      assert.ok(one.has(selector), 'Unsupported document selector: ' + selector); return one.get(selector);
+    },
     querySelectorAll(selector) { assert.ok(many.has(selector), 'Unsupported document selector: ' + selector); return many.get(selector); },
-    addEventListener: (type, listener) => on(documentEvents, type, listener),
+    addEventListener: (type, listener, options) => on(documentEvents, type, listener, options),
     removeEventListener(type, listener) { documentEvents.set(type, (documentEvents.get(type) || []).filter(item => item !== listener)); },
     execCommand(command) { assert.equal(command, 'copy'); legacyAttempts++; return false; },
     createRange() {
@@ -189,7 +226,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
       async write(items) { clipboardAttempts++; if (clipboardSucceeds) { clipboardItems.push(...items); return; } throw new Error('Clipboard blocked'); },
       async writeText(value) { clipboardAttempts++; clipboardTexts.push(value); throw new Error('Clipboard blocked'); },
     } },
-    URL: HarnessURL, Blob, ClipboardItem, TextEncoder, TextDecoder, Uint8Array, atob, btoa,
+    URL: HarnessURL, Blob, ClipboardItem, TextEncoder, TextDecoder, Uint8Array, atob, btoa, queueMicrotask,
     innerWidth: screenWidth, innerHeight: 844, getComputedStyle: () => ({ paddingLeft: '16', paddingRight: '16' }),
     ResizeObserver: class { observe() {} }, getSelection: () => selection,
     addEventListener: (type, listener) => on(globalEvents, type, listener),
@@ -205,6 +242,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   return {
     node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,
     get activeElement() { return document.activeElement; },
+    focusBody() { document.body.focus(); },
     get editorSkin() { return document.documentElement.dataset.editorSkin; },
     hasNode: id => nodes.has(id),
     failNextWrite(key) { nextWriteFailure = key; },
@@ -212,7 +250,10 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     get artworkSettings() { return artworkSettings; },
     get artworkOpened() { return artworkOpened; },
     click: id => node(id).click(),
-    async key(id,key) { await emit(node(id).events,'keydown',{target:node(id),key}); },
+    async key(id,key,details={}) { return dispatch(node(id),'keydown',{key,...details}); },
+    onDocument(type,listener) { on(documentEvents,type,listener); },
+    menuAIButton(section) { return pageElements.find(element=>element.dataset.aiSection===section&&element.closest('#editor-options')); },
+    async clickMenuButton(id) { const button=node(id);button.focus();return button.click(); },
     async arrange(value) { const button=arrangementButtons.find(item=>item.dataset.arrangement===value);assert.ok(button,'arrangement '+value+' exists');await button.click(); },
     async previewView(view) { const button=views.find(item=>item.dataset.view===view);assert.ok(button);await button.click(); },
     async emailDevice(device) { const button=emailDevices.find(item=>item.dataset.emailDevice===device);assert.ok(button,'email device '+device+' exists');await button.click(); },
@@ -366,6 +407,7 @@ test('desktop and mobile email previews change only the viewing frame, leaving s
   assert.equal(parseFloat(app.node('preview-sizer').style.width),366,'mobile email uses 390px minus 24px padding');
   assert.equal(app.node('signature-preview').style.width,'662px','device choice does not change exported card dimensions');
   assert.equal(app.node('signature-preview').innerHTML,signature,'links and signature markup are unchanged');
+  assert.match(app.node('preview-size-note').textContent,/Choose Tall in Layout/);
   assert.equal(app.storage.get(storageKey),stored);assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),initial);
   assert.equal(app.node('undo-change').disabled,true,'view controls do not enter design history');
   for(const button of app.emailDevices) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.emailDevice==='mobile'));
@@ -428,22 +470,22 @@ test('all seven layout choices preserve the complete artwork, palette and inform
   await app.click('redo-change'); assert.equal(app.node('design').value, 'original');
 });
 
-test('four editor tabs keep sizes with Design and icons with Details, with one copy action and no repeated total size', async () => {
+test('four shared editor tabs keep sizing in Layout and icons in Details without editing the draft', async () => {
   const app=harness();
-  assert.deepEqual(app.tabs.map(tab=>tab.dataset.editorTab),['design','colors','details','photo']);
-  assert.deepEqual(app.panels.map(panel=>panel.dataset.editorPanel).sort(),['colors','design','details','photo']);
-  for(const id of ['layout-tab','layout-panel','icons-tab','icons-panel','size-explanation','copy-preview']) assert.equal(app.hasNode(id),false,id+' is removed');
+  assert.deepEqual(app.tabs.map(tab=>tab.dataset.editorTab),['layout','details','photo','design']);
+  assert.deepEqual(app.panels.map(panel=>panel.dataset.editorPanel).sort(),['design','details','layout','photo']);
+  for(const id of ['colors-tab','icons-tab','icons-panel','size-explanation','copy-preview']) assert.equal(app.hasNode(id),false,id+' is removed');
   assert.equal([...pageSource.matchAll(/id="copy-signature"/g)].length,1);
   assert.equal(app.node('copy-signature').closest('[data-editor-panel]'),null,'the copy action remains outside editor tabs');
-  assert.equal(app.node('size-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'design');
+  assert.equal(app.node('size-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'layout');
   assert.equal(app.node('icons-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'details');
   assert.equal(Boolean(app.node('size-disclosure').open),false);
   assert.equal(Boolean(app.node('icons-disclosure').open),false);
-  for(const key of ['width','height','layout','imageBase']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'design',key);
+  for(const key of ['width','height','layout','imageBase']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'layout',key);
   for(const key of ['websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'details',key);
   assert.deepEqual([...new Set([...pageSource.matchAll(/data-ai-section="([^"]+)"/g)].map(match=>match[1]))].sort(),['artwork','colors','design','details','icons','layout','photo'],'all existing AI section entry points remain');
   const saved=app.storage.get(storageKey);
-  for(const [from,key,to] of [['design','ArrowLeft','photo'],['photo','ArrowRight','design'],['design','End','photo'],['photo','Home','design'],['design','ArrowRight','colors']]) {
+  for(const [from,key,to] of [['layout','ArrowLeft','design'],['design','ArrowRight','layout'],['layout','End','design'],['design','Home','layout'],['layout','ArrowRight','details']]) {
     await app.key(from+'-tab',key);
     assert.equal(app.activeElement,app.node(to+'-tab'));
     for(const tab of app.tabs) {
@@ -451,9 +493,138 @@ test('four editor tabs keep sizes with Design and icons with Details, with one c
       assert.equal(tab.tabIndex,tab.dataset.editorTab===to?0:-1);
     }
     for(const panel of app.panels) assert.equal(panel.hidden,panel.dataset.editorPanel!==to);
+    assert.equal(app.previewWorkspace.dataset.editorView,to,'the preview uses the selected inspector width');
   }
   assert.equal(app.storage.get(storageKey),saved,'section navigation does not edit the signature');
   assert.equal(app.node('undo-change').disabled,true);
+});
+
+test('the shared header owns exports and history while Design exposes both inspector columns', async () => {
+  const app=harness(), saved=app.storage.get(storageKey);
+  const ancestors=element=>{const list=[];for(let parent=element.parentElement;parent;parent=parent.parentElement)list.push(parent);return list;};
+  for(const id of ['copy-signature','undo-change','redo-change','export-image','download-html','share-link','export-data','import-data']) {
+    assert.ok(ancestors(app.node(id)).some(parent=>parent.tagName==='HEADER'),id+' is available in the shared header');
+    assert.equal(app.node(id).closest('[data-editor-panel]'),null);
+  }
+  assert.equal(app.node('export-image').parentElement,app.node('export-options'));
+  assert.equal(app.node('export-options').children[0],app.node('export-image'));
+  for(const tab of app.tabs) assert.equal(tab.parentElement.tagName,'NAV');
+  await app.click('photo-tab');await app.click('design-tab');
+  const colors=app.node('colors-panel'),artwork=app.node('artwork-panel');
+  assert.equal(colors.parentElement,artwork.parentElement,'Colors and Artwork share one Design grid');
+  assert.match(colors.parentElement.getAttribute('class'),/\bdesign-columns\b/);
+  for(const column of [colors,artwork]) {
+    assert.equal(column.tagName,'SECTION');assert.notEqual(column.getAttribute('role'),'tabpanel');
+    assert.equal(column.closest('[data-editor-panel]'),app.node('design-panel'));
+    for(const ancestor of [column,...ancestors(column)]) assert.equal(Boolean(ancestor.hidden),false);
+  }
+  assert.equal(Boolean(app.node('color-values').open),false);
+  assert.equal(Boolean(app.node('saved-palettes').open),false);
+  await app.click('save-palette-shortcut');
+  assert.equal(app.node('saved-palettes').open,true);
+  assert.equal(app.activeElement,app.node('theme-name'));
+  assert.equal(app.storage.get(storageKey),saved,'opening Design and its palette form does not alter the draft');
+});
+
+test('menu Escape closes only its active level and restores a visible summary', async () => {
+  const app=harness();let outerEscapes=0;
+  app.onDocument('keydown',event=>{if(event.key==='Escape')outerEscapes++;});
+  app.node('editor-options').open=true;app.node('appearance-menu').open=true;
+  app.node('skin-plum').focus();
+  const nested=await app.key('skin-plum','Escape');
+  assert.equal(nested.defaultPrevented,true);assert.equal(nested.cancelBubble,true);
+  assert.equal(app.node('appearance-menu').open,false);
+  assert.equal(app.node('editor-options').open,true,'dismissing Appearance must not dismiss its parent menu');
+  assert.equal(app.activeElement.id,'appearance-toggle');assert.equal(outerEscapes,0);
+  await app.key('appearance-toggle','Escape');
+  assert.equal(app.node('editor-options').open,false,'a second Escape dismisses the outer menu after Appearance is closed');
+  assert.ok(app.activeElement===app.node('editor-options').querySelector('summary'));
+  for(const [menuId,buttonId] of [['editor-options','install-help'],['export-menu','download-html']]) {
+    const menu=app.node(menuId);menu.open=true;app.node(buttonId).focus();
+    const event=await app.key(buttonId,'Escape');
+    assert.equal(event.defaultPrevented,true);assert.equal(event.cancelBubble,true);
+    assert.equal(menu.open,false);assert.ok(app.activeElement===menu.querySelector('summary'));
+  }
+  assert.equal(outerEscapes,0,'handled Escape must not trigger outer shortcuts');
+});
+
+test('menu Escape respects an already-handled key without dismissing its content', async () => {
+  const app=harness(),menu=app.node('export-menu'),button=app.node('download-html');
+  menu.open=true;button.focus();
+  button.addEventListener('keydown',event=>{if(event.key==='Escape')event.preventDefault();});
+  const event=await app.key('download-html','Escape');
+  assert.equal(event.defaultPrevented,true);assert.equal(event.cancelBubble,false);
+  assert.equal(menu.open,true);assert.equal(app.activeElement.id,'download-html');
+});
+
+test('menu actions restore trigger focus but preserve validation and nested preference focus', async () => {
+  const app=harness(),menu=app.node('export-menu'),button=app.node('download-html');
+  menu.open=true;button.focus();
+  await button.children[0].click();
+  assert.equal(menu.open,false);assert.ok(app.activeElement===menu.querySelector('summary'));
+  assert.equal(app.downloads.at(-1).filename,'my-signature.html','clicking an action icon still invokes its button');
+  button.addEventListener('click',()=>app.focusBody(),{once:true});
+  menu.open=true;await app.clickMenuButton('download-html');
+  assert.ok(app.activeElement===menu.querySelector('summary'),'restore the trigger when the browser clears focus as details closes');
+
+  await app.input('width',999);menu.open=true;await app.clickMenuButton('download-html');
+  assert.equal(menu.open,false);assert.equal(app.activeElement.id,'width','menu dismissal must preserve validation focus');
+  const settings=app.node('editor-options');settings.open=true;app.node('appearance-menu').open=true;
+  await app.clickMenuButton('skin-plum');
+  assert.equal(settings.open,true,'nested preference buttons do not dismiss the parent menu');
+  assert.equal(app.activeElement.id,'appearance-toggle');
+});
+
+test('menu-launched dialogs retain modal focus and restore the visible trigger once on close', async () => {
+  for(const [menuId,buttonId,dialogId,closeId] of [['export-menu','export-data','session-dialog','close-session'],['editor-options','install-help','help-dialog','close-help']]) {
+    const app=harness(),menu=app.node(menuId),dialog=app.node(dialogId);
+    menu.open=true;await app.clickMenuButton(buttonId);
+    assert.equal(menu.open,false);assert.equal(dialog.open,true);
+    assert.equal(app.activeElement.id,dialogId,'dismissing the menu must not move focus outside the modal');
+    await app.click(closeId);
+    assert.equal(dialog.open,false);assert.ok(app.activeElement===menu.querySelector('summary'));
+    app.node('nameLine1').focus();dialog.showModal();await dialog.close();
+    assert.equal(app.activeElement.id,'nameLine1','a later non-menu dialog open must not reuse an old close listener');
+  }
+});
+
+test('menu focus restoration waits for delegated document launchers before finding a dialog', async () => {
+  const app=harness(),menu=app.node('editor-options'),button=app.menuAIButton('design'),dialog=app.node('help-dialog');
+  assert.ok(button,'the real page includes an AI action inside the menu');
+  let launchedAfterDismissal=false;
+  app.onDocument('click',event=>{
+    if(event.target!==button)return;
+    launchedAfterDismissal=!menu.open;dialog.showModal();
+  });
+  menu.open=true;button.focus();await button.click();
+  assert.equal(launchedAfterDismissal,true,'the delegated launcher follows the ancestor menu listener');
+  assert.equal(dialog.open,true);assert.equal(app.activeElement.id,'help-dialog');
+  await dialog.close();assert.ok(app.activeElement===menu.querySelector('summary'));
+});
+
+test('featured artwork and the full library stay synchronized without replacing photos or other design settings', async () => {
+  const featured=['none','auto','orbit','studio','contour','cutpaper'];
+  const initial={...core.defaults,nameLine1:'Jordan',design:'signal',portraitData:localPortrait,portraitShape:'rounded',portraitSize:80,
+    layout:'stacked',width:400,height:300,artworkPlacement:'motif',motifScale:73,motifPositionX:20,motifPositionY:60,accent:'#543b91'};
+  const app=harness({initialDraft:initial});
+  assert.deepEqual(app.node('compact-pattern-choices').children.map(button=>button.id),featured.map(id=>'quick-pattern-'+id));
+  const checkSelected=pattern=>{
+    for(const id of featured) assert.equal(app.node('quick-pattern-'+id).getAttribute('aria-pressed'),String(id===pattern),id+' featured selection');
+    for(const id of Object.keys(core.patterns)) assert.equal(app.node('choose-pattern-'+id).getAttribute('aria-pressed'),String(id===pattern),id+' library selection');
+  };
+  checkSelected('auto');
+  for(const pattern of featured) {
+    await app.click('quick-pattern-'+pattern);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern});
+    assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait),'the selected photo remains in the preview');
+    checkSelected(pattern);
+  }
+  await app.click('choose-pattern-prism');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'prism'});checkSelected('prism');
+  await app.click('undo-change');checkSelected('cutpaper');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'cutpaper'});
+  await app.click('redo-change');checkSelected('prism');
+  await app.click('choose-pattern-contour');checkSelected('contour');
 });
 
 test('layout arrows wrap, preserve the complete draft and create one undo entry per click', async () => {
@@ -521,31 +692,32 @@ test('Wide and Tall buttons synchronize the backing field and canvas without los
   await app.arrange('paired');assert.equal(app.node('undo-change').disabled,true,'reselecting the active arrangement is not an edit');
 });
 
-test('legacy Layout and Icons session tabs restore to their new visible sections and re-export canonical tabs',async()=>{
-  for(const [legacyTab,currentTab,disclosure] of [['layout','design','size-disclosure'],['icons','details','icons-disclosure']]) {
+test('Layout and legacy Colors or Icons sessions restore visible sections and re-export canonical tabs',async()=>{
+  for(const [legacyTab,currentTab,disclosure] of [['layout','layout',null],['colors','design',null],['icons','details','icons-disclosure']]) {
     const initial={...core.defaults,nameLine1:'Jordan',design:'signal',pattern:'overprint'};
     const app=harness(), incoming=JSON.stringify({format:'signature-editor-session',version:1,exportedAt:'2026-09-09T12:00:00.000Z',draft:initial,themes:[],ui:{editorTab:legacyTab}});
     await app.click('import-data');await app.pasteSession(incoming);
     assert.equal(app.node('session-restore').disabled,false,legacyTab+' remains an accepted backup value');
     await app.click('session-restore');
     assert.equal(app.node(currentTab+'-tab').getAttribute('aria-selected'),'true');
-    assert.equal(app.node(disclosure).open,true);assert.equal(app.node(currentTab+'-panel').hidden,false);
+    if(disclosure) assert.equal(app.node(disclosure).open,true);
+    assert.equal(app.node(currentTab+'-panel').hidden,false);
     assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
     await app.click('export-data');assert.equal(JSON.parse(app.node('session-json').value).ui.editorTab,currentTab);
-    await app.click('close-session');await app.click('colors-tab');
+    await app.click('close-session');await app.click('design-tab');
     await app.click('import-data');await app.pasteSession(incoming);await app.importParts(true,false);await app.click('session-restore');
-    assert.equal(app.node('colors-tab').getAttribute('aria-selected'),'true','information-only import preserves the current editor section');
+    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true','information-only import preserves the current editor section');
   }
 });
 
 test('copy validation reveals moved size fields and every nested disclosure before focusing the error',async()=>{
   for(const [key,invalid] of [['width','999'],['imageBase','javascript:invalid']]) {
-    const app=harness();await app.input(key,invalid);await app.click('colors-tab');
+    const app=harness();await app.input(key,invalid);await app.click('design-tab');
     const field=app.node(key),disclosures=[];
     for(let parent=field.parentElement;parent;parent=parent.parentElement) if(parent.tagName==='DETAILS'){disclosures.push(parent);parent.removeAttribute('open');}
     assert.ok(disclosures.length>=1,key+' is actually inside a disclosure in the real page');
     await app.click('copy-signature');
-    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.node('layout-tab').getAttribute('aria-selected'),'true');
     assert.equal(app.activeElement,field,key+' receives focus');
     assert.equal(field.getAttribute('aria-invalid'),'true');
     for(let parent=field.parentElement;parent;parent=parent.parentElement) {
@@ -553,6 +725,25 @@ test('copy validation reveals moved size fields and every nested disclosure befo
       if(parent.tagName==='DETAILS') assert.equal(parent.open,true,key+' has no closed disclosure ancestor');
     }
     assert.equal(app.attempts.modern,0,'invalid fields prevent copying');
+  }
+});
+
+test('invalid colors reveal the actual hex input inside Design before focusing it', async () => {
+  for(const key of ['frontBackground','backBackground','accent']) {
+    const app=harness(), field=app.node(key+'-hex');
+    assert.equal(field.closest('details'),app.node('color-values'));
+    assert.equal(app.node(key).closest('details'),null,'native color input and hex field have different disclosure ancestry');
+    await app.input(key+'-hex','invalid');
+    app.node('color-values').removeAttribute('open');
+    await app.click('photo-tab');await app.click('copy-signature');
+    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.node('color-values').open,true);assert.equal(app.activeElement,field);
+    assert.equal(field.getAttribute('aria-invalid'),'true');
+    for(let parent=field.parentElement;parent;parent=parent.parentElement) {
+      assert.equal(Boolean(parent.hidden),false);
+      if(parent.tagName==='DETAILS') assert.equal(parent.open,true);
+    }
+    assert.equal(app.attempts.modern,0);
   }
 });
 
@@ -638,9 +829,11 @@ test('Studio Tall Grid exposes side-artwork controls and every slider changes re
   const initial={...core.defaults,design:'studio',layout:'stacked',pattern:'signal'},app=harness({initialDraft:initial});
   assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-motif-settings').hidden,false);
   for(const key of ['motifScale','motifPositionX','motifPositionY']) {
-    const field=app.node(key);assert.equal(field.closest('details'),null,key+' is discoverable without opening a disclosure');
+    const field=app.node(key);
+    assert.equal(field.closest('details')?.id || null,key==='motifScale'?null:'motif-position-disclosure',key+' is grouped under the appropriate adjustment');
     for(let parent=field.parentElement;parent;parent=parent.parentElement)assert.equal(Boolean(parent.hidden),false,key+' starts visible');
   }
+  assert.equal(Boolean(app.node('motif-position-disclosure').open),false,'fine positioning starts collapsed while artwork size stays visible');
   assert.equal(app.node('motifPositionY').disabled,true,'the fitted vertical edge does not offer a dead motion control');
   assert.equal(app.node('motif-position-note').hidden,false);
   const baseline=app.node('signature-preview').innerHTML;
@@ -654,6 +847,7 @@ test('Studio Tall Grid exposes side-artwork controls and every slider changes re
   await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
   assert.equal(app.node('undo-change').disabled,true,'one native slider gesture is one undo action');
   await app.click('redo-change');
+  app.node('motif-position-disclosure').setAttribute('open','');
   for(const [key,value] of [['motifPositionX',100],['motifPositionY',100]]) {
     const before=app.node('signature-preview').innerHTML;await app.input(key,value);await app.finishEdit();
     assert.notEqual(app.node('signature-preview').innerHTML,before,key+' moves the actual artwork');
@@ -1061,12 +1255,12 @@ test('session JSON exports and restores draft, themes, and view settings after r
   const app = harness();
   await app.input('nameLine1','Zoë'); await app.input('websiteIcon','mail');
   await app.input('theme-name','My colors'); await app.click('save-theme');
-  await app.click('colors-tab');
+  await app.click('design-tab');
   await app.click('export-data');
   const exported = app.node('session-json').value;
   const session = JSON.parse(exported);
   assert.equal(session.draft.nameLine1,'Zoë'); assert.equal(session.themes[0].name,'My colors');
-  assert.equal(session.ui.editorTab,'colors');
+  assert.equal(session.ui.editorTab,'design');
   await app.click('session-download');
   const file = app.downloads.at(-1);
   assert.match(file.filename,/^signature-session-\d{4}-\d{2}-\d{2}\.json$/);
@@ -1077,7 +1271,7 @@ test('session JSON exports and restores draft, themes, and view settings after r
   await app.click('session-restore');
   assert.equal(app.node('nameLine1').value,'Zoë');
   assert.equal(app.node('websiteIcon').value,'mail');
-  assert.equal(app.node('colors-tab').getAttribute('aria-selected'),'true');
+  assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
   assert.equal(JSON.parse(app.storage.get(storageKey)).nameLine1,'Zoë');
   assert.equal(JSON.parse(app.storage.get('signature-studio:themes:v1')).themes.length,1);
   await app.click('undo-change'); assert.equal(app.node('nameLine1').value,'Avery');
