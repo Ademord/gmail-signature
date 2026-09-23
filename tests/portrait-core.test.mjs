@@ -125,6 +125,56 @@ test('file intake rejects unsupported, empty, malformed and oversized input', as
   }
 });
 
+function hostedHarness(fetch, timerOverrides = {}) {
+  const context = {module: {exports: {}}, fetch, AbortController, Blob, setTimeout, clearTimeout, ...timerOverrides};
+  vm.runInNewContext(read('portrait-core.js').toString(), context);
+  return context.module.exports;
+}
+
+test('hosted photo intake downloads anonymously with CORS and preserves an allowed image type', async () => {
+  let request;
+  const api = hostedHarness(async (url, options) => {
+    request = {url, options};
+    return new Response(Uint8Array.from([1, 2, 3]), {headers: {'content-type': 'image/jpeg; charset=binary'}});
+  });
+  const blob = await api.fetchHosted('https://example.com/photo.jpg');
+  assert.equal(blob.type, 'image/jpeg'); assert.equal(blob.size, 3);
+  assert.equal(request.options.mode, 'cors'); assert.equal(request.options.credentials, 'omit');
+  assert.equal(request.options.referrerPolicy, 'no-referrer'); assert.ok(request.options.signal instanceof AbortSignal);
+});
+
+test('hosted intake rejects blocked, invalid, empty and oversized responses before decoding', async () => {
+  const cases = [
+    {fetch: async () => {throw new TypeError('Failed to fetch');}, error: /Choose a photo/},
+    {fetch: async () => new Response('', {status: 404}), error: /could not be downloaded/},
+    {fetch: async () => new Response('<svg/>', {headers: {'content-type': 'image/svg+xml'}}), error: /JPG, PNG, or WebP/},
+    {fetch: async () => new Response('', {headers: {'content-type': 'image/jpeg'}}), error: /12 MB/},
+    {fetch: async () => new Response('a', {headers: {'content-type': 'image/jpeg', 'content-length': String(portrait.MAX_FILE_BYTES + 1)}}), error: /12 MB/}
+  ];
+  for (const item of cases) await assert.rejects(hostedHarness(item.fetch).fetchHosted('https://example.com/photo'), item.error);
+  let signal, released = false;
+  const api = hostedHarness(async (_url, options) => {
+    signal = options.signal;
+    return {ok: true, headers: new Headers({'content-type': 'image/png'}), body: {getReader: () => ({
+      read: async () => ({done: false, value: {byteLength: portrait.MAX_FILE_BYTES + 1}}), releaseLock() {released = true;}
+    })}};
+  });
+  await assert.rejects(api.fetchHosted('https://example.com/photo'), /12 MB/);
+  assert.equal(signal.aborted, true); assert.equal(released, true);
+});
+
+test('hosted photo download timeout aborts the request and gives an upload fallback', async () => {
+  let expire, cleared = false, signal;
+  const api = hostedHarness((_url, options) => new Promise((_resolve, reject) => {
+    signal = options.signal;
+    signal.addEventListener('abort', () => reject(new Error('aborted')));
+  }), {setTimeout: callback => {expire = callback; return 1;}, clearTimeout: () => {cleared = true;}});
+  const pending = api.fetchHosted('https://example.com/photo');
+  expire();
+  await assert.rejects(pending, /too long.*Choose a photo/);
+  assert.equal(signal.aborted, true); assert.equal(cleared, true);
+});
+
 test('local portrait session round trip and legacy migration preserve supported data', () => {
   const draft = values({portraitData: photo, portraitShape: 'rounded', portraitSize: 96, design: 'studio'});
   const restored = session.parse(session.serialize({draft, ui: {editorTab: 'photo'}}));
@@ -141,16 +191,16 @@ test('session validation rejects truncated or header-only inline images', () => 
   }
 });
 
-function controlsHarness(coreOverrides = {}) {
+function controlsHarness(coreOverrides = {}, initial = {portraitData: photo}) {
   const nodes = new Map(), images = [], writes = [];
-  let draft = values({portraitData: photo}), api;
+  let draft = values(initial), api;
   const source = read('portrait-controls.js').toString();
   for (const match of source.matchAll(/id="([^"]+)"/g)) nodes.set(match[1], {id: match[1], value: '', checked: false, hidden: false, dataset: {}, style: {}, events: {},
     addEventListener(type, fn) {this.events[type] = fn;}, replaceChildren() {}, removeAttribute(key) {delete this[key];}, setPointerCapture() {}});
   nodes.set('portrait-panel-content', {});
   nodes.get('portrait-editor').hidden = true;
   const get = id => {assert.ok(nodes.has(id), id); return nodes.get(id);};
-  const context = {window: {SignatureCore: signature, PortraitCore: {load: async () => ({width: 512, height: 512}), detect: async () => [], frame: portrait.frame, crop: portrait.crop, draw() {}, encode: () => photo, ...coreOverrides}},
+  const context = {window: {SignatureCore: signature, PortraitCore: {fetchHosted: async () => new Blob(['image'], {type: 'image/jpeg'}), load: async () => ({width: 512, height: 512}), detect: async () => [], frame: portrait.frame, crop: portrait.crop, draw() {}, encode: () => photo, ...coreOverrides}},
     document: {getElementById: get, createElement: () => ({})}, Blob, atob, Uint8Array, Image: class {constructor() {images.push(this);}}, setTimeout: () => 1, clearTimeout() {}};
   vm.runInNewContext(source, context, {filename: 'portrait-controls.js'});
   api = context.window.PortraitControls.attach({getDraft: () => ({...draft}), setPortrait: patch => {writes.push(patch); draft = {...draft, ...patch}; api?.sync();}});
@@ -168,10 +218,11 @@ test('saved crop can be reopened after reload without recropping until Apply', a
 });
 
 test('late hosted-photo response cannot overwrite a newer applied crop', async () => {
-  const h = controlsHarness(); h.get('portrait-file').files = [{type: 'image/png', size: 100}];
-  await h.emit('portrait-file', 'change');
+  const h = controlsHarness();
   h.get('portrait-public-url').value = 'https://example.com/old.jpg';
   const pending = h.emit('portrait-use-url', 'click');
+  h.get('portrait-file').files = [{type: 'image/png', size: 100}];
+  await h.emit('portrait-file', 'change');
   await h.emit('portrait-apply', 'click');
   assert.equal(h.draft().portraitData, photo);
   h.images[0].naturalWidth = 100; h.images[0].naturalHeight = 100; h.images[0].onload(); await pending;
@@ -218,12 +269,85 @@ test('newer selected upload wins out-of-order image loading', async () => {
   assert.ok(drawn.length > 0); assert.ok(drawn.every(name => name === 'new'));
 });
 
-test('hosted photo aspect mismatch is rejected and invalid crop apply never reports success', async () => {
-  const h = controlsHarness(); h.get('portrait-public-url').value = 'https://example.com/wide.jpg';
+test('non-square hosted photo opens a local crop without committing its original URL', async () => {
+  let fetched, loaded;
+  const h = controlsHarness({fetchHosted: async url => {fetched = url; return new Blob(['image'], {type: 'image/jpeg'});},
+    load: async file => {loaded = file; return {width: 1697, height: 1800};}});
+  h.get('portrait-public-url').value = 'https://example.com/portrait.jpg';
+  const pending = h.emit('portrait-use-url', 'click');
+  h.images[0].naturalWidth = 2443; h.images[0].naturalHeight = 2591; h.images[0].onload(); await pending;
+  assert.equal(fetched, 'https://example.com/portrait.jpg'); assert.equal(loaded.type, 'image/jpeg');
+  assert.equal(h.writes.length, 0); assert.equal(h.draft().portraitData, photo); assert.equal(h.draft().portraitUrl, '');
+  assert.equal(h.get('portrait-editor').hidden, false); assert.equal(h.get('portrait-apply').disabled, false);
+  assert.equal(h.get('portrait-download').disabled, true, 'A previous crop must not be offered as the pending hosted crop');
+  assert.match(h.get('portrait-hosting-status').textContent, /original hosted photo is not square.*Use this crop/);
+  await h.emit('portrait-apply', 'click');
+  assert.equal(h.writes.length, 1); assert.equal(h.draft().portraitData, photo); assert.equal(h.draft().portraitUrl, '');
+  assert.equal(h.get('portrait-editor').hidden, true); assert.equal(h.get('portrait-apply').disabled, true);
+  assert.match(h.get('portrait-hosting-status').textContent, /saved crop is ready/);
+  assert.equal(h.get('portrait-download').disabled, false, 'An identical applied crop still completes the pending edit');
+});
+
+test('empty, saved local and hosted photos have accurate guidance and square URLs need no CORS fetch', async () => {
+  const h = controlsHarness({fetchHosted: () => {throw new Error('Square URL should not be fetched');}}, {});
+  assert.doesNotMatch(h.get('portrait-hosting-status').textContent, /ready/); assert.equal(h.get('portrait-download').disabled, true);
+  h.get('portrait-public-url').value = 'https://example.com/square.jpg';
+  const pending = h.emit('portrait-use-url', 'click');
+  h.images[0].naturalWidth = 384; h.images[0].naturalHeight = 384; h.images[0].onload(); await pending;
+  assert.equal(h.draft().portraitUrl, 'https://example.com/square.jpg'); assert.equal(h.draft().portraitData, '');
+  assert.match(h.get('portrait-hosting-status').textContent, /hosted square photo is ready/);
+  assert.equal(h.get('portrait-editor').hidden, true); assert.equal(h.get('portrait-download').disabled, true);
+  h.restore({portraitData: photo});
+  assert.match(h.get('portrait-hosting-status').textContent, /saved crop is ready/); assert.equal(h.get('portrait-download').disabled, false);
+});
+
+test('CORS failure leaves the current portrait unchanged and offers local upload', async () => {
+  const h = controlsHarness({fetchHosted: async () => {throw new Error('This host does not allow cropping. Download it and use Choose a photo instead.');}});
+  h.get('portrait-public-url').value = 'https://example.com/wide.jpg';
   const pending = h.emit('portrait-use-url', 'click');
   h.images[0].naturalWidth = 200; h.images[0].naturalHeight = 100; h.images[0].onload(); await pending;
-  assert.equal(h.writes.length, 0); assert.match(h.get('portrait-notice').textContent, /square/); assert.equal(h.get('portrait-notice').dataset.error, 'true');
+  assert.equal(h.writes.length, 0); assert.equal(h.draft().portraitData, photo);
+  assert.equal(h.get('portrait-editor').hidden, true); assert.equal(h.get('portrait-apply').disabled, true);
+  assert.match(h.get('portrait-notice').textContent, /Choose a photo/); assert.equal(h.get('portrait-notice').dataset.error, 'true');
+});
+
+for (const phase of ['fetch', 'load', 'detect']) test(`obsolete hosted ${phase} cannot reopen a restored portrait or apply stale source`, async () => {
+  let finish;
+  const pendingWork = new Promise(resolve => {finish = resolve;});
+  const overrides = {[phase === 'fetch' ? 'fetchHosted' : phase]: () => pendingWork};
+  const h = controlsHarness(overrides);
+  h.get('portrait-public-url').value = 'https://example.com/wide.jpg';
+  const pending = h.emit('portrait-use-url', 'click');
+  h.images[0].naturalWidth = 200; h.images[0].naturalHeight = 100; h.images[0].onload();
+  await new Promise(setImmediate);
+  h.restore({portraitUrl: 'https://example.com/restored.jpg'});
+  finish(phase === 'fetch' ? new Blob(['image'], {type: 'image/jpeg'}) : phase === 'load' ? {width: 200, height: 100} : []);
+  await pending; await h.emit('portrait-apply', 'click');
+  assert.equal(h.writes.length, 0); assert.equal(h.draft().portraitUrl, 'https://example.com/restored.jpg');
+  assert.equal(h.get('portrait-editor').hidden, true); assert.equal(h.get('portrait-apply').disabled, true);
+});
+
+test('starting a new photo prevents applying an older editable source while its load is pending', async () => {
+  let finish, calls = 0;
+  const h = controlsHarness({load: () => ++calls === 1 ? Promise.resolve({width: 512, height: 512}) : new Promise(resolve => {finish = resolve;})});
   h.get('portrait-file').files = [{type: 'image/png', size: 100}]; await h.emit('portrait-file', 'change');
-  h.restore({nameLine1: 'W'.repeat(36)}); await h.emit('portrait-apply', 'click');
+  const next = h.emit('portrait-file', 'change');
+  await h.emit('portrait-apply', 'click'); assert.equal(h.writes.length, 0); assert.equal(h.get('portrait-apply').disabled, true);
+  finish({width: 200, height: 100}); await next;
+  assert.equal(h.get('portrait-apply').disabled, false);
+});
+
+test('uncommitted hosted URL survives unrelated shape and size changes', async () => {
+  const h = controlsHarness({}, {});
+  h.get('portrait-public-url').value = 'https://example.com/photo.jpg';
+  h.get('portrait-shape-control').value = 'square'; await h.emit('portrait-shape-control', 'change');
+  h.get('portrait-size-control').value = 80; await h.emit('portrait-size-control', 'change');
+  assert.equal(h.get('portrait-public-url').value, 'https://example.com/photo.jpg');
+});
+
+test('invalid crop apply never reports success', async () => {
+  const h = controlsHarness();
+  h.get('portrait-file').files = [{type: 'image/png', size: 100}]; await h.emit('portrait-file', 'change');
+  h.restore({nameLine1: 'W'.repeat(36), portraitData: photo}); await h.emit('portrait-apply', 'click');
   assert.equal(h.writes.length, 0); assert.equal(h.get('portrait-notice').dataset.error, 'true'); assert.doesNotMatch(h.get('portrait-notice').textContent, /Photo added/);
 });

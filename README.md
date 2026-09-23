@@ -116,9 +116,11 @@ A local upload is ready for preview and PNG export. For a clickable HTML signatu
 
 1. Open **Use your photo in email** and click **Download cropped photo**.
 2. Host that square crop on your website or an image host with a stable, publicly readable HTTPS image URL.
-3. Paste it into **Hosted cropped photo URL**, then click **Use photo URL**.
+3. Paste it into **Hosted photo URL**, then click **Use photo URL**.
 
-The editor checks that the URL loads a square image. It does not upload or publish the photo. Using a URL replaces the embedded crop in the draft, so download it first if you want to keep it. A local file, temporary browser URL, private sharing page, or expired link will not work for recipients.
+Square hosted images can be used directly in email. If you paste a portrait or landscape photo URL, the editor opens its crop controls when the host permits cross-origin reads. Adjust the photo and click **Use this crop**, then download and host that square crop before using it in email. If the host blocks cropping, save the original image and use **Choose a photo** instead. The hosting instructions and download button reflect whether a crop has actually been applied.
+
+The editor does not upload or publish the photo. A square hosted URL replaces the embedded crop in the draft, so download it first if you want to keep it. Cropping a hosted original does not change that original URL. A local file, temporary browser URL, private sharing page, or expired link will not work for recipients.
 
 **Copy signature** and **Download HTML** require a hosted URL when an uploaded photo is present. Alternatively, remove the photo or use PNG export. Draft links cannot carry uploaded photo data; use **Export data** to transfer that draft. A custom host must also allow cross-origin reads for PNG export; email image loading and browser export are separate requirements.
 

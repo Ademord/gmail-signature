@@ -31,6 +31,45 @@
     if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new TypeError('Choose a JPG, PNG, or WebP photo.');
     if (!Number.isFinite(file.size) || file.size < 1 || file.size > MAX_FILE_BYTES) throw new TypeError('Choose a photo smaller than 12 MB.');
   }
+  async function fetchHosted(url) {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 12000);
+    try {
+      let response;
+      try {
+        response = await fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer', signal: controller.signal });
+      } catch {
+        throw new Error('This host does not allow the photo to be opened for cropping. Download it and use Choose a photo instead.');
+      }
+      if (!response.ok) throw new Error('The hosted photo could not be downloaded. Download it and use Choose a photo instead.');
+      const type = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      checkFile({ type, size: 1 });
+      if (Number(response.headers.get('content-length')) > MAX_FILE_BYTES) throw new Error('Choose a photo smaller than 12 MB.');
+      let blob;
+      if (response.body && typeof response.body.getReader === 'function') {
+        const reader = response.body.getReader(), chunks = [];
+        let size = 0;
+        try {
+          while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            size += part.value.byteLength;
+            if (size > MAX_FILE_BYTES) { controller.abort(); throw new Error('Choose a photo smaller than 12 MB.'); }
+            chunks.push(part.value);
+          }
+        } finally { reader.releaseLock(); }
+        blob = new Blob(chunks, { type });
+      } else {
+        blob = await response.blob();
+      }
+      checkFile(blob);
+      return blob;
+    } catch (error) {
+      if (timedOut) throw new Error('The hosted photo took too long to download. Try again or use Choose a photo.');
+      throw error;
+    } finally { clearTimeout(timer); controller.abort(); }
+  }
   async function load(file) {
     checkFile(file);
     const url = URL.createObjectURL(file);
@@ -42,6 +81,7 @@
         value.onerror = () => { clearTimeout(timer); reject(new Error('This image could not be opened. Try a JPG or PNG.')); };
         value.src = url;
       });
+      dimensions(img.naturalWidth, img.naturalHeight);
       if (img.naturalWidth * img.naturalHeight > 60000000) throw new Error('This photo is too large. Resize it below 60 megapixels.');
       const scale = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
       const canvas = document.createElement('canvas');
@@ -87,5 +127,5 @@
     // JPEG gives portable, bounded session files and strips original metadata.
     return canvas.toDataURL('image/jpeg', 0.88);
   }
-  return Object.freeze({ crop, frame, checkFile, load, detect, draw, encode, MAX_FILE_BYTES });
+  return Object.freeze({ crop, frame, checkFile, fetchHosted, load, detect, draw, encode, MAX_FILE_BYTES });
 }));

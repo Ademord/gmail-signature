@@ -1,5 +1,13 @@
 # Progress
 
+## Hosted photo crop recovery — 23 September 2026
+
+Portrait and landscape HTTPS photo URLs now open the local crop editor when their host permits cross-origin reads. Previously, the editor rejected them with a square-image message and showed upload-ready instructions even when no crop existed. Square hosted images still work directly in email without a CORS fetch. Cropping an original never pretends to change its hosted URL: apply, download, and host the square crop before using it in email.
+
+Photo guidance now follows empty, pending, saved-crop, and hosted-photo state. Pending crops cannot download an older saved image, and new uploads, URLs, or restored photos invalidate older async work and editable sources. Fetching omits credentials and referrers, bounds downloads to 12 MB and 12 seconds, and retains type and 60-megapixel checks. Blocked cross-origin reads offer local upload as recovery. The renderer and draft schema are unchanged.
+
+Local checks: 250 tests, 249 passed, zero failures, one expected Windows symlink skip; artwork generators and cache-version checks passed; strict build contains 69 public files. Runtime token: `f29bdc0dccaa6331`. Independent source review found no remaining actionable issues. The real browser reproduced the previous rejection with a 2443 × 2591 portrait, then verified URL-to-crop, smart framing, Apply, truthful download state, preservation after reload, and blocking email HTML until a square hosted asset is supplied. With a 384 × 384 hosted JPEG, Copy signature succeeded and its clipboard HTML contained the hosted URL rather than embedded image data; 2648 × 832 PNG export also rendered. No new received-message Gmail/Outlook result is claimed.
+
 ## Artwork controls milestone — released; work stopped
 
 The requested milestone is complete: visible side-artwork size/position controls, four AI-inspired patterns, and a separately selectable Classic red/Plum editor appearance. The user requested a documented checkpoint, push, and stop; no further feature implementation is running.

@@ -16,12 +16,26 @@
       <button type="button" class="button button-primary portrait-apply" id="portrait-apply">Use this crop</button></div>
       <div class="portrait-current" id="portrait-current" hidden><img id="portrait-current-image" width="64" height="64" alt="Current signature photo"><span>Current photo</span><button type="button" class="text-button" id="portrait-edit">Adjust</button><button type="button" class="text-button" id="portrait-remove">Remove</button></div>
       <div class="portrait-format"><div class="field"><label for="portrait-shape-control">Shape</label><select id="portrait-shape-control"><option value="circle">Circle</option><option value="rounded">Rounded square</option><option value="square">Square</option></select></div><div class="field"><label for="portrait-size-control">Size <output id="portrait-size-value">64 px</output></label><input id="portrait-size-control" type="range" min="40" max="96" step="1" value="64"></div></div>
-      <details class="portrait-hosting"><summary>Use your photo in email</summary><p>Your upload is ready for PNG export. For a clickable email signature, download the square crop, host it on your website or an image host, then paste its direct HTTPS image URL here.</p><button type="button" class="button button-secondary" id="portrait-download" disabled>Download cropped photo</button><div class="field"><label for="portrait-public-url">Hosted cropped photo URL</label><input id="portrait-public-url" type="url" placeholder="https://example.com/my-photo.jpg" autocomplete="off"></div><button type="button" class="button button-secondary" id="portrait-use-url">Use photo URL</button><small>The hosted image must be square. Your image host must allow cross-origin reads for PNG export. The editor never uploads your photo.</small></details>`;
+      <details class="portrait-hosting"><summary>Use your photo in email</summary><p id="portrait-hosting-status"></p><button type="button" class="button button-secondary" id="portrait-download" disabled>Download cropped photo</button><div class="field"><label for="portrait-public-url">Hosted photo URL</label><input id="portrait-public-url" type="url" placeholder="https://example.com/my-photo.jpg" autocomplete="off"></div><button type="button" class="button button-secondary" id="portrait-use-url">Use photo URL</button><small>Square photos can be used directly in email. Other photos open in the crop editor; download and host the finished square crop before using it in email. Your host must allow cross-origin reads for cropping and PNG export. The editor never uploads your photo.</small></details>`;
     const $ = id => document.getElementById(id), core = window.PortraitCore;
-    let source = null, faces = [], request = 0, edited = 0, pointer = null, committedPhoto = '';
+    let source = null, faces = [], request = 0, edited = 0, pointer = null, committedPhoto = '', pendingCrop = '';
     const notice = (text, error = false) => { $('portrait-notice').textContent = text; $('portrait-notice').dataset.error = String(error); };
     const options = () => ({ zoom: Number($('portrait-zoom').value), x: Number($('portrait-x').value), y: Number($('portrait-y').value) });
     const adjustments = () => ({ brightness: Number($('portrait-brightness').value), monochrome: $('portrait-mono').checked, mirror: $('portrait-mirror').checked });
+    function hostingStatus() {
+      const draft = settings.getDraft();
+      $('portrait-download').disabled = Boolean(pendingCrop) || !draft.portraitData;
+      $('portrait-hosting-status').textContent = pendingCrop
+        ? (pendingCrop === 'hosted' ? 'The original hosted photo is not square. ' : '') + (source ? 'Adjust it, then choose Use this crop. Download and host the finished square crop to use it in email.' : 'Opening your photo for cropping. Your current signature photo stays unchanged until you choose Use this crop.')
+        : draft.portraitData ? 'Your saved crop is ready for PNG export. For a clickable email signature, download this crop, host it on your website or an image host, then paste its direct HTTPS URL here.'
+        : draft.portraitUrl ? 'Your hosted square photo is ready for your copied email signature. PNG export also requires your image host to allow cross-origin reads.'
+        : 'Paste a public HTTPS photo URL or choose a photo above. If the hosted photo is not square, you can crop it here before downloading and hosting the finished crop.';
+    }
+    function clearSource() {
+      source = null; faces = []; pointer = null; pendingCrop = '';
+      $('portrait-editor').hidden = true; $('portrait-face-field').hidden = true; $('portrait-apply').disabled = true;
+      hostingStatus();
+    }
     function apply(patch) {
       const errors = window.SignatureCore.validate({ ...settings.getDraft(), ...patch });
       const first = Object.keys(errors)[0];
@@ -41,13 +55,14 @@
       position(core.frame(source.width, source.height, face));
       notice(face ? 'Face framed with room for your head and shoulders. Adjust it until it feels right.' : 'No clear face found. Start from the center and adjust the crop.');
     }
-    async function openPhoto(file, autoFrame = true) {
+    async function openPhoto(file, autoFrame = true, hosted = false) {
       const revision = ++request;
+      clearSource(); pendingCrop = hosted ? 'hosted' : 'local'; hostingStatus();
       notice('Opening your photo…');
       try {
         const loaded = await core.load(file); if (revision !== request) return;
         source = loaded; faces = []; edited = autoFrame ? 0 : 1;
-        $('portrait-editor').hidden = false; $('portrait-face-field').hidden = true;
+        $('portrait-editor').hidden = false; $('portrait-face-field').hidden = true; $('portrait-apply').disabled = false; hostingStatus();
         $('portrait-brightness').value = 100; $('portrait-mono').checked = false; $('portrait-mirror').checked = false;
         position({ zoom: 1, x: 50, y: 50 });
         notice('Looking for faces on this device…');
@@ -58,7 +73,7 @@
           $('portrait-face-field').hidden = faces.length < 2;
           if (!edited) smart(); else notice(!autoFrame ? 'Adjusting your saved crop. Upload the original photo if you want a wider crop.' : faces.length ? 'Face detection finished. Use Smart crop to try it, or keep your adjustments.' : 'No clear face found. Your manual crop is ready.');
         } catch { if (revision === request) notice('Face detection is unavailable. Use the crop controls to position your photo.'); }
-      } catch (error) { if (revision === request) notice(error.message, true); }
+      } catch (error) { if (revision === request) { clearSource(); notice(error.message, true); } }
     }
     $('portrait-file').addEventListener('change', () => {
       const file = $('portrait-file').files[0];
@@ -100,11 +115,12 @@
       if (!source) return;
       try {
         apply({ portraitData: core.encode(source, options(), adjustments()), portraitUrl: '' });
+        clearSource();
         notice('Photo added. PNG exports and session backups include this crop.');
       } catch (error) { notice(error.message, true); }
     });
     $('portrait-remove').addEventListener('click', () => {
-      ++request; source = null; faces = []; $('portrait-editor').hidden = true;
+      ++request; clearSource();
       settings.setPortrait({ portraitData: '', portraitUrl: '' }); notice('Photo removed. Undo brings it back.');
     });
     $('portrait-shape-control').addEventListener('change', () => { try { apply({ portraitShape: $('portrait-shape-control').value }); } catch(error) { notice(error.message, true); sync(); } });
@@ -112,8 +128,9 @@
     $('portrait-size-control').addEventListener('input', () => { $('portrait-size-value').textContent = $('portrait-size-control').value + ' px'; });
     $('portrait-use-url').addEventListener('click', async () => {
       const url = $('portrait-public-url').value.trim(), revision = ++request;
+      clearSource();
       const candidate = { ...settings.getDraft(), portraitUrl: url, portraitData: '' };
-      if (!url) { notice('Paste the direct HTTPS URL of your square photo.', true); return; }
+      if (!url) { notice('Paste the direct HTTPS URL of your photo.', true); return; }
       const errors = window.SignatureCore.validate(candidate);
       if (errors.portraitUrl) { notice(errors.portraitUrl, true); return; }
       notice('Checking the hosted photo…');
@@ -125,10 +142,18 @@
           value.referrerPolicy = 'no-referrer'; value.src = url;
         });
         if (revision !== request) return;
-        if (image.naturalWidth !== image.naturalHeight) throw new Error('Use a square image so the email photo matches the preview. Download and host your cropped photo first.');
+        if (!(image.naturalWidth > 0 && image.naturalHeight > 0) || image.naturalWidth * image.naturalHeight > 60000000) throw new Error('Use a photo with valid dimensions below 60 megapixels.');
+        if (image.naturalWidth !== image.naturalHeight) {
+          pendingCrop = 'hosted'; hostingStatus();
+          notice('Opening the hosted photo so you can make a square crop…');
+          const file = await core.fetchHosted(url);
+          if (revision !== request) return;
+          await openPhoto(file, true, true);
+          return;
+        }
         apply({ portraitUrl: url, portraitData: '' });
         notice('Hosted photo added. It will be included in your copied email signature.');
-      } catch (error) { if (revision === request) notice(error.message, true); }
+      } catch (error) { if (revision === request) { clearSource(); notice(error.message, true); } }
     });
     $('portrait-download').addEventListener('click', () => {
       const draft = settings.getDraft(); if (!draft.portraitData) return;
@@ -138,7 +163,8 @@
     function sync() {
       const draft = settings.getDraft(), url = draft.portraitData || draft.portraitUrl;
       const identity = JSON.stringify([draft.portraitData, draft.portraitUrl]);
-      if (identity !== committedPhoto) { ++request; committedPhoto = identity; }
+      const changed = identity !== committedPhoto;
+      if (changed) { ++request; committedPhoto = identity; clearSource(); }
       $('portrait-current').hidden = !url;
       if (url) $('portrait-current-image').src = url; else $('portrait-current-image').removeAttribute('src');
       $('portrait-download').disabled = !draft.portraitData;
@@ -146,7 +172,8 @@
       $('portrait-shape-control').value = draft.portraitShape;
       $('portrait-size-control').value = draft.portraitSize;
       $('portrait-size-value').textContent = draft.portraitSize + ' px';
-      if (document.activeElement !== $('portrait-public-url')) $('portrait-public-url').value = draft.portraitUrl;
+      if (changed && document.activeElement !== $('portrait-public-url')) $('portrait-public-url').value = draft.portraitUrl;
+      hostingStatus();
       const radius = draft.portraitShape === 'circle' ? '50%' : draft.portraitShape === 'rounded' ? (12 / draft.portraitSize * 100) + '%' : '0';
       $('portrait-current-image').style.borderRadius = radius; canvas.style.borderRadius = radius;
     }
