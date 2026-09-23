@@ -8,11 +8,12 @@ const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 
 export async function versionAssets(root = projectRoot, { check = false } = {}) {
   const hash = createHash('sha256');
-  // Excluding HTML avoids hashing the version into itself. Normalize source line
-  // endings so Windows checkouts and Linux CI produce the same release token.
+  // Excluding HTML avoids hashing the version into itself. Normalize text asset
+  // line endings (including the license) across Windows and Linux checkouts;
+  // image and detector-model bytes must remain unchanged.
   for (const name of PUBLIC_FILES.filter(name => !name.endsWith('.html')).sort()) {
     let bytes = await readFile(resolve(root, name));
-    if (/\.(?:js|css)$/.test(name)) bytes = Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n'));
+    if (/\.(?:js|css|txt)$/.test(name)) bytes = Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n'));
     hash.update(name + '\0').update(bytes).update('\0');
   }
   const version = hash.digest('hex').slice(0, 16);
