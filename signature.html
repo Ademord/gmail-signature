@@ -6,37 +6,36 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=500f092509b21130">
-  <link rel="stylesheet" href="portrait.css?v=500f092509b21130">
-  <link rel="stylesheet" href="ai-extension.css?v=500f092509b21130">
-  <link rel="stylesheet" href="library.css?v=500f092509b21130">
-  <link rel="stylesheet" href="artwork.css?v=500f092509b21130">
-  <script src="portrait-core.js?v=500f092509b21130" defer></script>
-  <script src="signature-core.js?v=500f092509b21130" defer></script>
-  <script src="editor-history.js?v=500f092509b21130" defer></script>
-  <script src="signature-image.js?v=500f092509b21130" defer></script>
-  <script src="session-data.js?v=500f092509b21130" defer></script>
-  <script src="session-controls.js?v=500f092509b21130" defer></script>
-  <script src="portrait-controls.js?v=500f092509b21130" defer></script>
-  <script src="design-collections.js?v=500f092509b21130" defer></script>
-  <script src="ai-extension-core.js?v=500f092509b21130" defer></script>
-  <script src="ai-extension-controls.js?v=500f092509b21130" defer></script>
-  <script src="library-controls.js?v=500f092509b21130" defer></script>
-  <script src="artwork-core.js?v=500f092509b21130" defer></script>
-  <script src="artwork-controls.js?v=500f092509b21130" defer></script>
-  <script src="preview-dom.js?v=500f092509b21130" defer></script>
-  <script src="app.js?v=500f092509b21130" defer></script>
+  <link rel="stylesheet" href="editor.css?v=c5de3c980e1b1d5f">
+  <link rel="stylesheet" href="portrait.css?v=c5de3c980e1b1d5f">
+  <link rel="stylesheet" href="ai-extension.css?v=c5de3c980e1b1d5f">
+  <link rel="stylesheet" href="library.css?v=c5de3c980e1b1d5f">
+  <link rel="stylesheet" href="artwork.css?v=c5de3c980e1b1d5f">
+  <script src="portrait-core.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="signature-core.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="editor-history.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="signature-image.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="session-data.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="session-controls.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="portrait-controls.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="design-collections.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="ai-extension-core.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="ai-extension-controls.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="library-controls.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="artwork-core.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="artwork-controls.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="preview-dom.js?v=c5de3c980e1b1d5f" defer></script>
+  <script src="app.js?v=c5de3c980e1b1d5f" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
   <header class="app-header">
-    <a class="brand" href="./" aria-label="Signature editor home">Signature Studio</a>
+    <a class="brand" href="./" aria-label="Signature editor home">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span></span>
+      <span>Signature<span class="brand-descriptor">STUDIO</span></span>
+    </a>
     <div class="header-actions">
       <span class="save-state" id="save-status" role="status">Saved</span>
-      <div class="history-actions" role="group" aria-label="Edit history">
-        <button id="undo-change" class="history-button" type="button" aria-label="Undo last change" title="Undo last change" disabled><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="M6.5 4 3 7.5 6.5 11M3.5 7.5H11a4 4 0 0 1 0 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Undo</button>
-        <button id="redo-change" class="history-button" type="button" aria-label="Redo last change" title="Redo last change" disabled><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="m11.5 4 3.5 3.5-3.5 3.5M14.5 7.5H7a4 4 0 0 0 0 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Redo</button>
-      </div>
       <details id="export-menu" class="export-menu"><summary class="button button-secondary">Export <span aria-hidden="true">⌄</span></summary><div id="export-options" class="export-options">
         <button class="button button-secondary" type="button" id="download-html"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="M9 2.5v8m-3-3 3 3 3-3M3 11v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Download HTML</button><button class="button button-secondary" type="button" id="share-link"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="m7 11 4-4M6.5 6.5l1.8-1.8a3.5 3.5 0 0 1 5 5l-1.8 1.8M11.5 11.5l-1.8 1.8a3.5 3.5 0 0 1-5-5l1.8-1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Copy draft link</button>
         <p class="share-disclosure">Draft links include your details.</p>
@@ -55,14 +54,24 @@
       </div></details>
     </div>
   </header>
-  <nav class="editor-tabs" role="tablist" aria-label="Editor section">
+
+  <main class="workspace" data-editor-view="design" data-preview-view="card" data-email-device="desktop">
+    <aside id="signature-settings" class="editor-rail" aria-label="Signature settings">
+      <div class="rail-heading">
+        <div><h1>Edit signature</h1></div>
+        <span class="edit-symbol" aria-hidden="true"><svg viewBox="0 0 20 20" width="19" height="19" fill="none"><path d="m11.9 4.1 4 4M3.5 16.5l1-4L13 4a1.9 1.9 0 0 1 2.7 0l.3.3a1.9 1.9 0 0 1 0 2.7l-8.5 8.5-4 1Z" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+<nav class="editor-tabs" role="tablist" aria-label="Editor section">
     <button id="layout-tab" type="button" role="tab" aria-selected="false" aria-controls="layout-panel" data-editor-tab="layout" class="editor-tab" tabindex="-1">Layout</button>
     <button id="details-tab" type="button" role="tab" aria-selected="false" aria-controls="details-panel" data-editor-tab="details" class="editor-tab" tabindex="-1">Details</button>
     <button id="photo-tab" type="button" role="tab" aria-selected="false" aria-controls="photo-panel" data-editor-tab="photo" class="editor-tab" tabindex="-1">Photo</button>
     <button id="design-tab" type="button" role="tab" aria-selected="true" aria-controls="design-panel" data-editor-tab="design" class="editor-tab is-active">Design</button>
   </nav>
-  <main class="workspace" data-editor-view="design" data-preview-view="card" data-email-device="desktop">
-    <aside id="signature-settings" class="editor-rail" aria-label="Signature settings">
+
+      <div class="history-actions" role="group" aria-label="Edit history"><a class="mobile-preview-link" href="#preview-heading">View preview ↑</a>
+        <button id="undo-change" class="history-button" type="button" aria-label="Undo last change" title="Undo last change" disabled><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="M6.5 4 3 7.5 6.5 11M3.5 7.5H11a4 4 0 0 1 0 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Undo</button>
+        <button id="redo-change" class="history-button" type="button" aria-label="Redo last change" title="Redo last change" disabled><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><path d="m11.5 4 3.5 3.5-3.5 3.5M14.5 7.5H7a4 4 0 0 0 0 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Redo</button>
+      </div>
       <form id="editor-form" autocomplete="off">
         <input id="customPattern" name="customPattern" type="hidden" value="">
         <input id="customLayout" name="customLayout" type="hidden" value="">
@@ -72,7 +81,7 @@
         <input id="portraitSize" name="portraitSize" type="hidden" value="64">
 
         <div id="layout-panel" class="inspector-column" role="tabpanel" aria-labelledby="layout-tab" data-editor-panel="layout" hidden>
-          <div class="inspector-heading"><h1>Layout</h1><p>Arrange your signature.</p></div>
+
           <details id="layout-disclosure" class="editor-disclosure" open>
             <summary>Layout</summary>
             <div class="disclosure-content">
@@ -100,8 +109,8 @@
           </details>
 
         </div>
-        <div id="photo-panel" class="inspector-column" role="tabpanel" aria-labelledby="photo-tab" data-editor-panel="photo" hidden><div class="inspector-heading"><h1>Photo</h1><p>Make your signature feel personal.</p></div><div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="photo">Suggest a photo format with AI ↗</button></div><div id="portrait-panel-content"></div></div>
-        <div id="details-panel" class="inspector-column" role="tabpanel" aria-labelledby="details-tab" data-editor-panel="details" hidden><div class="inspector-heading"><h1>Details</h1><p>Your name and contact information.</p></div>
+        <div id="photo-panel" class="inspector-column" role="tabpanel" aria-labelledby="photo-tab" data-editor-panel="photo" hidden><div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="photo">Suggest a photo format with AI ↗</button></div><div id="portrait-panel-content"></div></div>
+        <div id="details-panel" class="inspector-column" role="tabpanel" aria-labelledby="details-tab" data-editor-panel="details" hidden>
           <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="details">Refine wording with AI ↗</button></div>
           <fieldset class="field-section">
             <legend><span class="section-index">01</span> Identity</legend>
@@ -141,23 +150,21 @@
 
 
         <div id="design-panel" role="tabpanel" aria-labelledby="design-tab" data-editor-panel="design">
-          <h1 class="sr-only">Design your signature</h1>
           <div class="design-columns">
             <section id="colors-panel" class="inspector-column" aria-labelledby="colors-heading">
-              <div class="inspector-heading"><h2 id="colors-heading">Colors</h2><p>Start with a palette. Make it yours.</p></div>
-              <section class="inspector-section" aria-labelledby="palettes-heading">
-                <h3 id="palettes-heading">Palettes</h3>
+              <fieldset class="field-section"><legend id="colors-heading">Colors</legend><p class="field-note">Start with a palette. Make it yours.</p></fieldset>
+              <fieldset class="field-section" aria-labelledby="palettes-heading">
+                <legend id="palettes-heading">Palettes</legend>
                 <div id="palette-choices" class="palette-choices" role="group" aria-label="Color palettes"></div>
-                <details id="more-palettes" class="editor-disclosure quiet-disclosure"><summary>More palettes <span>12</span></summary><div id="extra-palette-choices" class="palette-choices" role="group" aria-label="More color palettes"></div></details>
-              </section>
-              <section class="inspector-section" aria-labelledby="customize-colors-heading">
-                <h3 id="customize-colors-heading">Customize</h3>
-                <div class="design-color-rows"><div class="design-color-row"><label for="frontBackground">Name background</label><input id="frontBackground" name="frontBackground" type="color" value="#f3f0ea"></div><div class="design-color-row"><label for="backBackground">Contact background</label><input id="backBackground" name="backBackground" type="color" value="#1c1c1c"></div><div class="design-color-row"><label for="accent">Accent</label><input id="accent" name="accent" type="color" value="#c8362a"></div></div>
-                <button id="swap-colors" class="text-button" type="button">Swap backgrounds</button>
-                <p class="field-note">Text and icons adjust automatically.</p>
-                <details id="color-values" class="editor-disclosure color-values"><summary>Color values</summary><div class="disclosure-content"><div class="field"><label for="frontBackground-hex">Name background</label><input id="frontBackground-hex" type="text" aria-label="Name background hex code" value="#F3F0EA" maxlength="7" spellcheck="false" data-color-field="frontBackground"></div><div class="field"><label for="backBackground-hex">Contact background</label><input id="backBackground-hex" type="text" aria-label="Contact background hex code" value="#1C1C1C" maxlength="7" spellcheck="false" data-color-field="backBackground"></div><div class="field"><label for="accent-hex">Accent</label><input id="accent-hex" type="text" aria-label="Accent hex code" value="#C8362A" maxlength="7" spellcheck="false" data-color-field="accent"></div></div></details>
-                <button id="save-palette-shortcut" class="button button-secondary" type="button">Save palette</button>
-              </section>
+                <details id="more-palettes" class="nested-disclosure"><summary>More palettes <span>12</span></summary><div id="extra-palette-choices" class="palette-choices" role="group" aria-label="More color palettes"></div></details>
+              </fieldset>
+              <fieldset class="field-section">
+            <legend id="customize-colors-heading">Customize</legend>
+            <div class="field"><label for="frontBackground">Name card background</label><div class="color-control"><input id="frontBackground" name="frontBackground" type="color" value="#f3f0ea"><input id="frontBackground-hex" type="text" aria-label="Name card background hex code" value="#F3F0EA" maxlength="7" spellcheck="false" data-color-field="frontBackground"></div></div>
+            <div class="field"><label for="backBackground">Contact card background</label><div class="color-control"><input id="backBackground" name="backBackground" type="color" value="#1c1c1c"><input id="backBackground-hex" type="text" aria-label="Contact card background hex code" value="#1C1C1C" maxlength="7" spellcheck="false" data-color-field="backBackground"></div></div>
+            <div class="field"><label for="accent">Accent color</label><div class="color-control"><input id="accent" name="accent" type="color" value="#c8362a"><input id="accent-hex" type="text" aria-label="Accent hex code" value="#C8362A" maxlength="7" spellcheck="false" data-color-field="accent"></div></div>
+            <p class="field-note color-note">Text stays readable. Icons switch between light and dark automatically.</p>
+          <div class="studio-small-actions"><button id="swap-colors" class="text-button" type="button">Swap backgrounds</button><button id="save-palette-shortcut" class="text-button" type="button">Save palette</button></div></fieldset>
           <details id="saved-palettes" class="editor-disclosure">
             <summary>Saved palettes</summary>
             <div class="disclosure-content">
@@ -172,23 +179,25 @@
 
             </section>
             <section id="artwork-panel" class="inspector-column" aria-labelledby="artwork-heading">
-              <div class="inspector-heading"><h2 id="artwork-heading">Artwork</h2><p>Add a little character.</p></div>
-              <div id="compact-pattern-choices" class="compact-pattern-choices" role="group" aria-label="Featured artwork"></div>
-              <button class="text-button browse-artwork" type="button" data-open-library="artwork">Browse all artwork <span aria-hidden="true">→</span></button>
-              <div id="artwork-adjustments" class="artwork-refinements inspector-section" role="group" aria-label="Adjust artwork">
+              <fieldset class="field-section"><legend id="artwork-heading">Artwork</legend><p class="field-note">Add a little character.</p></fieldset>
+              <div class="field-section">
+              <div id="compact-pattern-choices" class="pattern-choices compact-pattern-choices" role="group" aria-label="Featured artwork"></div>
+              <button class="gallery-jump browse-artwork" type="button" data-open-library="artwork">Browse all artwork <span aria-hidden="true">→</span></button>
+              <div id="artwork-adjustments" class="artwork-refinements" role="group" aria-label="Adjust artwork">
                 <h3>Adjust artwork</h3>
                 <div id="artwork-flow-settings" hidden>
                   <div class="range-field"><label for="artworkScale">Artwork size <output id="artworkScale-value" for="artworkScale">100%</output></label><input id="artworkScale" name="artworkScale" type="range" min="75" max="150" step="1" value="100"></div>
                   <p class="field-note">Only the artwork changes. Your photo stays in place.</p>
-                  <details id="artwork-position-disclosure" class="editor-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="artworkPositionX">Horizontal position <output id="artworkPositionX-value" for="artworkPositionX">50%</output></label><input id="artworkPositionX" name="artworkPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="artworkPositionY">Vertical position <output id="artworkPositionY-value" for="artworkPositionY">50%</output></label><input id="artworkPositionY" name="artworkPositionY" type="range" min="0" max="100" step="1" value="50"></div><p id="artwork-position-note" class="field-note">The artwork fits one edge exactly. Change Artwork size to move it along that edge.</p></div></details>
+                  <details id="artwork-position-disclosure" class="nested-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="artworkPositionX">Horizontal position <output id="artworkPositionX-value" for="artworkPositionX">50%</output></label><input id="artworkPositionX" name="artworkPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="artworkPositionY">Vertical position <output id="artworkPositionY-value" for="artworkPositionY">50%</output></label><input id="artworkPositionY" name="artworkPositionY" type="range" min="0" max="100" step="1" value="50"></div><p id="artwork-position-note" class="field-note">The artwork fits one edge exactly. Change Artwork size to move it along that edge.</p></div></details>
                 </div>
                 <div id="artwork-motif-settings">
                   <div class="range-field"><label for="motifScale">Artwork size <output id="motifScale-value" for="motifScale">100%</output></label><input id="motifScale" name="motifScale" type="range" min="25" max="100" step="1" value="100"></div>
                   <p class="field-note">Only the artwork changes. Your photo stays in place.</p>
-                  <details id="motif-position-disclosure" class="editor-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="motifPositionX">Horizontal position <output id="motifPositionX-value" for="motifPositionX">50%</output></label><input id="motifPositionX" name="motifPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="motifPositionY">Vertical position <output id="motifPositionY-value" for="motifPositionY">0%</output></label><input id="motifPositionY" name="motifPositionY" type="range" min="0" max="100" step="1" value="0"></div><p id="motif-position-note" class="field-note">Reduce Artwork size to make room to move it.</p></div></details>
+                  <details id="motif-position-disclosure" class="nested-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="motifPositionX">Horizontal position <output id="motifPositionX-value" for="motifPositionX">50%</output></label><input id="motifPositionX" name="motifPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="motifPositionY">Vertical position <output id="motifPositionY-value" for="motifPositionY">0%</output></label><input id="motifPositionY" name="motifPositionY" type="range" min="0" max="100" step="1" value="0"></div><p id="motif-position-note" class="field-note">Reduce Artwork size to make room to move it.</p></div></details>
                 </div>
                 <p id="pattern-note" class="field-note" hidden></p>
-                <details id="artwork-placement-field" class="editor-disclosure"><summary>Placement</summary><div class="disclosure-content"><div class="field"><label for="artworkPlacement">Artwork placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Automatic</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div></div></details>
+                <details id="artwork-placement-field" class="nested-disclosure"><summary>Placement</summary><div class="disclosure-content"><div class="field"><label for="artworkPlacement">Artwork placement</label><select id="artworkPlacement" name="artworkPlacement"><option value="auto">Automatic</option><option value="motif">Side detail</option><option id="artwork-flow-option" value="flow">Across signature</option></select></div></div></details>
+              </div>
               </div>
               <details class="editor-disclosure artwork-create"><summary>Create artwork</summary><div class="disclosure-content design-link-row"><button type="button" class="text-button" data-edit-artwork>Draw your own</button><button type="button" class="text-button ai-inline" data-ai-section="artwork">Create with AI ↗</button></div></details>
               <details class="editor-disclosure quiet-disclosure"><summary>All artwork options</summary><div class="disclosure-content"><div class="field"><label for="pattern">Artwork</label><div class="cycle-control"><button id="previous-pattern" class="cycle-button" type="button" data-cycle-field="pattern" data-cycle-step="-1" aria-label="Previous artwork"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><select id="pattern" name="pattern" aria-describedby="pattern-note"></select><button id="next-pattern" class="cycle-button" type="button" data-cycle-field="pattern" data-cycle-step="1" aria-label="Next artwork"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div></div></details>
@@ -200,7 +209,7 @@
     </aside>
     <section class="preview-column" aria-labelledby="preview-heading">
       <a class="mobile-edit-link" href="#signature-settings">Edit signature <span aria-hidden="true">↓</span></a>
-      <div class="preview-heading"><div class="preview-title"><span class="live-dot" aria-hidden="true"></span><h2 id="preview-heading">Preview</h2></div><div class="view-switch" role="group" aria-label="Preview view"><button type="button" class="is-active" data-view="card" aria-pressed="true"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M5 7h3M5 10h5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>Card</button><button type="button" data-view="email" aria-pressed="false"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="m3 5 6 4.5L15 5" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>Email</button></div></div>
+      <div class="preview-heading"><div class="preview-title"><span class="live-dot" aria-hidden="true"></span><h2 id="preview-heading">Live preview</h2></div><div class="view-switch" role="group" aria-label="Preview view"><button type="button" class="is-active" data-view="card" aria-pressed="true"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M5 7h3M5 10h5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>Card</button><button type="button" data-view="email" aria-pressed="false"><svg viewBox="0 0 18 18" width="16" height="16" fill="none" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="m3 5 6 4.5L15 5" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>Email</button></div></div>
       <div id="email-device-controls" class="email-device-controls" hidden><div class="view-switch" role="group" aria-label="Email preview width"><button type="button" data-email-device="desktop" aria-pressed="true">Desktop</button><button type="button" data-email-device="mobile" aria-pressed="false">Mobile</button></div><p id="preview-size-note">Preview your signature in a message. Export dimensions stay the same.</p></div>
       <div class="preview-frame">
         <div class="canvas-topline"><span class="canvas-label" id="canvas-design-label">ORIGINAL / LIVE CANVAS</span><span class="canvas-customized" id="canvas-customized"></span></div>

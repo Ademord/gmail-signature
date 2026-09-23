@@ -499,16 +499,30 @@ test('four shared editor tabs keep sizing in Layout and icons in Details without
   assert.equal(app.node('undo-change').disabled,true);
 });
 
-test('the shared header owns exports and history while Design exposes both inspector columns', async () => {
+test('the original branded header keeps exports while the editor rail owns tabs and history', async () => {
   const app=harness(), saved=app.storage.get(storageKey);
   const ancestors=element=>{const list=[];for(let parent=element.parentElement;parent;parent=parent.parentElement)list.push(parent);return list;};
-  for(const id of ['copy-signature','undo-change','redo-change','export-image','download-html','share-link','export-data','import-data']) {
+  assert.match(pageSource,/<span class="brand-mark"[^>]*>/);
+  assert.match(pageSource,/<span>Signature<span class="brand-descriptor">STUDIO<\/span><\/span>/);
+  assert.match(pageSource,/<div class="rail-heading">\s*<div><h1>Edit signature<\/h1><\/div>/);
+  for(const id of ['copy-signature','export-image','download-html','share-link','export-data','import-data']) {
     assert.ok(ancestors(app.node(id)).some(parent=>parent.tagName==='HEADER'),id+' is available in the shared header');
     assert.equal(app.node(id).closest('[data-editor-panel]'),null);
   }
   assert.equal(app.node('export-image').parentElement,app.node('export-options'));
   assert.equal(app.node('export-options').children[0],app.node('export-image'));
-  for(const tab of app.tabs) assert.equal(tab.parentElement.tagName,'NAV');
+  const rail=app.node('signature-settings');
+  for(const id of ['undo-change','redo-change']) {
+    assert.equal(app.node(id).parentElement.parentElement,rail,id+' stays with the editor card');
+    assert.equal(app.node(id).closest('[data-editor-panel]'),null,id+' is available across all editor tabs');
+    assert.ok(!ancestors(app.node(id)).some(parent=>parent.tagName==='HEADER'));
+  }
+  for(const tab of app.tabs) {
+    assert.equal(tab.parentElement.tagName,'NAV');
+    assert.equal(tab.parentElement.parentElement,rail);
+  }
+  assert.ok(rail.children.indexOf(app.tabs[0].parentElement)<rail.children.indexOf(app.node('undo-change').parentElement));
+  assert.ok(rail.children.indexOf(app.node('undo-change').parentElement)<rail.children.indexOf(app.node('editor-form')));
   await app.click('photo-tab');await app.click('design-tab');
   const colors=app.node('colors-panel'),artwork=app.node('artwork-panel');
   assert.equal(colors.parentElement,artwork.parentElement,'Colors and Artwork share one Design grid');
@@ -518,7 +532,7 @@ test('the shared header owns exports and history while Design exposes both inspe
     assert.equal(column.closest('[data-editor-panel]'),app.node('design-panel'));
     for(const ancestor of [column,...ancestors(column)]) assert.equal(Boolean(ancestor.hidden),false);
   }
-  assert.equal(Boolean(app.node('color-values').open),false);
+  assert.equal(app.hasNode('color-values'),false,'inline color values do not require a separate disclosure');
   assert.equal(Boolean(app.node('saved-palettes').open),false);
   await app.click('save-palette-shortcut');
   assert.equal(app.node('saved-palettes').open,true);
@@ -728,16 +742,16 @@ test('copy validation reveals moved size fields and every nested disclosure befo
   }
 });
 
-test('invalid colors reveal the actual hex input inside Design before focusing it', async () => {
+test('invalid colors select Design and focus the visible inline hex input', async () => {
   for(const key of ['frontBackground','backBackground','accent']) {
     const app=harness(), field=app.node(key+'-hex');
-    assert.equal(field.closest('details'),app.node('color-values'));
-    assert.equal(app.node(key).closest('details'),null,'native color input and hex field have different disclosure ancestry');
+    assert.equal(field.closest('details'),null,'hex values are directly visible');
+    assert.equal(app.node(key).parentElement,field.parentElement,'native color and hex values remain inline together');
+    assert.match(field.parentElement.getAttribute('class'),/\bcolor-control\b/);
     await app.input(key+'-hex','invalid');
-    app.node('color-values').removeAttribute('open');
     await app.click('photo-tab');await app.click('copy-signature');
     assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
-    assert.equal(app.node('color-values').open,true);assert.equal(app.activeElement,field);
+    assert.equal(app.activeElement,field);
     assert.equal(field.getAttribute('aria-invalid'),'true');
     for(let parent=field.parentElement;parent;parent=parent.parentElement) {
       assert.equal(Boolean(parent.hidden),false);
