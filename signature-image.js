@@ -10,10 +10,8 @@
     if (![2, 4, 6].includes(scale)) throw new TypeError('Choose 2×, 4× or 6× resolution.');
     var errors = core.validate(values);
     if (Object.keys(errors).length) { var error = new TypeError('Check the highlighted signature field.'); error.errors = errors; throw error; }
-    var v = core.normalize(values);
-    var width = v.layout === 'stacked' ? v.width : v.width * 2 + 20;
-    var height = v.layout === 'stacked' ? v.height * 2 + 20 : v.height;
-    return { width: width * scale, height: height * scale, logicalWidth: width, logicalHeight: height };
+    var size = core.dimensions(values);
+    return { width: size.width * scale, height: size.height * scale, logicalWidth: size.width, logicalHeight: size.height };
   }
   function dataURL(blob) {
     return new Promise(function (resolve, reject) {

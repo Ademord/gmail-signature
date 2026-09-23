@@ -17,7 +17,7 @@ function attributes(tag) {
 }
 
 test('the browser API exposes valid generic example values', () => {
-  for (const name of ['normalize', 'validate', 'render', 'plainText']) assert.equal(typeof core[name], 'function', name);
+  for (const name of ['normalize', 'dimensions', 'validate', 'render', 'plainText']) assert.equal(typeof core[name], 'function', name);
   assert.ok(defaults && typeof defaults === 'object');
   assert.match(`${defaults.nameLine1} ${defaults.nameLine2}`, /Avery\s+Morgan/);
   assert.deepEqual(Object.keys(core.validate(core.normalize(defaults))), []);
@@ -37,6 +37,56 @@ test('normalization returns an independent value object and bounded numeric dime
   assert.equal(normalize({ width: 9999, height: 9999 }).width, 420);
   assert.equal(normalize({ width: 1, height: 1 }).height, 180);
   assert.equal(normalize({ width: 9999, height: 9999 }).height, 320);
+});
+
+test('card gap defaults, zero, boundaries and normalized canvas dimensions are explicit', () => {
+  const legacy = {...defaults}; delete legacy.cardGap;
+  assert.equal(core.normalize(legacy).cardGap, 20);
+  assert.equal(core.render(legacy), core.render({...legacy, cardGap:20}));
+  for (const cardGap of [0,20,60,'0','60']) {
+    const v = values({cardGap});
+    assert.equal(core.normalize(v).cardGap, Number(cardGap));
+    assert.equal(core.validate(v).cardGap, undefined);
+    assert.equal(core.dimensions(v).width, defaults.width * 2 + Number(cardGap));
+    assert.equal(core.dimensions({...v,layout:'stacked'}).height, defaults.height * 2 + Number(cardGap));
+  }
+  for (const cardGap of [-1,61,.5,NaN,Infinity,'',null,true,{},[]]) {
+    const v = values({cardGap});
+    assert.match(core.validate(v).cardGap, /whole number from 0 to 60/);
+    assert.throws(() => core.render(v), error => Boolean(error.errors.cardGap));
+  }
+  assert.equal(core.normalize({cardGap:-1}).cardGap, 0);
+  assert.equal(core.normalize({cardGap:61}).cardGap, 60);
+  assert.equal(core.normalize({cardGap:Infinity}).cardGap, 20);
+  assert.equal(core.dimensions({width:'340',height:'230',cardGap:'0'}).width, 680);
+  assert.equal(core.dimensions({design:'custom',customLayout:''}).width, 662, 'Incomplete custom drafts remain measurable');
+});
+
+test('zero gap removes the actual inter-card row or cell for Original', () => {
+  function outerRows(html) {
+    let depth = 0;
+    const rows = [];
+    for (const [tag, name] of html.matchAll(/<\/?(table|tr|td)\b[^>]*>/g)) {
+      if (name === 'table') {depth += tag.startsWith('</') ? -1 : 1; continue;}
+      if (depth !== 1 || tag.startsWith('</')) continue;
+      if (name === 'tr') rows.push([]);
+      else rows.at(-1).push(attributes(tag));
+    }
+    return rows;
+  }
+  for (const layout of ['paired','stacked']) for (const cardGap of [0,20,60]) {
+    const v = values({layout,cardGap});
+    const html = core.render(v), rows = outerRows(html), expected = core.dimensions(v);
+    const outer = attributes(html.match(/^<table\b[^>]*>/)[0]);
+    assert.equal(Number(outer.width), expected.width); assert.equal(Number(outer.height), expected.height);
+    if (layout === 'paired') {
+      assert.equal(rows.length,1); assert.equal(rows[0].length,cardGap ? 3 : 2);
+      if (cardGap) assert.equal(Number(rows[0][1].width),cardGap);
+    } else {
+      assert.equal(rows.length,cardGap ? 3 : 2); assert.ok(rows.every(row => row.length === 1));
+      if (cardGap) assert.equal(Number(rows[1][0].height),cardGap);
+    }
+  }
 });
 
 test('validation returns understandable errors for unsafe links', () => {

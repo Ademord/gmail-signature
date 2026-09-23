@@ -97,11 +97,11 @@ test('flowing artwork covers all seven compositions and dimensions with every su
 });
 
 test('Original continues the same painting through both cards and their gap under scale and focal movement',()=>{
-  for(const layout of ['paired','stacked']) for(const [width,height] of [[280,180],[420,320]]) {
+  for(const layout of ['paired','stacked']) for(const [width,height] of [[280,180],[420,320]]) for(const cardGap of [0,20,60]) {
     for(const artworkScale of [75,100,150]) for(const [artworkPositionX,artworkPositionY] of [[0,0],[50,50],[100,100],[19,83]]) {
-      const value=draft({pattern:'counterform',layout,width,height,artworkScale,artworkPositionX,artworkPositionY});
+      const value=draft({pattern:'counterform',layout,width,height,cardGap,artworkScale,artworkPositionX,artworkPositionY});
       const painted=surfaces(core.render(value)); assert.equal(painted.length,3,'outer canvas plus two panel samples');
-      const W=layout==='paired'?width*2+20:width,H=layout==='paired'?height:height*2+20;
+      const W=layout==='paired'?width*2+cardGap:width,H=layout==='paired'?height:height*2+cardGap;
       const sourceW=layout==='paired'?860:420,sourceH=layout==='paired'?320:660;
       const fit=Math.max(W/sourceW,H/sourceH)*artworkScale/100;
       const imageW=sourceW*fit,imageH=sourceH*fit,originX=(W-imageW)*artworkPositionX/100,originY=(H-imageH)*artworkPositionY/100;
@@ -110,9 +110,21 @@ test('Original continues the same painting through both cards and their gap unde
         const size=item.size.split(' ').map(parseFloat); near(size[0],imageW,'continuous width'); near(size[1],imageH,'continuous height');
       }
       for(const item of [outer,front]) {near(item.position[0],originX,'first x');near(item.position[1],originY,'first y');}
-      near(back.position[0],originX-(layout==='paired'?width+20:0),'second card x continues from first');
-      near(back.position[1],originY-(layout==='stacked'?height+20:0),'second card y continues from first');
+      near(back.position[0],originX-(layout==='paired'?width+cardGap:0),'second card x continues from first');
+      near(back.position[1],originY-(layout==='stacked'?height+cardGap:0),'second card y continues from first');
       assert.equal(outer.width,W);assert.equal(outer.height,H);
+    }
+  }
+});
+
+test('joined named and custom flowing compositions preserve their shared canvas for every stored gap',()=>{
+  for(const composition of designs.filter(id=>id!=='original'))for(const layout of ['paired','stacked'])for(const design of [composition,'custom']){
+    const value=draft({design,customLayout:design==='custom'?JSON.stringify({composition,font:'sans',align:'left'}):'',layout,pattern:'counterform',artworkScale:125,artworkPositionX:19,artworkPositionY:83});
+    const baseline=core.render(value),size=core.dimensions(value);
+    assert.ok(surfaces(baseline).length>=2);
+    for(const cardGap of [0,20,60]){
+      assert.equal(core.render({...value,cardGap}),baseline,design+': '+composition+' retains its continuous painting');
+      assert.deepEqual(core.dimensions({...value,cardGap}),size);
     }
   }
 });
@@ -205,8 +217,8 @@ test('the real public server delivers all twelve flow images as their exact revi
   }
 });
 
-test('38-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
-  assert.equal(Object.keys(core.defaults).length,38);
+test('39-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
+  assert.equal(Object.keys(core.defaults).length,39);
   for(const key of fields) {assert.ok(codec.designFields.includes(key),key);assert.ok(!codec.informationFields.includes(key),key);}
   const current={draft:draft({nameLine1:'Current',pattern:'gesture',artworkPlacement:'motif',artworkScale:75,artworkPositionX:2,artworkPositionY:4}),themes:[],ui:{}};
   const incoming={draft:draft({nameLine1:'Incoming',pattern:'overprint',artworkPlacement:'flow',artworkScale:150,artworkPositionX:97,artworkPositionY:81}),themes:[],ui:{}};

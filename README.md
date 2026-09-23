@@ -87,9 +87,9 @@ The four fantasy motifs remain in **Artwork**; their matching colors are in **Co
 
 Selecting a fantasy palette changes colors only. Choose its artwork and layout independently.
 
-Open **Design → Size & arrangement** to choose **Wide** or **Tall** and adjust **Panel width** (280–420 px) and **Panel height** (180–320 px) with either the number fields or sliders. The disclosure starts closed. These values size each panel; the canvas footer shows the total exported size. At the default panel size, Wide totals 662 × 208 px and Tall totals 321 × 436 px, including the 20 px gap. Preview scaling fits the editor to the screen without changing those dimensions.
+In **Layout**, choose **Horizontal** or **Vertical**, then open **Size & spacing** to adjust **Panel width** (280–420 px), **Panel height** (180–320 px), and **Card gap** (0–60 px) with either the number fields or sliders. Set Card gap to **0 px** to join the two cards in Original. Other templates already form one continuous card and keep their existing dimensions. Saved signatures without a gap setting retain the original **20 px** gap. At the default panel size, Original totals 662 × 208 px horizontally or 321 × 436 px vertically; a zero gap gives 642 × 208 px or 321 × 416 px. The canvas footer shows the exported dimensions. Preview scaling fits the editor to the screen without changing those dimensions.
 
-Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from **Design → Size & arrangement**, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
+Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from **Layout → Size & spacing**, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
 
 ## Add details and a photo
 

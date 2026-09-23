@@ -1056,6 +1056,144 @@ test('width and height sliders stay synchronized with numeric inputs, real dimen
   assert.match(app.node('dimension-label').textContent,/400 × 620/);
 });
 
+test('Card gap joins Original panels in both orientations while preserving the photo and all other content',async()=>{
+  for(const layout of ['paired','stacked']) {
+    const initial={...core.defaults,width:400,height:300,layout,design:'original',cardGap:20,
+      nameLine1:'Jordan',email:'jordan@example.com',portraitData:localPortrait,pattern:'contour',
+      frontBackground:'#faf6ef',backBackground:'#263830',accent:'#d47745'};
+    const app=harness({initialDraft:initial,viewportWidth:1200,screenWidth:1280});
+    const sources=markup=>[...markup.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)].map(match=>match[1]);
+    const beforeSources=sources(app.node('signature-preview').innerHTML);
+    assert.ok(beforeSources.includes(localPortrait));
+    for(const [id,type] of [['cardGap','number'],['cardGap-range','range']]) {
+      const field=app.node(id);
+      assert.equal(field.type,type);assert.equal(field.getAttribute('min'),'0');assert.equal(field.getAttribute('max'),'60');
+      assert.equal(field.closest('details')?.id,'size-disclosure');
+      assert.equal(field.closest('[data-editor-panel]')?.id,'layout-panel');
+    }
+    await app.input('cardGap-range',0);await app.finishEdit();
+    assert.equal(Number(app.node('cardGap').value),0);assert.equal(Number(app.node('cardGap-range').value),0);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,cardGap:0});
+    const [width,height]=layout==='paired'?[800,300]:[400,600];
+    assert.equal(app.node('dimension-label').textContent,`${width} × ${height} px`);
+    assert.equal(app.node('signature-preview').style.width,width+'px');
+    assert.equal(app.node('preview-sizer').style.height,height+'px');
+    assert.equal(Number(app.node('signature-preview').innerHTML.match(/<table\b[^>]*\bwidth="(\d+)"/)[1]),width);
+    assert.deepEqual(sources(app.node('signature-preview').innerHTML),beforeSources,'Gap redraw retains every photo and artwork source');
+    assert.equal(app.node('orientation-horizontal-preview').style.width,'800px');
+    assert.equal(app.node('orientation-vertical-preview').style.width,'400px');
+    assert.equal(app.node('current-template-preview').style.width,width+'px');
+    const original=app.node('choose-design-original').children[0].children[0];
+    assert.equal(original.style.width,'800px','The Original library thumbnail uses the same chosen gap');
+  }
+});
+
+test('Card gap slider gestures and number edits synchronize through grouped undo redo and reset',async()=>{
+  const initial={...core.defaults,portraitData:localPortrait},app=harness({initialDraft:initial});
+  for(const value of [16,8,0])await app.input('cardGap-range',value);
+  await app.finishEdit();
+  assert.equal(Number(app.node('cardGap').value),0);
+  await app.click('undo-change');
+  assert.equal(Number(app.node('cardGap').value),20);assert.equal(Number(app.node('cardGap-range').value),20);
+  assert.equal(app.node('undo-change').disabled,true,'One slider gesture creates one undo step');
+  await app.click('redo-change');assert.equal(Number(app.node('cardGap-range').value),0);
+  await app.input('cardGap',60);await app.finishEdit();
+  assert.equal(Number(app.node('cardGap-range').value),60);
+  assert.equal(app.node('dimension-label').textContent,'702 × 208 px');
+  await app.click('undo-change');assert.equal(Number(app.node('cardGap').value),0);
+  await app.click('redo-change');assert.equal(Number(app.node('cardGap').value),60);
+  assert.equal(app.node('portraitData').value,localPortrait);
+  await app.click('reset-draft');assert.equal(Number(app.node('cardGap').value),20);
+  await app.click('undo-change');assert.equal(Number(app.node('cardGap').value),60);
+  assert.equal(app.node('portraitData').value,localPortrait);
+});
+
+test('zero Card gap survives reload links HTML copy download and session restoration while old drafts retain 20 pixels',async()=>{
+  const older={...core.defaults};delete older.cardGap;
+  const legacy=harness({initialDraft:older});
+  assert.equal(Number(legacy.node('cardGap').value),20);
+  assert.equal(legacy.node('dimension-label').textContent,'662 × 208 px');
+  const initial={...core.defaults,width:400,height:300,portraitUrl:'https://example.com/portrait.jpg'};
+  const app=harness({initialDraft:initial,clipboardSucceeds:true});
+  await app.input('cardGap',0);await app.finishEdit();
+  const saved=JSON.parse(app.storage.get(storageKey)),reloaded=harness({initialDraft:saved});
+  assert.equal(Number(reloaded.node('cardGap-range').value),0);
+  assert.equal(reloaded.node('dimension-label').textContent,'800 × 300 px');
+  assert.equal(reloaded.node('portraitUrl').value,initial.portraitUrl);
+  await app.click('share-link');
+  const shared=new URL(app.clipboardTexts.at(-1)),sharedDraft=JSON.parse(Buffer.from(shared.hash.slice(3),'base64url').toString('utf8'));
+  assert.equal(sharedDraft.cardGap,0);assert.equal(sharedDraft.portraitUrl,initial.portraitUrl);
+  const linked=harness({initialHash:shared.hash});assert.equal(Number(linked.node('cardGap').value),0);
+  await app.click('copy-signature');
+  const copied=await app.clipboardItems.at(-1).parts['text/html'].text();
+  assert.equal(Number(copied.match(/<table\b[^>]*\bwidth="(\d+)"/)[1]),800);assert.ok(copied.includes(initial.portraitUrl));
+  await app.click('download-html');
+  const downloaded=await app.objectURLs.get(app.downloads.at(-1).href).text();
+  assert.ok(downloaded.includes(copied),'Download and rich copy use identical zero-gap signature HTML');
+  await app.click('export-data');const backup=app.node('session-json').value;assert.equal(JSON.parse(backup).draft.cardGap,0);
+  await app.click('close-session');await app.click('reset-draft');
+  await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),saved);
+  assert.equal(Number(app.node('cardGap-range').value),0);
+});
+
+test('invalid Card gap keeps the last valid preview and reveals the Layout number field for repair',async()=>{
+  for(const invalid of ['-1','61','1.5','']) {
+    const app=harness({initialDraft:{...core.defaults,portraitData:localPortrait}});
+    const preview=app.node('signature-preview').innerHTML,dimensions=app.node('dimension-label').textContent;
+    await app.input('cardGap',invalid);await app.finishEdit();
+    assert.equal(app.node('cardGap').getAttribute('aria-invalid'),'true',JSON.stringify(invalid)+' is rejected');
+    assert.equal(app.node('signature-preview').innerHTML,preview,'Invalid gap never replaces the last valid preview');
+    assert.equal(app.node('dimension-label').textContent,dimensions);
+    assert.equal(app.node('cardGap').disabled,false,'The invalid number remains available to repair');
+    await app.click('photo-tab');app.node('size-disclosure').removeAttribute('open');
+    await app.click('copy-signature');
+    assert.equal(app.node('layout-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.node('size-disclosure').open,true);
+    assert.equal(app.activeElement?.id,'cardGap');
+    assert.equal(app.attempts.modern,0);
+    await app.input('cardGap',0);
+    assert.notEqual(app.node('cardGap').getAttribute('aria-invalid'),'true');
+    assert.equal(app.node('dimension-label').textContent,'642 × 208 px');
+    assert.equal(app.node('portraitData').value,localPortrait);
+  }
+});
+
+test('already joined templates preserve the chosen Card gap and restore it when returning to Original',async()=>{
+  const initial={...core.defaults,width:400,height:300,cardGap:0,portraitData:localPortrait,pattern:'contour'};
+  const app=harness({initialDraft:initial});
+  await app.click('choose-design-orbit');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'orbit'});
+  assert.equal(app.node('cardGap').disabled,true);assert.equal(app.node('cardGap-range').disabled,true);
+  assert.match(app.node('cardGap-note').textContent,/already joins the cards/);
+  assert.equal(app.node('dimension-label').textContent,'820 × 300 px');
+  assert.equal(app.node('current-template-preview').style.width,'820px');
+  assert.equal(app.node('choose-design-orbit').children[0].children[0].style.width,'820px');
+  assert.equal(app.node('choose-design-original').children[0].children[0].style.width,'800px');
+  await app.click('choose-design-original');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('cardGap').disabled,false);assert.equal(app.node('cardGap-range').disabled,false);
+  assert.equal(Number(app.node('cardGap').value),0);
+  assert.equal(app.node('dimension-label').textContent,'800 × 300 px');
+});
+
+test('switching to a joined named or custom template keeps an invalid gap editable until repaired',async()=>{
+  for(const template of [{design:'orbit'},{design:'custom',customLayout:JSON.stringify({composition:'editorial',font:'serif',align:'center'})}]) {
+    const initial={...core.defaults,width:400,height:300,portraitData:localPortrait,customLayout:template.customLayout||''};
+    const app=harness({initialDraft:initial});
+    await app.input('cardGap',61);await app.finishEdit();
+    await app.input('design',template.design);
+    assert.equal(app.node('cardGap').getAttribute('aria-invalid'),'true');
+    assert.equal(app.node('cardGap').disabled,false);assert.equal(app.node('cardGap-range').disabled,false);
+    await app.click('copy-signature');assert.equal(app.activeElement?.id,'cardGap');
+    await app.input('cardGap',0);await app.finishEdit();
+    assert.equal(app.node('cardGap').disabled,true);assert.equal(app.node('cardGap-range').disabled,true);
+    assert.notEqual(app.node('cardGap').getAttribute('aria-invalid'),'true');
+    assert.equal(app.node('dimension-label').textContent,'820 × 300 px');
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,...template,cardGap:0});
+  }
+});
+
 test('legacy preset identities still restore, export and apply colors without resetting artwork',async()=>{
   const initial={...core.defaults,design:'prism',pattern:'gesture',artworkPlacement:'flow',artworkScale:120};
   const app=harness({initialDraft:initial});

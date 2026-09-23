@@ -22,7 +22,7 @@
     document.body.append(dialog);
     const $ = id => dialog.querySelector('#' + id);
     let section = 'colors', proposal = null, opener = null, generation = 0;
-    const fieldLabels = {frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',layout:'Arrangement',width:'Panel width',height:'Panel height',pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork zoom',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',motifScale:'Side artwork size',motifPositionX:'Side artwork horizontal position',motifPositionY:'Side artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'};
+    const fieldLabels = {frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',layout:'Arrangement',width:'Panel width',height:'Panel height',cardGap:'Card gap',pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork zoom',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',motifScale:'Side artwork size',motifPositionX:'Side artwork horizontal position',motifPositionY:'Side artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'};
     function describeChange(key,value) {
       if (key === 'customPattern') return 'New pixel artwork';
       if (key === 'customLayout') { const recipe = JSON.parse(value); return recipe.composition + ' · ' + recipe.font + ' type · ' + recipe.align + ' aligned'; }
@@ -30,7 +30,7 @@
       if (key === 'design') return (core.designs.find(item => item.id === value) || core.customDesign)?.name || value;
       if (key === 'pattern') return core.patterns[value] || value;
       if (key.endsWith('Icon')) return core.icons[value] || value;
-      if (['width','height','portraitSize'].includes(key)) return value + ' px';
+      if (['width','height','cardGap','portraitSize'].includes(key)) return value + ' px';
       if (key === 'portraitShape') return value === 'rounded' ? 'Rounded square' : value.charAt(0).toUpperCase() + value.slice(1);
       return String(value);
     }
@@ -53,8 +53,7 @@
     function fitPreview() {
       if (!proposal || $('ai-proposal').hidden) return;
       const draft = proposal.candidate;
-      const width = draft.layout === 'paired' ? draft.width * 2 + 20 : draft.width;
-      const height = draft.layout === 'paired' ? draft.height : draft.height * 2 + 20;
+      const {width, height} = core.dimensions(draft);
       const scale = Math.min(1, Math.max(1,$('ai-preview-stage').clientWidth) / width);
       $('ai-preview-art').style.width = width + 'px'; $('ai-preview-art').style.height = height + 'px';
       $('ai-preview-art').style.transform = 'scale(' + scale + ')'; $('ai-preview-stage').style.height = height * scale + 'px';

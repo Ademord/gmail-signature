@@ -78,22 +78,25 @@ test('the real CLI rejects a changed source before rewriting HTML and regenerati
 
 test('content versions are stable across Windows CRLF and Linux LF checkouts', async t => {
   const root = await fixture(t);
-  for (const name of PUBLIC_FILES.filter(name => /\.(?:js|css)$/.test(name))) {
+  const textAssets = [...expectedEditorAssets, 'portrait-worker.js', 'vendor/pico.js', 'vendor/PICO-LICENSE.txt'];
+  for (const name of textAssets) {
     const text = (await read(name)).toString().replace(/\r\n/g, '\n');
     await writeFile(join(root, name), text.replace(/\n/g, '\r\n'));
   }
   const windowsVersion = await versionAssets(root);
-  for (const name of PUBLIC_FILES.filter(name => /\.(?:js|css)$/.test(name))) {
+  for (const name of textAssets) {
     const text = (await readFile(join(root, name))).toString().replace(/\r\n/g, '\n');
     await writeFile(join(root, name), text);
   }
   assert.equal(await versionAssets(root, { check: true }), windowsVersion);
+  const command = spawnSync(process.execPath, ['scripts/version-assets.mjs', '--check'], { cwd: root, encoding: 'utf8' });
+  assert.equal(command.status, 0, command.stdout + command.stderr);
 });
 
 test('detector dependencies and image bytes also invalidate the editor runtime generation', async t => {
   const root = await fixture(t);
   let previous = await versionAssets(root);
-  for (const name of ['portrait-worker.js', 'vendor/pico.js', 'vendor/facefinder.bin', 'sig/pattern-frost.png']) {
+  for (const name of ['portrait-worker.js', 'vendor/pico.js', 'vendor/PICO-LICENSE.txt', 'vendor/facefinder.bin', 'sig/pattern-frost.png']) {
     const changed = await readFile(join(root, name));
     changed[changed.length - 1] ^= 1;
     await writeFile(join(root, name), changed);

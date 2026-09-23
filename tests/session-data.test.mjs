@@ -67,6 +67,30 @@ test('bare legacy drafts gain missing core fields and default UI without importi
   assert.equal(codec.parse('\uFEFF' + JSON.stringify(draft())).draft.nameLine1, core.defaults.nameLine1);
 });
 
+test('legacy drafts and version 1 backups retain the original 20 pixel card gap', () => {
+  const legacy = draft(); delete legacy.cardGap;
+  const before = structuredClone(legacy);
+  for (const input of [legacy, envelope({draft:legacy})]) {
+    const restored = parseValue(input);
+    assert.equal(restored.draft.cardGap, 20);
+    assert.equal(codec.parse(codec.serialize(restored)).draft.cardGap, 20);
+  }
+  assert.deepEqual(legacy, before);
+});
+
+test('card gap boundaries round-trip and malformed values are rejected in backups', () => {
+  for (const layout of ['paired','stacked']) for (const cardGap of [0,20,60]) {
+    const input = {draft:draft({layout,cardGap})};
+    const text = codec.serialize(input);
+    assert.equal(JSON.parse(text).draft.cardGap, cardGap);
+    assert.deepEqual(codec.parse(text).draft, input.draft);
+  }
+  for (const cardGap of [-1,61,1.5,'0',null,true,[],{}]) {
+    assert.throws(() => parseValue(envelope({draft:draft({cardGap})})), /cardGap/);
+  }
+  assert.throws(() => codec.serialize({draft:draft({cardGap:NaN})}), /cardGap/);
+});
+
 test('only known fields are returned and outputs do not alias inputs or one another', () => {
   const input = {draft:{...draft(), extra:'discard me'}, themes:[{...theme(), extra:'discard me'}], ui:{extra:'discard me'}};
   const before = structuredClone(input), text = codec.serialize(input), a = codec.parse(text), b = codec.parse(text);
