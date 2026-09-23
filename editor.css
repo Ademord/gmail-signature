@@ -235,6 +235,8 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 .nested-disclosure>summary>span{font:14px/1 ui-monospace,Consolas,monospace;color:var(--muted)}
 .nested-disclosure .palette-choices{padding-bottom:4px}
 .size-control+.size-control{margin-top:20px}
+.card-format-switch{display:flex}.card-format-switch button{flex:1}.layout-format .field-note{margin-top:10px}
+.is-single-card .palette-swatches span:nth-child(2){display:none}
 .size-control-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .size-control-heading>label{font-size:14px;font-weight:500;color:var(--muted)}
 .size-control-heading>.field{width:94px;flex:none}

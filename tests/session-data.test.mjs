@@ -91,6 +91,37 @@ test('card gap boundaries round-trip and malformed values are rejected in backup
   assert.throws(() => codec.serialize({draft:draft({cardGap:NaN})}), /cardGap/);
 });
 
+test('legacy formats restore as auto without changing template geometry or stored colors and gap', () => {
+  const customLayout = JSON.stringify({composition:'editorial',font:'serif',align:'center'});
+  for (const design of ['original','orbit','custom']) for (const layout of ['paired','stacked']) {
+    const legacy = draft({design,layout,customLayout,width:420,height:320,cardGap:43,backBackground:'#123456'});
+    delete legacy.cardFormat;
+    const before = structuredClone(legacy);
+    for (const input of [legacy, envelope({draft:legacy})]) {
+      const restored = parseValue(input);
+      assert.equal(restored.draft.cardFormat, 'auto');
+      assert.equal(restored.draft.cardGap, 43); assert.equal(restored.draft.backBackground, '#123456');
+      assert.deepEqual(core.dimensions(restored.draft), core.dimensions(legacy));
+      assert.equal(core.render(restored.draft), core.render(legacy));
+      assert.deepEqual(codec.parse(codec.serialize(restored)), restored);
+    }
+    assert.deepEqual(legacy, before);
+  }
+});
+
+test('all card formats round-trip in version 1 and unsupported formats fail strictly', () => {
+  for (const cardFormat of ['auto','single','front-back']) for (const layout of ['paired','stacked']) {
+    const input = {draft:draft({cardFormat,layout,width:420,height:320,cardGap:0,backBackground:'#123456'})};
+    const text = codec.serialize(input), raw = JSON.parse(text);
+    assert.equal(raw.version, 1); assert.equal(raw.draft.cardFormat, cardFormat);
+    assert.deepEqual(codec.parse(text).draft, input.draft);
+  }
+  for (const cardFormat of ['', 'Single', 'paired', 'frontBack', 0, false, null, [], {}]) {
+    assert.throws(() => parseValue(envelope({draft:draft({cardFormat})})), /cardFormat|format/i);
+    assert.throws(() => codec.serialize({draft:draft({cardFormat})}), /cardFormat|format/i);
+  }
+});
+
 test('only known fields are returned and outputs do not alias inputs or one another', () => {
   const input = {draft:{...draft(), extra:'discard me'}, themes:[{...theme(), extra:'discard me'}], ui:{extra:'discard me'}};
   const before = structuredClone(input), text = codec.serialize(input), a = codec.parse(text), b = codec.parse(text);

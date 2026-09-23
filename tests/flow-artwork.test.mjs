@@ -129,6 +129,41 @@ test('joined named and custom flowing compositions preserve their shared canvas 
   }
 });
 
+test('explicit Single and Front & back paint the actual measured canvas in every template',()=>{
+  for(const composition of designs)for(const design of [composition,...(composition==='original'?[]:['custom'])])for(const layout of ['paired','stacked'])for(const cardFormat of ['single','front-back'])for(const pattern of patterns){
+    const value=draft({design,layout,cardFormat,pattern,cardGap:60,portraitUrl:photoUrl,portraitSize:64,backBackground:'#102938',artworkScale:125,artworkPositionX:19,artworkPositionY:83,customLayout:design==='custom'?JSON.stringify({composition,font:'sans',align:'center'}):''});
+    const label=[design,composition,layout,cardFormat,pattern].join(':');
+    assert.deepEqual(core.validate(value),{},label);
+    const html=core.render(value),painted=surfaces(html),{width:W,height:H}=core.dimensions(value);
+    assert.equal(painted.length,cardFormat==='single'?1:3,label+' paints one card or two faces plus their outer canvas');
+    const sourceW=layout==='paired'?860:420,sourceH=layout==='paired'?320:660,fit=Math.max(W/sourceW,H/sourceH)*1.25;
+    const imageW=sourceW*fit,imageH=sourceH*fit,originX=(W-imageW)*.19,originY=(H-imageH)*.83;
+    for(const item of painted){const [w,h]=item.size.split(' ').map(parseFloat);near(w,imageW,label+' paint width');near(h,imageH,label+' paint height');}
+    if(cardFormat==='single'){
+      const inset=composition==='signal'?4:composition==='studio'?14:0;
+      near(painted[0].position[0],originX-inset,label+' shared canvas x');
+      near(painted[0].position[1],originY-(composition==='signal'?4:0),label+' shared canvas y');
+      assert.doesNotMatch(html,/#102938/,label+' uses only the front background');
+    }else{
+      near(painted[0].position[0],originX,label+' outer x');near(painted[1].position[0],originX,label+' first face x');
+      near(painted[2].position[0],originX-(layout==='paired'?value.width+60:0),label+' second face x');
+      near(painted[2].position[1],originY-(layout==='stacked'?value.height+60:0),label+' second face y');
+    }
+    assert.equal(informationMats(html).length,2,label+' keeps complete identity and contact mats');
+    assert.equal(html.split('src="'+photoUrl+'"').length-1,1,label+' keeps one photo');
+    assert.ok(html.length<10000,label+' export budget');
+  }
+});
+
+test('centered custom Flow identity mats stay centered inside their text column in both formats',()=>{
+  for(const cardFormat of ['single','front-back']){
+    const value=draft({design:'custom',cardFormat,pattern:'counterform',width:420,height:320,customLayout:JSON.stringify({composition:'editorial',font:'serif',align:'center'})});
+    const html=core.render(value);
+    assert.match(html,/<table align="center"[^>]*><tr><td style="padding:7px;background-color:#f3f0ea">/);
+    assert.match(html,/<td align="center" style="text-align:center;[^"]*font-family:Georgia,Times,serif/);
+  }
+});
+
 test('flow text and links remain readable when decorative backgrounds are omitted by an email client',()=>{
   for(const design of designs) {
     const value=draft({design,pattern:'gesture'}), html=core.render(value);
@@ -217,8 +252,8 @@ test('the real public server delivers all twelve flow images as their exact revi
   }
 });
 
-test('39-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
-  assert.equal(Object.keys(core.defaults).length,39);
+test('40-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
+  assert.equal(Object.keys(core.defaults).length,40);
   for(const key of fields) {assert.ok(codec.designFields.includes(key),key);assert.ok(!codec.informationFields.includes(key),key);}
   const current={draft:draft({nameLine1:'Current',pattern:'gesture',artworkPlacement:'motif',artworkScale:75,artworkPositionX:2,artworkPositionY:4}),themes:[],ui:{}};
   const incoming={draft:draft({nameLine1:'Incoming',pattern:'overprint',artworkPlacement:'flow',artworkScale:150,artworkPositionX:97,artworkPositionY:81}),themes:[],ui:{}};

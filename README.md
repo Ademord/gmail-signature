@@ -87,7 +87,14 @@ The four fantasy motifs remain in **Artwork**; their matching colors are in **Co
 
 Selecting a fantasy palette changes colors only. Choose its artwork and layout independently.
 
-In **Layout**, choose **Horizontal** or **Vertical**, then open **Size & spacing** to adjust **Panel width** (280–420 px), **Panel height** (180–320 px), and **Card gap** (0–60 px) with either the number fields or sliders. Set Card gap to **0 px** to join the two cards in Original. Other templates already form one continuous card and keep their existing dimensions. Saved signatures without a gap setting retain the original **20 px** gap. At the default panel size, Original totals 662 × 208 px horizontally or 321 × 436 px vertically; a zero gap gives 642 × 208 px or 321 × 416 px. The canvas footer shows the exported dimensions. Preview scaling fits the editor to the screen without changing those dimensions.
+In **Layout**, choose a **Card format** independently of **Horizontal** or **Vertical** orientation:
+
+- **Single card** composes your identity, photo, and contacts together on one background. Original uses one accent mark. Vertical places contacts below the identity; Horizontal puts the two groups alongside one another. Each template keeps its own typography and decoration. In Design, a single card exposes one card background and the accent color.
+- **Front & back** uses two separate faces with their own backgrounds. **Card gap** (0–60 px) controls their separation; zero lets the faces touch while retaining their separate compositions.
+
+**Size & spacing** keeps the existing width (280–420 px) and height (180–320 px) controls. For Single card, width is the full card width vertically or the width of each column horizontally; Minimum height grows as needed to fit your details. For Front & back, width and height size each face. The canvas footer shows the actual exported dimensions, shared by the preview, copied HTML, and PNG export.
+
+Saved signatures keep their existing composition and dimensions until a format is explicitly selected. Their missing gap setting still defaults to **20 px**. Switching formats preserves the photo, colors, spacing, template, and information so Undo or switching back can restore the other presentation. Preview scaling fits the editor to the screen without changing export dimensions.
 
 Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from **Layout → Size & spacing**, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
 

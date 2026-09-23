@@ -17,7 +17,7 @@ function attributes(tag) {
 }
 
 test('the browser API exposes valid generic example values', () => {
-  for (const name of ['normalize', 'dimensions', 'validate', 'render', 'plainText']) assert.equal(typeof core[name], 'function', name);
+  for (const name of ['normalize', 'dimensions', 'effectiveFormat', 'validate', 'render', 'plainText']) assert.equal(typeof core[name], 'function', name);
   assert.ok(defaults && typeof defaults === 'object');
   assert.match(`${defaults.nameLine1} ${defaults.nameLine2}`, /Avery\s+Morgan/);
   assert.deepEqual(Object.keys(core.validate(core.normalize(defaults))), []);
@@ -60,6 +60,20 @@ test('card gap defaults, zero, boundaries and normalized canvas dimensions are e
   assert.equal(core.normalize({cardGap:Infinity}).cardGap, 20);
   assert.equal(core.dimensions({width:'340',height:'230',cardGap:'0'}).width, 680);
   assert.equal(core.dimensions({design:'custom',customLayout:''}).width, 662, 'Incomplete custom drafts remain measurable');
+});
+
+test('card format migration preserves historical composition while explicit choices are validated', () => {
+  assert.equal(core.defaults.cardFormat,'auto');
+  assert.equal(core.normalize({}).cardFormat,'auto');
+  assert.equal(core.effectiveFormat({}),'front-back');
+  for (const design of ['orbit','studio','contour','prism','editorial','signal','custom']) assert.equal(core.effectiveFormat({design}),'single');
+  for (const cardFormat of ['single','front-back']) for (const design of ['original','studio']) assert.equal(core.effectiveFormat({cardFormat,design}),cardFormat);
+  for (const cardFormat of ['',null,true,{},[],'single-card','AUTO']) {
+    assert.match(core.validate(values({cardFormat})).cardFormat,/Single card or Front & back/);
+    assert.throws(()=>core.render(values({cardFormat})),error=>Boolean(error.errors.cardFormat));
+  }
+  const invalidCustom=core.dimensions({design:'custom',customLayout:'',cardFormat:'single'});
+  assert.ok(invalidCustom.width>0&&invalidCustom.height>=208,'Incomplete custom drafts remain measurable');
 });
 
 test('zero gap removes the actual inter-card row or cell for Original', () => {

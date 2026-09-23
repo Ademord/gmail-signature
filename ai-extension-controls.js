@@ -22,11 +22,12 @@
     document.body.append(dialog);
     const $ = id => dialog.querySelector('#' + id);
     let section = 'colors', proposal = null, opener = null, generation = 0;
-    const fieldLabels = {frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',layout:'Arrangement',width:'Panel width',height:'Panel height',cardGap:'Card gap',pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork zoom',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',motifScale:'Side artwork size',motifPositionX:'Side artwork horizontal position',motifPositionY:'Side artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'};
+    const fieldLabels = {frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',cardFormat:'Card format',layout:'Arrangement',width:'Panel width',height:'Panel height',cardGap:'Card gap',pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork zoom',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',motifScale:'Side artwork size',motifPositionX:'Side artwork horizontal position',motifPositionY:'Side artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'};
     function describeChange(key,value) {
       if (key === 'customPattern') return 'New pixel artwork';
       if (key === 'customLayout') { const recipe = JSON.parse(value); return recipe.composition + ' · ' + recipe.font + ' type · ' + recipe.align + ' aligned'; }
-      if (key === 'layout') return value === 'paired' ? 'Wide' : 'Tall';
+      if (key === 'layout') return value === 'paired' ? 'Horizontal' : 'Vertical';
+      if (key === 'cardFormat') return {auto:'Template default',single:'Single card','front-back':'Front & back'}[value];
       if (key === 'design') return (core.designs.find(item => item.id === value) || core.customDesign)?.name || value;
       if (key === 'pattern') return core.patterns[value] || value;
       if (key.endsWith('Icon')) return core.icons[value] || value;

@@ -6,26 +6,26 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=2a418f356f650515">
-  <link rel="stylesheet" href="portrait.css?v=2a418f356f650515">
-  <link rel="stylesheet" href="ai-extension.css?v=2a418f356f650515">
-  <link rel="stylesheet" href="library.css?v=2a418f356f650515">
-  <link rel="stylesheet" href="artwork.css?v=2a418f356f650515">
-  <script src="portrait-core.js?v=2a418f356f650515" defer></script>
-  <script src="signature-core.js?v=2a418f356f650515" defer></script>
-  <script src="editor-history.js?v=2a418f356f650515" defer></script>
-  <script src="signature-image.js?v=2a418f356f650515" defer></script>
-  <script src="session-data.js?v=2a418f356f650515" defer></script>
-  <script src="session-controls.js?v=2a418f356f650515" defer></script>
-  <script src="portrait-controls.js?v=2a418f356f650515" defer></script>
-  <script src="design-collections.js?v=2a418f356f650515" defer></script>
-  <script src="ai-extension-core.js?v=2a418f356f650515" defer></script>
-  <script src="ai-extension-controls.js?v=2a418f356f650515" defer></script>
-  <script src="library-controls.js?v=2a418f356f650515" defer></script>
-  <script src="artwork-core.js?v=2a418f356f650515" defer></script>
-  <script src="artwork-controls.js?v=2a418f356f650515" defer></script>
-  <script src="preview-dom.js?v=2a418f356f650515" defer></script>
-  <script src="app.js?v=2a418f356f650515" defer></script>
+  <link rel="stylesheet" href="editor.css?v=f476c4330d39bf73">
+  <link rel="stylesheet" href="portrait.css?v=f476c4330d39bf73">
+  <link rel="stylesheet" href="ai-extension.css?v=f476c4330d39bf73">
+  <link rel="stylesheet" href="library.css?v=f476c4330d39bf73">
+  <link rel="stylesheet" href="artwork.css?v=f476c4330d39bf73">
+  <script src="portrait-core.js?v=f476c4330d39bf73" defer></script>
+  <script src="signature-core.js?v=f476c4330d39bf73" defer></script>
+  <script src="editor-history.js?v=f476c4330d39bf73" defer></script>
+  <script src="signature-image.js?v=f476c4330d39bf73" defer></script>
+  <script src="session-data.js?v=f476c4330d39bf73" defer></script>
+  <script src="session-controls.js?v=f476c4330d39bf73" defer></script>
+  <script src="portrait-controls.js?v=f476c4330d39bf73" defer></script>
+  <script src="design-collections.js?v=f476c4330d39bf73" defer></script>
+  <script src="ai-extension-core.js?v=f476c4330d39bf73" defer></script>
+  <script src="ai-extension-controls.js?v=f476c4330d39bf73" defer></script>
+  <script src="library-controls.js?v=f476c4330d39bf73" defer></script>
+  <script src="artwork-core.js?v=f476c4330d39bf73" defer></script>
+  <script src="artwork-controls.js?v=f476c4330d39bf73" defer></script>
+  <script src="preview-dom.js?v=f476c4330d39bf73" defer></script>
+  <script src="app.js?v=f476c4330d39bf73" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -82,6 +82,15 @@
 
         <div id="layout-panel" class="inspector-column" role="tabpanel" aria-labelledby="layout-tab" data-editor-panel="layout" hidden>
 
+          <fieldset class="field-section layout-format">
+            <legend>Card format</legend>
+            <select id="cardFormat" name="cardFormat" aria-label="Card format" hidden><option value="auto" selected>Template default</option><option value="single">Single card</option><option value="front-back">Front &amp; back</option></select>
+            <div class="view-switch card-format-switch" role="group" aria-label="Card format">
+              <button id="format-single" type="button" data-card-format="single" aria-pressed="false">Single card</button>
+              <button id="format-front-back" type="button" data-card-format="front-back" aria-pressed="true">Front &amp; back</button>
+            </div>
+            <p id="card-format-note" class="field-note">Two faces, each with its own background.</p>
+          </fieldset>
           <fieldset class="field-section layout-orientation">
             <legend>Orientation</legend>
             <select id="layout" name="layout" aria-label="Card arrangement" hidden><option value="paired" selected>Horizontal</option><option value="stacked">Vertical</option></select>
@@ -103,14 +112,15 @@
             <summary>Size &amp; spacing</summary>
             <div class="disclosure-content">
               <div class="size-control">
-                <div class="size-control-heading"><label for="width-range">Panel width</label><div class="field"><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1" aria-label="Panel width in pixels"><span aria-hidden="true">px</span></div></div></div>
+                <div class="size-control-heading"><label id="width-label" for="width-range">Panel width</label><div class="field"><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1" aria-label="Panel width in pixels"><span aria-hidden="true">px</span></div></div></div>
                 <div class="range-field"><input id="width-range" type="range" value="321" min="280" max="420" step="1" aria-describedby="width-range-labels"><div class="range-labels" id="width-range-labels"><span>280 px</span><span>420 px</span></div></div>
               </div>
               <div class="size-control">
-                <div class="size-control-heading"><label for="height-range">Panel height</label><div class="field"><div class="input-unit"><input id="height" name="height" type="number" value="208" min="180" max="320" step="1" aria-label="Panel height in pixels"><span aria-hidden="true">px</span></div></div></div>
+                <div class="size-control-heading"><label id="height-label" for="height-range">Panel height</label><div class="field"><div class="input-unit"><input id="height" name="height" type="number" value="208" min="180" max="320" step="1" aria-label="Panel height in pixels"><span aria-hidden="true">px</span></div></div></div>
                 <div class="range-field"><input id="height-range" type="range" value="208" min="180" max="320" step="1" aria-describedby="height-range-labels"><div class="range-labels" id="height-range-labels"><span>180 px</span><span>320 px</span></div></div>
+                <p id="single-size-note" class="field-note" hidden>Height grows to fit your details.</p>
               </div>
-              <div class="size-control">
+              <div id="card-gap-control" class="size-control">
                 <div class="size-control-heading"><label for="cardGap-range">Card gap</label><div class="field"><div class="input-unit"><input id="cardGap" name="cardGap" type="number" value="20" min="0" max="60" step="1" aria-label="Card gap in pixels" aria-describedby="cardGap-note"><span aria-hidden="true">px</span></div></div></div>
                 <div class="range-field"><input id="cardGap-range" type="range" value="20" min="0" max="60" step="1" aria-describedby="cardGap-range-labels cardGap-note"><div class="range-labels" id="cardGap-range-labels"><span>0 px</span><span>60 px</span></div></div>
                 <p class="field-note" id="cardGap-note">Set to 0 px to join the two cards.</p>
@@ -170,8 +180,8 @@
               </fieldset>
               <fieldset class="field-section">
             <legend id="customize-colors-heading">Customize</legend>
-            <div class="field"><label for="frontBackground">Name card background</label><div class="color-control"><input id="frontBackground" name="frontBackground" type="color" value="#f3f0ea"><input id="frontBackground-hex" type="text" aria-label="Name card background hex code" value="#F3F0EA" maxlength="7" spellcheck="false" data-color-field="frontBackground"></div></div>
-            <div class="field"><label for="backBackground">Contact card background</label><div class="color-control"><input id="backBackground" name="backBackground" type="color" value="#1c1c1c"><input id="backBackground-hex" type="text" aria-label="Contact card background hex code" value="#1C1C1C" maxlength="7" spellcheck="false" data-color-field="backBackground"></div></div>
+            <div class="field"><label id="front-background-label" for="frontBackground">Name card background</label><div class="color-control"><input id="frontBackground" name="frontBackground" type="color" value="#f3f0ea"><input id="frontBackground-hex" type="text" aria-label="Name card background hex code" value="#F3F0EA" maxlength="7" spellcheck="false" data-color-field="frontBackground"></div></div>
+            <div id="back-background-field" class="field"><label for="backBackground">Contact card background</label><div class="color-control"><input id="backBackground" name="backBackground" type="color" value="#1c1c1c"><input id="backBackground-hex" type="text" aria-label="Contact card background hex code" value="#1C1C1C" maxlength="7" spellcheck="false" data-color-field="backBackground"></div></div>
             <div class="field"><label for="accent">Accent color</label><div class="color-control"><input id="accent" name="accent" type="color" value="#c8362a"><input id="accent-hex" type="text" aria-label="Accent hex code" value="#C8362A" maxlength="7" spellcheck="false" data-color-field="accent"></div></div>
             <p class="field-note color-note">Text stays readable. Icons switch between light and dark automatically.</p>
           <div class="studio-small-actions"><button id="swap-colors" class="text-button" type="button">Swap backgrounds</button><button id="save-palette-shortcut" class="text-button" type="button">Save palette</button></div></fieldset>

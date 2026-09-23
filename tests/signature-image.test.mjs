@@ -23,6 +23,15 @@ test('PNG dimensions include the selected Original gap at every resolution and o
   assert.deepEqual(image.dimensions(legacy,4),image.dimensions(core.defaults,4));
 });
 
+test('single PNG dimensions follow measured content height rather than legacy doubled-card height',()=>{
+  for(const layout of ['paired','stacked'])for(const scale of [2,4,6]){
+    const v={...core.defaults,cardFormat:'single',layout};
+    const width=layout==='paired'?642:321,height=layout==='paired'?208:290;
+    assert.deepEqual(image.dimensions(v,scale),{width:width*scale,height:height*scale,logicalWidth:width,logicalHeight:height});
+    assert.deepEqual(image.dimensions({...v,cardGap:60},scale),image.dimensions(v,scale));
+  }
+});
+
 test('invalid or unbounded PNG requests fail before touching browser rendering APIs',async()=>{
   for (const scale of [0,-1,1,3,100,Infinity,'4']) assert.throws(()=>image.dimensions(core.defaults,scale));
   await assert.rejects(image.render({...core.defaults,height:999}),/highlighted/);
