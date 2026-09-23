@@ -196,6 +196,7 @@ function controlsHarness(coreOverrides = {}, initial = {portraitData: photo}) {
   let draft = values(initial), api;
   const source = read('portrait-controls.js').toString();
   for (const match of source.matchAll(/id="([^"]+)"/g)) nodes.set(match[1], {id: match[1], value: '', checked: false, hidden: false, dataset: {}, style: {}, events: {},
+    getAttribute(key) {return this[key] ?? null;},
     addEventListener(type, fn) {this.events[type] = fn;}, replaceChildren() {}, removeAttribute(key) {delete this[key];}, setPointerCapture() {}});
   nodes.set('portrait-panel-content', {});
   nodes.get('portrait-editor').hidden = true;

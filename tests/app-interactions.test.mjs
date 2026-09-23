@@ -17,6 +17,7 @@ assert.ok(projectRoot, 'Set SIGNATURE_PROJECT_ROOT to the app directory.');
 const appSource = readFileSync(resolve(projectRoot, 'app.js'), 'utf8');
 const coreSource = readFileSync(resolve(projectRoot, 'signature-core.js'), 'utf8');
 const historySource = readFileSync(resolve(projectRoot, 'editor-history.js'), 'utf8');
+const previewSource = readFileSync(resolve(projectRoot, 'preview-dom.js'), 'utf8');
 const sessionSource = readFileSync(resolve(projectRoot, 'session-data.js'), 'utf8');
 const sessionControlsSource = readFileSync(resolve(projectRoot, 'session-controls.js'), 'utf8');
 const collectionsSource = readFileSync(resolve(projectRoot, 'design-collections.js'), 'utf8');
@@ -31,9 +32,10 @@ const localPortrait = 'data:image/png;base64,' + readFileSync(resolve(projectRoo
 const plumColors = {frontBackground:'#ffffff',backBackground:'#faf8f4',accent:'#583da6'};
 const freshDraft = {...core.defaults,...plumColors};
 
-function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, initialAppearance = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
+function harness({ storageFails = false, sharedStorage = null, initialHash = '', initialDraft = null, initialThemes = null, initialAppearance = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
   const nodes = new Map(), downloads = [], objectURLs = new Map(), revoked = [], timers = [], clipboardTexts = [], clipboardItems = [];
-  const storage = new Map(initialDraft ? [[storageKey, JSON.stringify(initialDraft)]] : []);
+  const storage = sharedStorage || new Map();
+  if (initialDraft) storage.set(storageKey, JSON.stringify(initialDraft));
   if (initialThemes) storage.set('signature-studio:themes:v1', JSON.stringify(initialThemes));
   if (initialAppearance !== null) storage.set('signature-studio:appearance:v1',initialAppearance);
   const globalEvents = new Map(), documentEvents = new Map();
@@ -91,7 +93,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
       return null;
     }
     querySelectorAll(selector) {
-      if (selector === 'a') return []; // Link navigation is outside this harness.
+      if (selector === 'a' || selector === 'img') return []; // Link navigation and image loading are outside this harness.
       if (selector === '[data-close-dialog], .dialog-close, #close-help') return [nodes.get('close-help')];
       throw new Error('Unsupported element selector: ' + selector);
     }
@@ -194,6 +196,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     setTimeout(callback) { timers.push(callback); return timers.length; },
   };
   vm.runInNewContext(historySource, context, { filename: 'editor-history.js' });
+  vm.runInNewContext(previewSource, context, { filename: 'preview-dom.js' });
   vm.runInNewContext(sessionSource, context, { filename: 'session-data.js' });
   vm.runInNewContext(sessionControlsSource, context, { filename: 'session-controls.js' });
   vm.runInNewContext(collectionsSource, context, { filename: 'design-collections.js' });
@@ -945,6 +948,73 @@ test('compact older drafts retain their details and height when icons are inheri
   assert.equal(saved.height, 180);
   assert.equal(saved.emailIcon, 'mail');
   assert.match(app.node('signature-preview').innerHTML, /icon-mail\.png/);
+});
+
+test('resizing a stale tab cannot erase another tab’s hosted or uploaded photo', async () => {
+  for (const photo of [{portraitUrl:'https://example.com/portrait.jpg'}, {portraitData:localPortrait}]) {
+    const sharedStorage = new Map(), latest = harness({sharedStorage}), stale = harness({sharedStorage});
+    await latest.navigateHash(draftHash({...freshDraft,...photo}));
+    const saved = sharedStorage.get(storageKey);
+    await stale.input('motifScale',75);
+    await stale.input('width-range',350);
+    await stale.input('height-range',220);
+    assert.equal(sharedStorage.get(storageKey),saved,'size edits in the older tab never replace the saved photo');
+    assert.equal(stale.imageSettings.getDraft().motifScale,75,'the older tab remains editable');
+    assert.equal(stale.imageSettings.getDraft().width,350);
+    assert.match(stale.node('save-status').textContent,/Not saved.*another tab/);
+    assert.match(stale.footer.textContent,/Export data.*reload.*latest saved draft/);
+    assert.equal(stale.footer.hidden,false);
+    await stale.click('export-data');
+    assert.equal(JSON.parse(stale.node('session-json').value).draft.width,350,'local work remains available for backup');
+    const reloaded = harness({sharedStorage});
+    for (const [key,value] of Object.entries(photo)) assert.equal(reloaded.imageSettings.getDraft()[key],value);
+    await reloaded.input('width-range',360);
+    assert.equal(JSON.parse(sharedStorage.get(storageKey)).width,360,'reloading establishes the current storage baseline');
+    for (const [key,value] of Object.entries(photo)) assert.equal(JSON.parse(sharedStorage.get(storageKey))[key],value);
+    assert.match(reloaded.node('save-status').textContent,/Saved in this browser/);
+  }
+});
+
+test('an explicit session restore in a stale tab establishes the baseline for later edits', async () => {
+  const sharedStorage = new Map(), latest = harness({sharedStorage}), stale = harness({sharedStorage});
+  await latest.navigateHash(draftHash({...freshDraft,portraitUrl:'https://example.com/latest.jpg'}));
+  await stale.input('motifScale',75);
+  assert.match(stale.node('save-status').textContent,/another tab/);
+  const imported = {...freshDraft,nameLine1:'Restored',portraitUrl:'https://example.com/imported.jpg'};
+  await stale.click('import-data'); await stale.pasteSession(JSON.stringify(imported)); await stale.click('session-restore');
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).portraitUrl,imported.portraitUrl);
+  await stale.input('width-range',370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).width,370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).portraitUrl,imported.portraitUrl);
+  assert.match(stale.node('save-status').textContent,/Saved in this browser/);
+});
+
+test('a failed stale-tab restore preserves the saved draft and can retry after storage recovers', async () => {
+  const sharedStorage = new Map(), latest = harness({sharedStorage}), stale = harness({sharedStorage});
+  await latest.navigateHash(draftHash({...freshDraft,portraitUrl:'https://example.com/latest.jpg'}));
+  const saved = sharedStorage.get(storageKey);
+  const imported = {...freshDraft,nameLine1:'Restored',portraitData:localPortrait};
+  stale.failNextWrite(storageKey);
+  await stale.click('import-data'); await stale.pasteSession(JSON.stringify(imported)); await stale.click('session-restore');
+  assert.equal(sharedStorage.get(storageKey),saved,'failed explicit replacement rolls back without losing the newer photo');
+  assert.match(stale.node('status').textContent,/this tab/);
+  await stale.input('width-range',370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).width,370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).portraitData,localPortrait);
+  assert.match(stale.node('save-status').textContent,/Saved in this browser/);
+});
+
+test('a failed ordinary save keeps its storage baseline until a successful retry', async () => {
+  const app = harness();
+  const saved = app.storage.get(storageKey);
+  app.failNextWrite(storageKey);
+  await app.input('motifScale',75);
+  assert.equal(app.storage.get(storageKey),saved);
+  assert.match(app.node('save-status').textContent,/Storage unavailable/);
+  await app.input('width-range',350);
+  assert.equal(JSON.parse(app.storage.get(storageKey)).motifScale,75);
+  assert.equal(JSON.parse(app.storage.get(storageKey)).width,350);
+  assert.match(app.node('save-status').textContent,/Saved in this browser/);
 });
 
 test('unusable saved drafts are not overwritten by startup', () => {

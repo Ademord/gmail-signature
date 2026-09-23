@@ -105,7 +105,7 @@
   }
   $('undo-change').addEventListener('click', () => travelHistory('undo'));
   $('redo-change').addEventListener('click', () => travelHistory('redo'));
-  let startupMessage = '', preserveUnreadableDraft = false;
+  let startupMessage = '', preserveUnreadableDraft = false, storedDraftValue;
   const announce = (message, error = false) => {
     status.textContent = message;
     status.dataset.error = String(error);
@@ -114,6 +114,7 @@
   const encode = (value) => btoa(Array.from(new TextEncoder().encode(JSON.stringify(value)), c => String.fromCharCode(c)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   try {
     const saved = localStorage.getItem(storageKey);
+    storedDraftValue = saved;
     if (saved) {
       const parsed = JSON.parse(saved);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid draft');
@@ -305,7 +306,7 @@
         const miniature = { ...lastValid, design: item.id, layout: 'paired' };
         try {
           // Links are removed because the whole preview is a template-selection button.
-          preview.innerHTML = core.render(miniature, { assetBase: './sig', preview: true }).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>');
+          window.SignaturePreview.update(preview, core.render(miniature, { assetBase: './sig', preview: true }).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>'));
         } catch { preview.textContent = item.name; }
       }
       fitMiniatures();
@@ -429,8 +430,19 @@
       return;
     }
     try {
+      const current = localStorage.getItem(storageKey), serialized = JSON.stringify(draft);
+      // A stale editor must not replace a photo or other edits saved by another
+      // tab. Keep this tab editable/exportable until the user reloads or imports.
+      if (current !== storedDraftValue && current !== serialized && !(storedDraftValue === undefined && current === null)) {
+        $('save-status').textContent = 'Not saved — draft changed in another tab';
+        note.textContent = 'Another tab saved a different draft. Export data to keep this tab’s changes, or reload to use the latest saved draft.';
+        note.classList.add('storage-warning');
+        note.setAttribute('role', 'status');
+        return;
+      }
       if (pendingSessionPersistence) localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes }));
-      localStorage.setItem(storageKey, JSON.stringify(draft));
+      localStorage.setItem(storageKey, serialized);
+      storedDraftValue = serialized;
       pendingSessionPersistence = false;
       $('save-status').textContent = 'Saved in this browser';
       note.textContent = 'Draft saved in this browser.';
@@ -533,7 +545,7 @@
     try {
       lastValid = core.normalize(draft);
       const defaultAssets = lastValid.imageBase === core.defaults.imageBase;
-      $('signature-preview').innerHTML = core.render(lastValid, { preview: true, ...(defaultAssets ? { assetBase: './sig' } : {}) });
+      window.SignaturePreview.update($('signature-preview'), core.render(lastValid, { preview: true, ...(defaultAssets ? { assetBase: './sig' } : {}) }));
       $('signature-preview').querySelectorAll('a').forEach(link => { link.target = '_blank'; link.rel = 'noopener noreferrer'; });
       const emailName = $('email-sender');
       if (emailName) emailName.textContent = [lastValid.nameLine1, lastValid.nameLine2].filter(Boolean).join(' ');
@@ -691,8 +703,13 @@
     let stored = false;
     try {
       for (const key of [themeStorageKey, storageKey]) previousStorage.set(key, localStorage.getItem(key));
+      // Restoring a reviewed session is an explicit replacement. If a write
+      // fails, retries may still save against the value restored by rollback.
+      storedDraftValue = previousStorage.get(storageKey);
       localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes: merged.themes }));
-      localStorage.setItem(storageKey, JSON.stringify(session.draft));
+      const serialized = JSON.stringify(session.draft);
+      localStorage.setItem(storageKey, serialized);
+      storedDraftValue = serialized;
       stored = true;
     } catch {
       for (const [key, value] of previousStorage) {

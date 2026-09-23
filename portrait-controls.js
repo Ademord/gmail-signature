@@ -166,7 +166,9 @@
       const changed = identity !== committedPhoto;
       if (changed) { ++request; committedPhoto = identity; clearSource(); }
       $('portrait-current').hidden = !url;
-      if (url) $('portrait-current-image').src = url; else $('portrait-current-image').removeAttribute('src');
+      if (url) {
+        if ($('portrait-current-image').getAttribute('src') !== url) $('portrait-current-image').src = url;
+      } else $('portrait-current-image').removeAttribute('src');
       $('portrait-download').disabled = !draft.portraitData;
       $('portrait-edit').hidden = !draft.portraitData;
       $('portrait-shape-control').value = draft.portraitShape;

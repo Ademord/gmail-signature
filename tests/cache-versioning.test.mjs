@@ -16,12 +16,12 @@ const expectedEditorAssets = [
   'portrait-core.js', 'signature-core.js', 'editor-history.js', 'signature-image.js',
   'session-data.js', 'session-controls.js', 'portrait-controls.js', 'design-collections.js',
   'ai-extension-core.js', 'ai-extension-controls.js', 'library-controls.js', 'app.js',
-  'artwork-core.js', 'artwork-controls.js',
+  'artwork-core.js', 'artwork-controls.js', 'preview-dom.js',
 ];
 
 function inspectEditor(html) {
   const urls = [...html.matchAll(/\b(?:src|href)="([^"#]+\.(?:js|css)(?:\?[^"#]*)?)"/g)].map(match => match[1]);
-  assert.equal(urls.length, 19, 'every required script and stylesheet stays linked');
+  assert.equal(urls.length, 20, 'every required script and stylesheet stays linked');
   assert.deepEqual(urls.map(url => url.split('?')[0]).sort(), [...expectedEditorAssets].sort());
   const versions = urls.map(url => {
     assert.match(url, /^[^?]+\?v=[a-f0-9]{16}$/, url + ' must have the content version');
@@ -48,7 +48,7 @@ async function fixture(t) {
   return root;
 }
 
-test('both committed editors version the independently required nineteen runtime links', async () => {
+test('both committed editors version the independently required twenty runtime links', async () => {
   const index = (await read('index.html')).toString(), alternate = (await read('signature.html')).toString();
   assert.equal(index, alternate);
   const version = inspectEditor(index);
