@@ -308,3 +308,66 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 :root{--page:#f4f3ef;--panel:#fffefa;--line:#e0dfd8;--ink:#282b2b;--muted:#636b60;--canvas-background:#282e26;--canvas-ink:#b2baa9;--canvas-line:#ffffff12}
 :root[data-editor-skin="plum"]{--page:#f0eee9;--panel:#faf8f4;--ink:#1c1917;--muted:#6f6a63;--line:#e4e0d8;--canvas-background:#f3f1ec;--canvas-ink:#6f6a63;--canvas-line:#e4e0d8}
 .app-header{background:var(--panel)}.preview-frame{background:var(--canvas-background)}.canvas-topline,.canvas-bottomline,.canvas-label,.canvas-customized{color:var(--canvas-ink)}.canvas-bottomline{border-color:var(--canvas-line)}
+
+/* Rearrange the original controls without changing their visual styling. */
+.studio-shell .workspace{--editor-column-width:310px;grid-template-columns:var(--editor-column-width) minmax(0,1fr)}
+.studio-shell .editor-rail,.studio-shell .inspector-column{min-width:0}
+.studio-shell .design-columns{display:grid;grid-template-columns:minmax(0,1fr)}
+.studio-shell .inspector-column+.inspector-column{border-top:1px solid var(--line)}
+.studio-shell .editor-tabs{max-width:var(--editor-column-width);border-bottom:0}
+.studio-shell .history-actions{border-top:1px solid var(--line)}
+.studio-shell .artwork-create{margin-top:0;padding-top:0}
+.studio-shell .save-state{white-space:normal;max-width:220px}
+@media(min-width:1181px){
+  .studio-shell .workspace[data-editor-view="design"]{grid-template-columns:calc(var(--editor-column-width) * 2) minmax(0,1fr)}
+  .studio-shell .design-columns{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .studio-shell .inspector-column+.inspector-column{border-top:0;border-left:1px solid var(--line)}
+}
+@media(min-width:741px) and (max-width:1180px){.studio-shell .workspace{--editor-column-width:290px}}
+@media(min-width:741px) and (max-width:900px){.studio-shell .workspace{--editor-column-width:275px}}
+@media(max-width:740px){.studio-shell .editor-tabs{max-width:none}}
+
+/* Layout choices reuse the template cards; only their arrangement is new. */
+.orientation-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;clear:both}
+.orientation-choice{position:relative}
+.orientation-choice .design-caption{justify-content:center;padding-bottom:10px}
+.orientation-choice[aria-pressed="true"]{background:var(--ui-selected)}
+.orientation-check{position:absolute;top:7px;right:7px;border-radius:50%;background:var(--ui-accent);color:#fff}
+.orientation-choice[aria-pressed="false"] .orientation-check{display:none}
+.layout-thumbnail{height:116px;min-height:0;pointer-events:none}
+.current-template{display:grid;grid-template-columns:38% minmax(0,1fr);align-items:center;width:100%}
+.current-template .layout-thumbnail{height:90px;border-bottom:0}
+.current-template-caption{display:flex;flex-direction:column;min-width:0;padding:10px 11px}
+.current-template-caption>strong{font-size:14px;font-weight:600}
+.current-template-caption .gallery-jump{min-height:0;margin-top:5px;padding:0;line-height:1.5;flex-wrap:wrap}
+.layout-orientation .field-note{margin-top:11px}
+
+/* Details keeps the original fields, with contact labels beside their inputs. */
+.field.contact-field{display:grid;grid-template-columns:86px minmax(0,1fr);gap:5px 11px;align-items:center}
+.contact-field label{justify-content:flex-start;gap:7px}
+.contact-field label img{flex:none}
+.contact-field .field-error{grid-column:1/-1}
+#icons-disclosure .contact-icons-note{margin:16px 0 11px}
+
+/* Header action menus reuse the existing appearance-menu treatment. */
+.export-menu,.editor-options{position:relative}
+.export-menu>summary,.editor-options>summary{list-style:none;cursor:pointer}
+.export-menu>summary::-webkit-details-marker,.editor-options>summary::-webkit-details-marker{display:none}
+.export-options,.editor-options-content{position:absolute;top:calc(100% + 8px);right:0;z-index:20;width:280px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 100px);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 10px 30px #1c19171a}
+.export-options>.button,.editor-options-content>.button{width:100%;justify-content:flex-start;white-space:normal}
+.export-options>.button+.button{margin-top:6px}
+.editor-options-content>.text-button{white-space:normal;text-align:left}
+.editor-options-content .appearance-options{position:static;width:auto;max-width:100%;border:0;box-shadow:none;padding-inline:0}
+.editor-options-content .editor-footer-actions{padding-inline:0}
+.export-options .backup-disclosure{padding-inline:0;margin-top:12px;background:transparent}
+.export-options .share-disclosure{text-align:left}
+.editor-options-content .help-button span{display:inline}
+@media(max-width:740px){
+  .studio-shell .app-header{height:auto;min-height:64px;flex-wrap:wrap;padding-block:12px;gap:12px}
+  .studio-shell .header-actions{margin-left:auto}
+}
+@media(max-width:480px){
+  .studio-shell .header-actions{position:relative;flex-wrap:wrap}
+  .export-menu,.editor-options{position:static}
+  .export-options,.editor-options-content{max-height:60dvh}
+}

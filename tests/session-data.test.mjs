@@ -22,13 +22,39 @@ test('browser global and CommonJS API operate without DOM or storage', () => {
 });
 
 test('Unicode drafts, saved themes, and UI round-trip through pretty versioned JSON', () => {
-  const input = {draft:draft({nameLine1:'Zoë', nameLine2:'Mörgán'}), themes:[theme()], ui:{editorTab:'colors', previewView:'email', imageScale:6, imageBackground:'white', selectedThemeId:'theme-1', themeName:'Crème 東京'}};
+  const input = {draft:draft({nameLine1:'Zoë', nameLine2:'Mörgán'}), themes:[theme()], ui:{editorTab:'design', previewView:'email', imageScale:6, imageBackground:'white', selectedThemeId:'theme-1', themeName:'Crème 東京'}};
   const text = codec.serialize(input), raw = JSON.parse(text);
   assert.match(text, /\n  "format":/);
   assert.equal(raw.format, 'signature-editor-session');
   assert.equal(raw.version, 1);
   assert.equal(new Date(raw.exportedAt).toISOString(), raw.exportedAt);
   assert.deepEqual(codec.parse(text), input);
+});
+
+test('all four editor views survive session export and restore', () => {
+  for (const editorTab of ['layout','details','photo','design']) {
+    const input = {draft:draft({layout:'stacked'}), ui:{editorTab}};
+    const text = codec.serialize(input);
+    assert.equal(JSON.parse(text).ui.editorTab, editorTab);
+    const restored = codec.parse(text);
+    assert.equal(restored.ui.editorTab, editorTab);
+    assert.equal(restored.draft.layout, 'stacked');
+  }
+});
+
+test('legacy Colors sessions restore into Design without changing their content', () => {
+  const input = envelope({draft:draft({accent:'#a64435'}), themes:[theme()],
+    ui:{editorTab:'colors', selectedThemeId:'theme-1', themeName:'Saved palette'}});
+  const before = structuredClone(input);
+  const restored = parseValue(input);
+  assert.equal(restored.ui.editorTab, 'design');
+  assert.equal(restored.ui.selectedThemeId, 'theme-1');
+  assert.equal(restored.ui.themeName, 'Saved palette');
+  assert.deepEqual(restored.draft, input.draft);
+  assert.deepEqual(restored.themes, input.themes);
+  assert.equal(JSON.parse(codec.serialize(input)).ui.editorTab, 'design');
+  assert.deepEqual(codec.parse(codec.serialize(restored)), restored);
+  assert.deepEqual(input, before);
 });
 
 test('bare legacy drafts gain missing core fields and default UI without importing themes', () => {

@@ -22,7 +22,7 @@
     setAppearance(button.dataset.editorSkin,true);
     if ($('appearance-notice').hidden) closeAppearance();
   });
-  $('appearance-menu').addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeAppearance(); } });
+  $('appearance-menu').addEventListener('keydown', event => { if (event.key === 'Escape' && $('appearance-menu').open) { event.preventDefault(); event.stopPropagation(); closeAppearance(); } });
   const iconKeys = ['websiteIcon', 'emailIcon', 'phoneIcon', 'linkedinIcon', 'locationIcon'];
   for (const key of iconKeys) {
     for (const [value, label] of Object.entries(core.icons)) {
@@ -83,7 +83,29 @@
   const imageButton = document.createElement('button');
   imageButton.id = 'export-image'; imageButton.type = 'button'; imageButton.className = 'button button-secondary image-export-button';
   imageButton.innerHTML = '<svg viewBox="0 0 18 18" width="17" height="17" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6.5" r="1.2" stroke="currentColor" stroke-width="1.2"/><path d="m3 14 4-4 2.5 2 3-4 2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Export image</span><span class="format-badge">HD</span>';
-  document.querySelector('.preview-actions > div').append(imageButton);
+  $('export-options').prepend(imageButton);
+  for (const id of ['export-menu', 'editor-options']) {
+    const menu = $(id);
+    menu.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault(); event.stopPropagation(); menu.open = false; menu.querySelector('summary').focus();
+    });
+    menu.addEventListener('click', event => {
+      // Keep nested preferences/disclosures open, but dismiss after an action.
+      const button = event.target.closest('button');
+      if (button && !button.closest('#appearance-menu')) {
+        menu.open = false;
+        // Delegated AI launchers run later in this event. Restore focus to a
+        // visible menu trigger when any launched dialog closes.
+        queueMicrotask(() => {
+          const trigger = menu.querySelector('summary');
+          const dialog = document.querySelector('dialog[open]');
+          if (dialog) dialog.addEventListener('close', () => trigger.focus(), {once:true});
+          else if (document.activeElement === button || document.activeElement === document.body) trigger.focus();
+        });
+      }
+    });
+  }
   let draft = newDraft(), lastValid = null, view = 'card', emailDevice = 'desktop', activeTab = 'design', undoDraft = null;
   let portraitControls = null;
   let aiControls = null;
@@ -105,7 +127,7 @@
   }
   $('undo-change').addEventListener('click', () => travelHistory('undo'));
   $('redo-change').addEventListener('click', () => travelHistory('redo'));
-  let startupMessage = '', preserveUnreadableDraft = false;
+  let startupMessage = '', preserveUnreadableDraft = false, storedDraftValue;
   const announce = (message, error = false) => {
     status.textContent = message;
     status.dataset.error = String(error);
@@ -114,6 +136,7 @@
   const encode = (value) => btoa(Array.from(new TextEncoder().encode(JSON.stringify(value)), c => String.fromCharCode(c)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   try {
     const saved = localStorage.getItem(storageKey);
+    storedDraftValue = saved;
     if (saved) {
       const parsed = JSON.parse(saved);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid draft');
@@ -159,6 +182,11 @@
   // All miniature cards use the same renderer as the working canvas and exports.
   const designs = core.designs || [];
   const designButtons = [], patternButtons = [], paletteButtons = [];
+  const layoutMiniatures = [
+    {frame: $('orientation-horizontal-frame'), preview: $('orientation-horizontal-preview'), button: $('orientation-horizontal'), layout: 'paired'},
+    {frame: $('orientation-vertical-frame'), preview: $('orientation-vertical-preview'), button: $('orientation-vertical'), layout: 'stacked'},
+    {frame: $('current-template-frame'), preview: $('current-template-preview')}
+  ];
   const studioPalettes = [
     plumPalette,
     { name: 'Vermilion', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -201,7 +229,7 @@
   }));
   document.querySelectorAll('[data-arrangement]').forEach(button => button.addEventListener('click', () => {
     if (draft.layout === button.dataset.arrangement) return;
-    applyStyle({ layout: button.dataset.arrangement }, button.textContent.trim() + ' arrangement applied.');
+    applyStyle({ layout: button.dataset.arrangement }, button.getAttribute('aria-label') + ' orientation applied.');
   }));
   for (const [index, item] of designs.entries()) {
     const option = document.createElement('option'); option.value = item.id; option.textContent = item.name;
@@ -221,18 +249,24 @@
     const option = document.createElement('option'); option.value = 'custom'; option.id = 'custom-design-option'; option.textContent = 'Custom layout'; $('design').append(option);
   }
   function patternAsset(id) { return id === 'dots' || id === 'original' ? 'sig/dots.png' : 'sig/pattern-' + id + '.png'; }
-  for (const [id, label] of Object.entries(core.patterns || {})) {
-    const option = document.createElement('option'); option.value = id; option.textContent = label; if (id === 'custom') option.id = 'custom-pattern-option'; $('pattern').append(option);
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-pattern-' + id; button.className = 'pattern-choice';
+  function addPatternChoice(id, label, container, prefix) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = prefix + id; button.className = 'pattern-choice';
     button.setAttribute('aria-label', 'Use ' + label + ' pattern'); button.setAttribute('aria-pressed', 'false');
     const artwork = document.createElement('span'); artwork.className = 'pattern-artwork'; artwork.setAttribute('aria-hidden', 'true');
     if (id === 'none' || id === 'custom') artwork.textContent = id === 'custom' ? '✦' : '—';
     else { const img = document.createElement('img'); img.alt = ''; img.src = patternAsset(id === 'auto' ? 'original' : id); artwork.append(img); }
-    const caption = document.createElement('span'); caption.textContent = id === 'auto' ? 'Auto' : label;
-    const study = (window.SignatureCollections || []).find(item => item.category === 'abstract' && item.pattern === id);
-    button.append(artwork); button.append(caption); $(study ? 'abstract-pattern-choices' : 'pattern-choices').append(button);
+    const caption = document.createElement('span'); caption.textContent = id === 'auto' ? 'Design default' : label;
+    button.append(artwork); button.append(caption); $(container).append(button);
     button.addEventListener('click', () => { if (id === 'custom' && !draft.customPattern) artworkControls?.open(); else applyStyle({ pattern: id }, label + ' pattern applied.'); });
     patternButtons.push({ button, id, artwork });
+  }
+  for (const [id, label] of Object.entries(core.patterns || {})) {
+    const option = document.createElement('option'); option.value = id; option.textContent = label; if (id === 'custom') option.id = 'custom-pattern-option'; $('pattern').append(option);
+    const study = (window.SignatureCollections || []).find(item => item.category === 'abstract' && item.pattern === id);
+    addPatternChoice(id, label, study ? 'abstract-pattern-choices' : 'pattern-choices', 'choose-pattern-');
+  }
+  for (const id of ['none', 'auto', 'orbit', 'studio', 'contour', 'cutpaper']) {
+    addPatternChoice(id, core.patterns[id], 'compact-pattern-choices', 'quick-pattern-');
   }
   for (const item of [...studioPalettes, ...extraPalettes]) {
     const button = document.createElement('button'); button.type = 'button'; button.id = 'choose-palette-' + (item.id?.replace(/^preset-/, '') || item.name.toLowerCase()); button.className = 'palette-choice';
@@ -252,6 +286,40 @@
       preview.style.width = width + 'px'; preview.style.transform = 'scale(' + scale + ')';
       viewport.style.height = Math.ceil(lastValid.height * scale + 20) + 'px';
     }
+    for (const {frame, preview, size} of layoutMiniatures) {
+      if (!size || !frame.clientWidth || !frame.clientHeight) continue;
+      const {width, height} = size;
+      const scale = Math.min(1, Math.max(1, frame.clientWidth - 20) / width, Math.max(1, frame.clientHeight - 20) / height);
+      preview.style.width = width + 'px';
+      preview.style.transform = 'scale(' + scale + ')';
+      preview.style.left = (frame.clientWidth - width * scale) / 2 + 'px';
+      preview.style.top = (frame.clientHeight - height * scale) / 2 + 'px';
+    }
+  }
+  function layoutMiniatureMarkup(value) {
+    const options = {preview: true, ...(value.imageBase === core.defaults.imageBase ? {assetBase: './sig'} : {})};
+    // A miniature is decorative; only its surrounding choice may receive focus.
+    return core.render(value, options).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>');
+  }
+  function syncLayoutMiniatures() {
+    const unavailable = [];
+    for (const item of layoutMiniatures) {
+      const {preview, button, layout = draft.layout} = item;
+      try {
+        const value = {...draft, layout};
+        window.SignaturePreview.update(preview, layoutMiniatureMarkup(value));
+        const normalized = core.normalize(value), tall = layout === 'stacked';
+        item.size = {width: tall ? normalized.width : normalized.width * 2 + 20, height: tall ? normalized.height * 2 + 20 : normalized.height};
+        if (button) button.disabled = false;
+      } catch {
+        item.size = null;
+        preview.textContent = '';
+        if (button) { button.disabled = true; unavailable.push(button.getAttribute('aria-label')); }
+      }
+    }
+    $('orientation-note').hidden = !unavailable.length;
+    $('orientation-note').textContent = unavailable.length === 2 ? 'Fix the highlighted fields or increase the panel size to preview these orientations.' : unavailable.length ? unavailable[0] + ' needs more room. Increase the panel size or shorten your text.' : '';
+    fitMiniatures();
   }
   function syncStudio() {
     const selected = designById(draft.design);
@@ -272,9 +340,11 @@
     $('artworkPositionY').disabled = Math.abs(canvasH - artH * artScale) < 0.01;
     $('artwork-position-note').hidden = !isFlow || (!$('artworkPositionX').disabled && !$('artworkPositionY').disabled);
     $('pattern-note').textContent = isFlow ? 'Adjust the artwork across your signature.' : draft.pattern === 'none' ? 'Choose artwork above to start adjusting.' : !hasMotif ? 'Your photo fills the artwork space. Reduce the photo size to show artwork alongside it.' : 'Resize and move the artwork within its side area.';
+    $('pattern-note').hidden = isFlow || hasMotif;
     for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
     for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
     $('design-description').textContent = selected.description;
+    $('current-template-name').textContent = selected.name;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';
     const customized = !colorKeys.every(key => selected[key] === draft[key]) || draft.pattern !== 'auto';
     const activePalette = [...studioPalettes,...extraPalettes].find(matchesColors);
@@ -300,12 +370,13 @@
       }
     }
     for (const { button, item } of paletteButtons) button.setAttribute('aria-pressed', String(matchesColors(item)));
+    syncLayoutMiniatures();
     if (lastValid) {
       for (const { item, preview } of designButtons) {
         const miniature = { ...lastValid, design: item.id, layout: 'paired' };
         try {
           // Links are removed because the whole preview is a template-selection button.
-          preview.innerHTML = core.render(miniature, { assetBase: './sig', preview: true }).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>');
+          window.SignaturePreview.update(preview, core.render(miniature, { assetBase: './sig', preview: true }).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>'));
         } catch { preview.textContent = item.name; }
       }
       fitMiniatures();
@@ -383,6 +454,10 @@
     syncThemeState(); themeNotice('');
   });
   $('save-theme').addEventListener('click', () => saveTheme(false));
+  $('save-palette-shortcut').addEventListener('click', () => {
+    $('saved-palettes').open = true;
+    $('theme-name').focus();
+  });
   $('update-theme').addEventListener('click', () => saveTheme(true));
   $('delete-theme').addEventListener('click', () => {
     const deleted = themes.find(theme => theme.id === selectedThemeId);
@@ -398,6 +473,36 @@
     });
     $('theme-notice').append(undo);
   });
+  const cleanName = value => value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const joinedName = () => [draft.nameLine1, draft.nameLine2].filter(Boolean).join(' ');
+  function syncName() { $('full-name').value = joinedName(); }
+  function updateName(value) {
+    const name = cleanName(value);
+    // Viewing or re-entering a saved name must preserve its intentional line break.
+    if (name === cleanName(joinedName())) {
+      const errors = core.validate(draft);
+      if (!errors.nameLine1 && !errors.nameLine2) return;
+    }
+    const candidates = [{ nameLine1: name, nameLine2: '' }];
+    for (let index = name.indexOf(' '); index !== -1; index = name.indexOf(' ', index + 1)) {
+      candidates.push({ nameLine1: name.slice(0, index), nameLine2: name.slice(index + 1) });
+    }
+    // An unfinished URL or email would short-circuit the core's fit check. Use
+    // its last valid value only for measurement; keep the actual edit and error.
+    const measuredDraft = { ...draft };
+    for (const key of Object.keys(core.validate(draft))) {
+      if (!['nameLine1', 'nameLine2'].includes(key)) measuredDraft[key] = (lastValid || core.defaults)[key];
+    }
+    const ranked = candidates.map(lines => ({
+      lines,
+      fits: Object.keys(core.validate({ ...draft, ...lines })).length === 0,
+      measuredFit: Object.keys(core.validate({ ...measuredDraft, ...lines })).length === 0,
+      balance: Math.abs(Array.from(lines.nameLine1).length - Array.from(lines.nameLine2).length)
+    })).sort((a, b) => Number(b.fits) - Number(a.fits) || Number(b.measuredFit) - Number(a.measuredFit) || a.balance - b.balance);
+    // Keep every word even when no split fits; validation explains the adjustment.
+    Object.assign(draft, ranked[0].lines);
+    for (const key of ['nameLine1', 'nameLine2']) form.elements.namedItem(key).value = draft[key];
+  }
   function fill() {
     for (const key of Object.keys(core.defaults)) {
       const input = form.elements.namedItem(key);
@@ -406,6 +511,7 @@
         if (core.limits?.[key]) input.maxLength = core.limits[key];
       }
     }
+    syncName();
     syncSizeControls();
     syncColors(); syncIcons(); renderThemeMenu(); syncStudio(); portraitControls?.sync?.();
   }
@@ -429,8 +535,19 @@
       return;
     }
     try {
+      const current = localStorage.getItem(storageKey), serialized = JSON.stringify(draft);
+      // A stale editor must not replace a photo or other edits saved by another
+      // tab. Keep this tab editable/exportable until the user reloads or imports.
+      if (current !== storedDraftValue && current !== serialized && !(storedDraftValue === undefined && current === null)) {
+        $('save-status').textContent = 'Not saved — draft changed in another tab';
+        note.textContent = 'Another tab saved a different draft. Export data to keep this tab’s changes, or reload to use the latest saved draft.';
+        note.classList.add('storage-warning');
+        note.setAttribute('role', 'status');
+        return;
+      }
       if (pendingSessionPersistence) localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes }));
-      localStorage.setItem(storageKey, JSON.stringify(draft));
+      localStorage.setItem(storageKey, serialized);
+      storedDraftValue = serialized;
       pendingSessionPersistence = false;
       $('save-status').textContent = 'Saved in this browser';
       note.textContent = 'Draft saved in this browser.';
@@ -444,10 +561,14 @@
     }
   }
   function setTab(name) {
-    if (name === 'layout') { name = 'design'; $('size-disclosure').setAttribute('open', ''); }
+    if (name === 'colors') name = 'design';
     if (name === 'icons') { name = 'details'; $('icons-disclosure').setAttribute('open', ''); }
-    if (!['design','colors','details','photo'].includes(name)) name = 'design';
+    if (!['layout','details','photo','design'].includes(name)) name = 'design';
     activeTab = name;
+    const headings = { layout: ['Layout', 'Arrange your signature.'], details: ['Details', 'Your name and contact information.'], photo: ['Photo', 'Make your signature feel personal.'] };
+    $('editor-heading').textContent = headings[name]?.[0] || 'Edit signature';
+    $('editor-description').textContent = headings[name]?.[1] || '';
+    $('editor-description').hidden = !headings[name];
     document.querySelectorAll('[data-editor-tab]').forEach(button => {
       const active = button.dataset.editorTab === name;
       button.setAttribute('aria-selected', String(active));
@@ -455,9 +576,21 @@
       button.classList.toggle('is-active', active);
     });
     document.querySelectorAll('[data-editor-panel]').forEach(panel => { panel.hidden = panel.dataset.editorPanel !== name; });
+    document.querySelector('[data-preview-view]').dataset.editorView = name;
+    fitPreview();
   }
   function validate(focus = false) {
     const errors = core.validate(draft);
+    const nameError = errors.nameLine1 || errors.nameLine2;
+    const nameMessage = !nameError ? '' : !cleanName(draft.nameLine1)
+      ? (cleanName(joinedName()) ? 'Re-enter your name here or adjust Name line breaks below.' : 'Enter your name.')
+      : [draft.nameLine1, draft.nameLine2].some(line => line.length > core.limits.nameLine1)
+        ? 'Use up to 36 characters per name line. Adjust the line break below or shorten the name.'
+        : 'Shorten the name or increase the card width for readable text.';
+    $('full-name').setCustomValidity(nameMessage);
+    $('full-name').setAttribute('aria-invalid', String(Boolean(nameMessage)));
+    $('error-full-name').textContent = nameMessage;
+    $('error-full-name').hidden = !nameMessage;
     for (const key of Object.keys(core.defaults)) {
       const input = form.elements.namedItem(key);
       if (!input) continue;
@@ -486,17 +619,19 @@
       const input = form.elements.namedItem(keys[0]);
       if (keys[0].startsWith('portrait')) {
         setTab('photo');
-        const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-control' }[keys[0]] || 'portrait-file';
+        if (keys[0] === 'portraitUrl') portraitControls?.revealLink?.();
+        const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-circle' }[keys[0]] || 'portrait-file';
         ($(visibleId) || $('photo-tab')).focus();
       } else if (input) {
-        const panel = input.closest('[data-editor-panel]');
+        const focusTarget = ['nameLine1', 'nameLine2'].includes(keys[0]) ? $('full-name') : $(keys[0] + '-hex') || input;
+        const panel = focusTarget.closest('[data-editor-panel]');
         if (panel) setTab(panel.dataset.editorPanel);
-        for (let ancestor = input.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
+        for (let ancestor = focusTarget.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
           if (ancestor.tagName === 'DETAILS') ancestor.setAttribute('open', '');
         }
-        ($(keys[0] + '-hex') || input).focus();
+        focusTarget.focus();
       }
-      announce(errors[keys[0]], true);
+      announce(['nameLine1', 'nameLine2'].includes(keys[0]) ? nameMessage : errors[keys[0]], true);
     }
     return keys.length === 0;
   }
@@ -519,7 +654,7 @@
     $('dimension-label').textContent = `${width} × ${height} px`;
     $('scale-label').textContent = scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%';
     $('preview-size-note').textContent = emailDevice === 'mobile'
-      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Tall in Design for larger text.')
+      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Vertical in Layout for larger text.')
       : 'Preview your signature in a message. Export dimensions stay the same.';
     const column = document.querySelector('.preview-column');
     column.classList.toggle('is-tall', column.scrollHeight > innerHeight - 56);
@@ -527,13 +662,14 @@
   }
   function render() {
     if (!validate()) {
+      syncLayoutMiniatures();
       announce('Fix the highlighted field to update the preview.', true);
       return;
     }
     try {
       lastValid = core.normalize(draft);
       const defaultAssets = lastValid.imageBase === core.defaults.imageBase;
-      $('signature-preview').innerHTML = core.render(lastValid, { preview: true, ...(defaultAssets ? { assetBase: './sig' } : {}) });
+      window.SignaturePreview.update($('signature-preview'), core.render(lastValid, { preview: true, ...(defaultAssets ? { assetBase: './sig' } : {}) }));
       $('signature-preview').querySelectorAll('a').forEach(link => { link.target = '_blank'; link.rel = 'noopener noreferrer'; });
       const emailName = $('email-sender');
       if (emailName) emailName.textContent = [lastValid.nameLine1, lastValid.nameLine2].filter(Boolean).join(' ');
@@ -547,7 +683,9 @@
     if (input.name === 'design') { applyDesign(input.value); return; }
     const before = { ...draft };
     announce('');
-    if (input.dataset.colorField) {
+    if (input.name === 'fullName') {
+      updateName(input.value);
+    } else if (input.dataset.colorField) {
       const key = input.dataset.colorField;
       if (!colorKeys.includes(key)) return;
       draft[key] = input.value.toLowerCase();
@@ -557,7 +695,13 @@
       draft[key] = Number(input.value);
       form.elements.namedItem(key).value = input.value;
     } else if (Object.hasOwn(core.defaults, input.name)) {
+      // The bundled example label is automatic. Preserve every other saved label.
+      if (input.name === 'website' && draft.website === core.defaults.website && draft.websiteLabel === core.defaults.websiteLabel) {
+        draft.websiteLabel = '';
+        $('websiteLabel').value = '';
+      }
       draft[input.name] = ['width', 'height', ...artworkNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
+      if (['nameLine1', 'nameLine2'].includes(input.name)) syncName();
       if (input.name === 'pattern' && !flowingPatterns.includes(draft.pattern) && draft.artworkPlacement === 'flow') draft.artworkPlacement = 'auto';
       if (colorKeys.includes(input.name)) $(input.name + '-hex').value = input.value.toUpperCase();
     } else return;
@@ -633,7 +777,7 @@
     if (!validate(true)) return;
     let html;
     try { html = core.render(draft); }
-    catch (error) { if (draft.portraitData && !draft.portraitUrl) setTab('photo'); announce(error.message || 'This signature could not be copied.', true); return; }
+    catch (error) { if (draft.portraitData && !draft.portraitUrl) { setTab('photo'); portraitControls?.revealLink?.(); } announce(error.message || 'This signature could not be copied.', true); return; }
     const text = core.plainText(draft);
     if (await copyContent(html, text)) announce('Signature copied. Paste it into Gmail’s signature settings.');
     else {
@@ -648,7 +792,7 @@
     if (!validate(true)) return;
     let rendered;
     try { rendered = core.render(draft); }
-    catch (error) { if (draft.portraitData && !draft.portraitUrl) setTab('photo'); announce(error.message || 'This signature could not be exported.', true); return; }
+    catch (error) { if (draft.portraitData && !draft.portraitUrl) { setTab('photo'); portraitControls?.revealLink?.(); } announce(error.message || 'This signature could not be exported.', true); return; }
     const html = '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Email signature</title><body>' + rendered + '</body></html>';
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'my-signature.html'; document.body.append(link); link.click(); link.remove();
@@ -674,6 +818,7 @@
   $('install-help').addEventListener('click', () => $('help-dialog').showModal());
   $('help-dialog').querySelectorAll('[data-close-dialog], .dialog-close, #close-help').forEach(button => button.addEventListener('click', () => $('help-dialog').close()));
   new ResizeObserver(fitPreview).observe($('preview-viewport'));
+  new ResizeObserver(fitMiniatures).observe($('layout-panel'));
   addEventListener('hashchange', () => {
     if (!loadLink(true)) return;
     fill(); render(); save(); announce(startupMessage);
@@ -691,8 +836,13 @@
     let stored = false;
     try {
       for (const key of [themeStorageKey, storageKey]) previousStorage.set(key, localStorage.getItem(key));
+      // Restoring a reviewed session is an explicit replacement. If a write
+      // fails, retries may still save against the value restored by rollback.
+      storedDraftValue = previousStorage.get(storageKey);
       localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes: merged.themes }));
-      localStorage.setItem(storageKey, JSON.stringify(session.draft));
+      const serialized = JSON.stringify(session.draft);
+      localStorage.setItem(storageKey, serialized);
+      storedDraftValue = serialized;
       stored = true;
     } catch {
       for (const [key, value] of previousStorage) {
@@ -716,6 +866,11 @@
   portraitControls = window.PortraitControls?.attach({ getDraft: () => ({ ...draft }), setPortrait: patch => {
     const before = { ...draft }; draft = { ...draft, ...patch }; preserveUnreadableDraft = false;
     recordEdit(before); fill(); render(); save();
+  }, refreshPortrait: () => {
+    const source = draft.portraitData || draft.portraitUrl;
+    $('signature-preview').querySelectorAll('img').forEach(image => {
+      if (image.getAttribute('src') === source && image.complete && !image.naturalWidth) image.src = source;
+    });
   }, onError: message => announce(message, true) });
   aiControls = window.SignatureAIControls?.attach({getDraft: () => ({...draft}), applyChanges: patch => {
     const candidate = {...draft,...patch}, errors = core.validate(candidate);

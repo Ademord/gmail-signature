@@ -7,6 +7,7 @@ export const PUBLIC_FILES = Object.freeze([
   'index.html',
   'signature.html',
   'app.js',
+  'preview-dom.js',
   'editor.css',
   'signature-core.js',
   'editor-history.js',

@@ -17,6 +17,7 @@ assert.ok(projectRoot, 'Set SIGNATURE_PROJECT_ROOT to the app directory.');
 const appSource = readFileSync(resolve(projectRoot, 'app.js'), 'utf8');
 const coreSource = readFileSync(resolve(projectRoot, 'signature-core.js'), 'utf8');
 const historySource = readFileSync(resolve(projectRoot, 'editor-history.js'), 'utf8');
+const previewSource = readFileSync(resolve(projectRoot, 'preview-dom.js'), 'utf8');
 const sessionSource = readFileSync(resolve(projectRoot, 'session-data.js'), 'utf8');
 const sessionControlsSource = readFileSync(resolve(projectRoot, 'session-controls.js'), 'utf8');
 const collectionsSource = readFileSync(resolve(projectRoot, 'design-collections.js'), 'utf8');
@@ -31,16 +32,40 @@ const localPortrait = 'data:image/png;base64,' + readFileSync(resolve(projectRoo
 const plumColors = {frontBackground:'#ffffff',backBackground:'#faf8f4',accent:'#583da6'};
 const freshDraft = {...core.defaults,...plumColors};
 
-function harness({ storageFails = false, initialHash = '', initialDraft = null, initialThemes = null, initialAppearance = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
+function harness({ storageFails = false, sharedStorage = null, initialHash = '', initialDraft = null, initialThemes = null, initialAppearance = null, expectPreview = true, clipboardSucceeds = false, viewportWidth=800, screenWidth=390 } = {}) {
   const nodes = new Map(), downloads = [], objectURLs = new Map(), revoked = [], timers = [], clipboardTexts = [], clipboardItems = [];
-  const storage = new Map(initialDraft ? [[storageKey, JSON.stringify(initialDraft)]] : []);
+  const storage = sharedStorage || new Map();
+  if (initialDraft) storage.set(storageKey, JSON.stringify(initialDraft));
   if (initialThemes) storage.set('signature-studio:themes:v1', JSON.stringify(initialThemes));
   if (initialAppearance !== null) storage.set('signature-studio:appearance:v1',initialAppearance);
   const globalEvents = new Map(), documentEvents = new Map();
   let selectedRanges = [], clipboardAttempts = 0, legacyAttempts = 0, nextWriteFailure = null, previewTransformWrites=0;
-  const on = (events, type, listener) => events.set(type, [...(events.get(type) || []), listener]);
+  const on = (events, type, listener, options) => {
+    const registered=options?.once ? event=>{
+      events.set(type,(events.get(type)||[]).filter(item=>item!==registered));
+      return listener(event);
+    } : listener;
+    events.set(type,[...(events.get(type)||[]),registered]);
+  };
+  const eventFor=(type,details={})=>({type,defaultPrevented:false,cancelBubble:false,
+    preventDefault(){this.defaultPrevented=true;},stopPropagation(){this.cancelBubble=true;},...details});
   const emit = async (events, type, event = {}) => {
-    for (const listener of events.get(type) || []) await listener({ preventDefault() {}, ...event });
+    const dispatched=eventFor(type,event);
+    await Promise.all([...(events.get(type)||[])].map(listener=>listener(dispatched)));
+    return dispatched;
+  };
+  const dispatch = async (target,type,details={}) => {
+    const event=eventFor(type,{target,...details}),pending=[];
+    // Native listeners run synchronously through the complete bubbling path;
+    // promises returned by handlers do not defer a parent/document listener.
+    for(let current=target;current;current=current.parentElement) {
+      event.currentTarget=current;
+      for(const listener of [...(current.events.get(type)||[])]) pending.push(listener(event));
+      if(event.cancelBubble) break;
+    }
+    if(!event.cancelBubble) for(const listener of [...(documentEvents.get(type)||[])]) pending.push(listener(event));
+    await Promise.all(pending);
+    return event;
   };
 
   class Element {
@@ -48,7 +73,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
       this.tagName = tag.toUpperCase(); this.id = id; this.name = '';
       this.dataset = {}; this.style = new Proxy({}, {set:(target,key,value)=>{if(this.id==='signature-preview'&&key==='transform')previewTransformWrites++;target[key]=value;return true;}}); this.attributes = new Map(); this.events = new Map();
       this.children = []; this.parentElement = null; this.value = ''; this.hidden = false;
-      this.clientWidth = 800; this.scrollHeight = 500; this._text = ''; this._html = '';
+      this.clientWidth = 800; this.clientHeight = 400; this.scrollHeight = 500; this._text = ''; this._html = '';
       const classes = new Set();
       this.classList = {
         add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name),
@@ -69,7 +94,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     removeAttribute(name) { this.attributes.delete(name); if (name === 'open') this.open = false; }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
     setCustomValidity(value) { this.validationMessage = value; }
-    addEventListener(type, listener) { on(this.events, type, listener); }
+    addEventListener(type, listener, options) { on(this.events, type, listener, options); }
     append(child) { child.remove(); child.parentElement = this; this.children.push(child); }
     prepend(child) { child.parentElement = this; this.children.unshift(child); }
     remove() {
@@ -78,26 +103,38 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     }
     focus() { document.activeElement = this; }
     select() { document.activeElement = this; }
-    showModal() { this.open = true; }
-    close() { this.open = false; return emit(this.events, 'close'); }
+    showModal() { this._previousFocus=document.activeElement; this.open=true; this.focus(); }
+    close() {
+      if(!this.open) return Promise.resolve();
+      this.open=false;this._previousFocus?.focus();
+      return emit(this.events,'close',{target:this});
+    }
     get options() { return this.children.filter(child => child.tagName === 'OPTION'); }
     closest(selector) {
       let node = this;
       while (node) {
         if (selector === '[data-editor-panel]' && node.dataset.editorPanel) return node;
         if (selector === 'details' && node.tagName === 'DETAILS') return node;
+        if (selector === 'button' && node.tagName === 'BUTTON') return node;
+        if (selector.startsWith('#') && node.id === selector.slice(1)) return node;
         node = node.parentElement;
       }
       return null;
     }
+    querySelector(selector) {
+      assert.equal(selector,'summary','Only explicit fixture selectors are supported');
+      const find=element=>{for(const child of element.children){if(child.tagName==='SUMMARY')return child;const nested=find(child);if(nested)return nested;}return null;};
+      return find(this);
+    }
     querySelectorAll(selector) {
-      if (selector === 'a') return []; // Link navigation is outside this harness.
+      if (selector === 'a' || selector === 'img') return []; // Link navigation and image loading are outside this harness.
       if (selector === '[data-close-dialog], .dialog-close, #close-help') return [nodes.get('close-help')];
       throw new Error('Unsupported element selector: ' + selector);
     }
     click() {
+      if(this.disabled&&['BUTTON','INPUT','SELECT','TEXTAREA'].includes(this.tagName)) return Promise.resolve();
       if (this.tagName === 'A') downloads.push({ href: this.href, filename: this.download });
-      return emit(this.events, 'click', { target: this });
+      return dispatch(this,'click');
     }
   }
 
@@ -134,8 +171,8 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   }
   for (const key of ['frontBackground', 'backBackground', 'accent']) node(key + '-hex').dataset.colorField = key;
   node('image-scale').value = '4'; node('image-background').value = 'transparent';
-  node('editor-form').elements = { namedItem: key => inputs[key] || null };
-  const footer = new Element(), actionGroup = new Element(), workspace = new Element(), column = new Element();
+  node('editor-form').elements = { namedItem: key => inputs[key] || pageElements.find(element=>element.name===key) || null };
+  const footer = new Element(), workspace = new Element(), column = new Element();
   workspace.dataset.emailDevice='desktop';
   const views = ['card', 'email'].map(view => { const element = new Element('button'); element.dataset.view = view; return element; });
   const emailDevices=[...pageSource.matchAll(/<button\b[^>]*\bdata-email-device="([^"]+)"[^>]*>/g)].map(([tag,device])=>{
@@ -143,7 +180,7 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
   });
   const artworkEditButtons=[...pageSource.matchAll(/<button\b[^>]*\bdata-edit-artwork\b[^>]*>/g)].map(()=>new Element('button'));
   assert.ok(artworkEditButtons.length>0,'the real page has a manual artwork entry point');
-  const one = new Map([['.rail-footer > span', footer], ['.preview-actions > div', actionGroup], ['[data-preview-view]', workspace], ['.preview-column', column]]);
+  const one = new Map([['.rail-footer > span', footer], ['[data-preview-view]', workspace], ['.preview-column', column]]);
   // The workspace carries the same data attribute for CSS. It is deliberately
   // included in the generic selector so confusing it with buttons fails here.
   const cycleButtons = pageElements.filter(element => element.dataset.cycleField);
@@ -155,9 +192,12 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     activeElement: null, body: new Element('body'),documentElement:pageElements.find(element=>element.tagName==='HTML'),
     getElementById: id => nodes.get(id) || null,
     createElement: tag => new Element(tag),
-    querySelector(selector) { assert.ok(one.has(selector), 'Unsupported document selector: ' + selector); return one.get(selector); },
+    querySelector(selector) {
+      if(selector==='dialog[open]') return pageElements.find(element=>element.tagName==='DIALOG'&&element.open)||null;
+      assert.ok(one.has(selector), 'Unsupported document selector: ' + selector); return one.get(selector);
+    },
     querySelectorAll(selector) { assert.ok(many.has(selector), 'Unsupported document selector: ' + selector); return many.get(selector); },
-    addEventListener: (type, listener) => on(documentEvents, type, listener),
+    addEventListener: (type, listener, options) => on(documentEvents, type, listener, options),
     removeEventListener(type, listener) { documentEvents.set(type, (documentEvents.get(type) || []).filter(item => item !== listener)); },
     execCommand(command) { assert.equal(command, 'copy'); legacyAttempts++; return false; },
     createRange() {
@@ -174,8 +214,10 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     static revokeObjectURL(url) { revoked.push(url); }
   }
   let imageSettings = null, artworkSettings = null, artworkOpened = 0;
+  const portraitReveals = [];
   const context = {
     window: { SignatureCore: core, ClipboardItem, SignatureImage: { attach(settings) { imageSettings = settings; } },
+      PortraitControls: {attach() {return {sync() {},revealLink() {portraitReveals.push(node('photo-tab').getAttribute('aria-selected'));}};}},
       SignatureArtworkControls: {attach(settings) {artworkSettings = settings; return {open() {artworkOpened++;}};}} }, document, location,
     history: { replaceState(_state, _title, path) { location.href = new URL(path, location).href; } },
     localStorage: {
@@ -187,21 +229,23 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
       async write(items) { clipboardAttempts++; if (clipboardSucceeds) { clipboardItems.push(...items); return; } throw new Error('Clipboard blocked'); },
       async writeText(value) { clipboardAttempts++; clipboardTexts.push(value); throw new Error('Clipboard blocked'); },
     } },
-    URL: HarnessURL, Blob, ClipboardItem, TextEncoder, TextDecoder, Uint8Array, atob, btoa,
+    URL: HarnessURL, Blob, ClipboardItem, TextEncoder, TextDecoder, Uint8Array, atob, btoa, queueMicrotask,
     innerWidth: screenWidth, innerHeight: 844, getComputedStyle: () => ({ paddingLeft: '16', paddingRight: '16' }),
     ResizeObserver: class { observe() {} }, getSelection: () => selection,
     addEventListener: (type, listener) => on(globalEvents, type, listener),
     setTimeout(callback) { timers.push(callback); return timers.length; },
   };
   vm.runInNewContext(historySource, context, { filename: 'editor-history.js' });
+  vm.runInNewContext(previewSource, context, { filename: 'preview-dom.js' });
   vm.runInNewContext(sessionSource, context, { filename: 'session-data.js' });
   vm.runInNewContext(sessionControlsSource, context, { filename: 'session-controls.js' });
   vm.runInNewContext(collectionsSource, context, { filename: 'design-collections.js' });
   vm.runInNewContext(appSource, context, { filename: 'app.js' });
   if (expectPreview) assert.ok(node('signature-preview').innerHTML.includes('<table'), 'Startup must render successfully; swallowed runtime errors are not a pass.');
   return {
-    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,
+    node, footer, storage, location, downloads, objectURLs, revoked, clipboardTexts, clipboardItems,emailDevices,previewWorkspace:workspace,tabs,panels,arrangementButtons,portraitReveals,
     get activeElement() { return document.activeElement; },
+    focusBody() { document.body.focus(); },
     get editorSkin() { return document.documentElement.dataset.editorSkin; },
     hasNode: id => nodes.has(id),
     failNextWrite(key) { nextWriteFailure = key; },
@@ -209,7 +253,10 @@ function harness({ storageFails = false, initialHash = '', initialDraft = null, 
     get artworkSettings() { return artworkSettings; },
     get artworkOpened() { return artworkOpened; },
     click: id => node(id).click(),
-    async key(id,key) { await emit(node(id).events,'keydown',{target:node(id),key}); },
+    async key(id,key,details={}) { return dispatch(node(id),'keydown',{key,...details}); },
+    onDocument(type,listener) { on(documentEvents,type,listener); },
+    menuAIButton(section) { return pageElements.find(element=>element.dataset.aiSection===section&&element.closest('#editor-options')); },
+    async clickMenuButton(id) { const button=node(id);button.focus();return button.click(); },
     async arrange(value) { const button=arrangementButtons.find(item=>item.dataset.arrangement===value);assert.ok(button,'arrangement '+value+' exists');await button.click(); },
     async previewView(view) { const button=views.find(item=>item.dataset.view===view);assert.ok(button);await button.click(); },
     async emailDevice(device) { const button=emailDevices.find(item=>item.dataset.emailDevice===device);assert.ok(button,'email device '+device+' exists');await button.click(); },
@@ -243,12 +290,12 @@ const expectedPalettes = [
   ['moonlight','#f1e7fa','#402e63','#b95689'], ['frost','#d7eef6','#102d47','#4489b3']
 ];
 
-test('the simplified browser has two sections, collapsible layouts and eighteen distinct color palettes', () => {
+test('the browser has two library sections, secondary sizing and eighteen distinct color palettes', () => {
   const app=harness();
   assert.deepEqual([...pageSource.matchAll(/data-library-tab="([^"]+)"/g)].map(match=>match[1]),['layouts','artwork']);
   for(const id of ['library-tab-themes','library-panel-themes','collection-gallery','abstract-collection-gallery']) assert.equal(app.hasNode(id),false,id+' is removed');
   assert.doesNotMatch(appSource,/choose-collection-/);
-  assert.match(pageSource,/<details\b[^>]*id="layout-disclosure"[^>]*>[\s\S]*?<summary>Layout<\/summary>/);
+  assert.match(pageSource,/<details\b[^>]*id="size-disclosure"[^>]*>\s*<summary>Size &amp; spacing<\/summary>/);
   assert.match(pageSource,/<details\b[^>]*id="more-palettes"[^>]*>/);
   assert.match(pageSource,/<details\b[^>]*id="saved-palettes"[^>]*>/);
   assert.deepEqual(app.node('palette-choices').children.map(button=>button.id),expectedPalettes.slice(0,6).map(([id])=>'choose-palette-'+id));
@@ -363,6 +410,7 @@ test('desktop and mobile email previews change only the viewing frame, leaving s
   assert.equal(parseFloat(app.node('preview-sizer').style.width),366,'mobile email uses 390px minus 24px padding');
   assert.equal(app.node('signature-preview').style.width,'662px','device choice does not change exported card dimensions');
   assert.equal(app.node('signature-preview').innerHTML,signature,'links and signature markup are unchanged');
+  assert.match(app.node('preview-size-note').textContent,/Choose Vertical in Layout/);
   assert.equal(app.storage.get(storageKey),stored);assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),initial);
   assert.equal(app.node('undo-change').disabled,true,'view controls do not enter design history');
   for(const button of app.emailDevices) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.emailDevice==='mobile'));
@@ -425,22 +473,22 @@ test('all seven layout choices preserve the complete artwork, palette and inform
   await app.click('redo-change'); assert.equal(app.node('design').value, 'original');
 });
 
-test('four editor tabs keep sizes with Design and icons with Details, with one copy action and no repeated total size', async () => {
+test('four shared editor tabs keep sizing in Layout and icons in Details without editing the draft', async () => {
   const app=harness();
-  assert.deepEqual(app.tabs.map(tab=>tab.dataset.editorTab),['design','colors','details','photo']);
-  assert.deepEqual(app.panels.map(panel=>panel.dataset.editorPanel).sort(),['colors','design','details','photo']);
-  for(const id of ['layout-tab','layout-panel','icons-tab','icons-panel','size-explanation','copy-preview']) assert.equal(app.hasNode(id),false,id+' is removed');
+  assert.deepEqual(app.tabs.map(tab=>tab.dataset.editorTab),['layout','details','photo','design']);
+  assert.deepEqual(app.panels.map(panel=>panel.dataset.editorPanel).sort(),['design','details','layout','photo']);
+  for(const id of ['colors-tab','icons-tab','icons-panel','size-explanation','copy-preview']) assert.equal(app.hasNode(id),false,id+' is removed');
   assert.equal([...pageSource.matchAll(/id="copy-signature"/g)].length,1);
   assert.equal(app.node('copy-signature').closest('[data-editor-panel]'),null,'the copy action remains outside editor tabs');
-  assert.equal(app.node('size-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'design');
+  assert.equal(app.node('size-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'layout');
   assert.equal(app.node('icons-disclosure').closest('[data-editor-panel]').dataset.editorPanel,'details');
   assert.equal(Boolean(app.node('size-disclosure').open),false);
   assert.equal(Boolean(app.node('icons-disclosure').open),false);
-  for(const key of ['width','height','layout','imageBase']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'design',key);
+  for(const key of ['width','height','layout','imageBase']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'layout',key);
   for(const key of ['websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon']) assert.equal(app.node(key).closest('[data-editor-panel]').dataset.editorPanel,'details',key);
   assert.deepEqual([...new Set([...pageSource.matchAll(/data-ai-section="([^"]+)"/g)].map(match=>match[1]))].sort(),['artwork','colors','design','details','icons','layout','photo'],'all existing AI section entry points remain');
   const saved=app.storage.get(storageKey);
-  for(const [from,key,to] of [['design','ArrowLeft','photo'],['photo','ArrowRight','design'],['design','End','photo'],['photo','Home','design'],['design','ArrowRight','colors']]) {
+  for(const [from,key,to] of [['layout','ArrowLeft','design'],['design','ArrowRight','layout'],['layout','End','design'],['design','Home','layout'],['layout','ArrowRight','details']]) {
     await app.key(from+'-tab',key);
     assert.equal(app.activeElement,app.node(to+'-tab'));
     for(const tab of app.tabs) {
@@ -448,9 +496,152 @@ test('four editor tabs keep sizes with Design and icons with Details, with one c
       assert.equal(tab.tabIndex,tab.dataset.editorTab===to?0:-1);
     }
     for(const panel of app.panels) assert.equal(panel.hidden,panel.dataset.editorPanel!==to);
+    assert.equal(app.previewWorkspace.dataset.editorView,to,'the preview uses the selected inspector width');
   }
   assert.equal(app.storage.get(storageKey),saved,'section navigation does not edit the signature');
   assert.equal(app.node('undo-change').disabled,true);
+});
+
+test('the original branded header keeps exports while the editor rail owns tabs and history', async () => {
+  const app=harness(), saved=app.storage.get(storageKey);
+  const ancestors=element=>{const list=[];for(let parent=element.parentElement;parent;parent=parent.parentElement)list.push(parent);return list;};
+  assert.match(pageSource,/<span class="brand-mark"[^>]*>/);
+  assert.match(pageSource,/<span>Signature<span class="brand-descriptor">STUDIO<\/span><\/span>/);
+  assert.match(pageSource,/<div class="rail-heading">\s*<div><h1 id="editor-heading">Edit signature<\/h1>/);
+  for(const id of ['copy-signature','export-image','download-html','share-link','export-data','import-data']) {
+    assert.ok(ancestors(app.node(id)).some(parent=>parent.tagName==='HEADER'),id+' is available in the shared header');
+    assert.equal(app.node(id).closest('[data-editor-panel]'),null);
+  }
+  assert.equal(app.node('export-image').parentElement,app.node('export-options'));
+  assert.equal(app.node('export-options').children[0],app.node('export-image'));
+  const rail=app.node('signature-settings');
+  for(const id of ['undo-change','redo-change']) {
+    assert.equal(app.node(id).parentElement.parentElement,rail,id+' stays with the editor card');
+    assert.equal(app.node(id).closest('[data-editor-panel]'),null,id+' is available across all editor tabs');
+    assert.ok(!ancestors(app.node(id)).some(parent=>parent.tagName==='HEADER'));
+  }
+  for(const tab of app.tabs) {
+    assert.equal(tab.parentElement.tagName,'NAV');
+    assert.equal(tab.parentElement.parentElement,rail);
+  }
+  assert.ok(rail.children.indexOf(app.tabs[0].parentElement)<rail.children.indexOf(app.node('undo-change').parentElement));
+  assert.ok(rail.children.indexOf(app.node('undo-change').parentElement)<rail.children.indexOf(app.node('editor-form')));
+  await app.click('photo-tab');await app.click('design-tab');
+  const colors=app.node('colors-panel'),artwork=app.node('artwork-panel');
+  assert.equal(colors.parentElement,artwork.parentElement,'Colors and Artwork share one Design grid');
+  assert.match(colors.parentElement.getAttribute('class'),/\bdesign-columns\b/);
+  for(const column of [colors,artwork]) {
+    assert.equal(column.tagName,'SECTION');assert.notEqual(column.getAttribute('role'),'tabpanel');
+    assert.equal(column.closest('[data-editor-panel]'),app.node('design-panel'));
+    for(const ancestor of [column,...ancestors(column)]) assert.equal(Boolean(ancestor.hidden),false);
+  }
+  assert.equal(app.hasNode('color-values'),false,'inline color values do not require a separate disclosure');
+  assert.equal(Boolean(app.node('saved-palettes').open),false);
+  await app.click('save-palette-shortcut');
+  assert.equal(app.node('saved-palettes').open,true);
+  assert.equal(app.activeElement,app.node('theme-name'));
+  assert.equal(app.storage.get(storageKey),saved,'opening Design and its palette form does not alter the draft');
+});
+
+test('menu Escape closes only its active level and restores a visible summary', async () => {
+  const app=harness();let outerEscapes=0;
+  app.onDocument('keydown',event=>{if(event.key==='Escape')outerEscapes++;});
+  app.node('editor-options').open=true;app.node('appearance-menu').open=true;
+  app.node('skin-plum').focus();
+  const nested=await app.key('skin-plum','Escape');
+  assert.equal(nested.defaultPrevented,true);assert.equal(nested.cancelBubble,true);
+  assert.equal(app.node('appearance-menu').open,false);
+  assert.equal(app.node('editor-options').open,true,'dismissing Appearance must not dismiss its parent menu');
+  assert.equal(app.activeElement.id,'appearance-toggle');assert.equal(outerEscapes,0);
+  await app.key('appearance-toggle','Escape');
+  assert.equal(app.node('editor-options').open,false,'a second Escape dismisses the outer menu after Appearance is closed');
+  assert.ok(app.activeElement===app.node('editor-options').querySelector('summary'));
+  for(const [menuId,buttonId] of [['editor-options','install-help'],['export-menu','download-html']]) {
+    const menu=app.node(menuId);menu.open=true;app.node(buttonId).focus();
+    const event=await app.key(buttonId,'Escape');
+    assert.equal(event.defaultPrevented,true);assert.equal(event.cancelBubble,true);
+    assert.equal(menu.open,false);assert.ok(app.activeElement===menu.querySelector('summary'));
+  }
+  assert.equal(outerEscapes,0,'handled Escape must not trigger outer shortcuts');
+});
+
+test('menu Escape respects an already-handled key without dismissing its content', async () => {
+  const app=harness(),menu=app.node('export-menu'),button=app.node('download-html');
+  menu.open=true;button.focus();
+  button.addEventListener('keydown',event=>{if(event.key==='Escape')event.preventDefault();});
+  const event=await app.key('download-html','Escape');
+  assert.equal(event.defaultPrevented,true);assert.equal(event.cancelBubble,false);
+  assert.equal(menu.open,true);assert.equal(app.activeElement.id,'download-html');
+});
+
+test('menu actions restore trigger focus but preserve validation and nested preference focus', async () => {
+  const app=harness(),menu=app.node('export-menu'),button=app.node('download-html');
+  menu.open=true;button.focus();
+  await button.children[0].click();
+  assert.equal(menu.open,false);assert.ok(app.activeElement===menu.querySelector('summary'));
+  assert.equal(app.downloads.at(-1).filename,'my-signature.html','clicking an action icon still invokes its button');
+  button.addEventListener('click',()=>app.focusBody(),{once:true});
+  menu.open=true;await app.clickMenuButton('download-html');
+  assert.ok(app.activeElement===menu.querySelector('summary'),'restore the trigger when the browser clears focus as details closes');
+
+  await app.input('width',999);menu.open=true;await app.clickMenuButton('download-html');
+  assert.equal(menu.open,false);assert.equal(app.activeElement.id,'width','menu dismissal must preserve validation focus');
+  const settings=app.node('editor-options');settings.open=true;app.node('appearance-menu').open=true;
+  await app.clickMenuButton('skin-plum');
+  assert.equal(settings.open,true,'nested preference buttons do not dismiss the parent menu');
+  assert.equal(app.activeElement.id,'appearance-toggle');
+});
+
+test('menu-launched dialogs retain modal focus and restore the visible trigger once on close', async () => {
+  for(const [menuId,buttonId,dialogId,closeId] of [['export-menu','export-data','session-dialog','close-session'],['editor-options','install-help','help-dialog','close-help']]) {
+    const app=harness(),menu=app.node(menuId),dialog=app.node(dialogId);
+    menu.open=true;await app.clickMenuButton(buttonId);
+    assert.equal(menu.open,false);assert.equal(dialog.open,true);
+    assert.equal(app.activeElement.id,dialogId,'dismissing the menu must not move focus outside the modal');
+    await app.click(closeId);
+    assert.equal(dialog.open,false);assert.ok(app.activeElement===menu.querySelector('summary'));
+    app.node('nameLine1').focus();dialog.showModal();await dialog.close();
+    assert.equal(app.activeElement.id,'nameLine1','a later non-menu dialog open must not reuse an old close listener');
+  }
+});
+
+test('menu focus restoration waits for delegated document launchers before finding a dialog', async () => {
+  const app=harness(),menu=app.node('editor-options'),button=app.menuAIButton('design'),dialog=app.node('help-dialog');
+  assert.ok(button,'the real page includes an AI action inside the menu');
+  let launchedAfterDismissal=false;
+  app.onDocument('click',event=>{
+    if(event.target!==button)return;
+    launchedAfterDismissal=!menu.open;dialog.showModal();
+  });
+  menu.open=true;button.focus();await button.click();
+  assert.equal(launchedAfterDismissal,true,'the delegated launcher follows the ancestor menu listener');
+  assert.equal(dialog.open,true);assert.equal(app.activeElement.id,'help-dialog');
+  await dialog.close();assert.ok(app.activeElement===menu.querySelector('summary'));
+});
+
+test('featured artwork and the full library stay synchronized without replacing photos or other design settings', async () => {
+  const featured=['none','auto','orbit','studio','contour','cutpaper'];
+  const initial={...core.defaults,nameLine1:'Jordan',design:'signal',portraitData:localPortrait,portraitShape:'rounded',portraitSize:80,
+    layout:'stacked',width:400,height:300,artworkPlacement:'motif',motifScale:73,motifPositionX:20,motifPositionY:60,accent:'#543b91'};
+  const app=harness({initialDraft:initial});
+  assert.deepEqual(app.node('compact-pattern-choices').children.map(button=>button.id),featured.map(id=>'quick-pattern-'+id));
+  const checkSelected=pattern=>{
+    for(const id of featured) assert.equal(app.node('quick-pattern-'+id).getAttribute('aria-pressed'),String(id===pattern),id+' featured selection');
+    for(const id of Object.keys(core.patterns)) assert.equal(app.node('choose-pattern-'+id).getAttribute('aria-pressed'),String(id===pattern),id+' library selection');
+  };
+  checkSelected('auto');
+  for(const pattern of featured) {
+    await app.click('quick-pattern-'+pattern);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern});
+    assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait),'the selected photo remains in the preview');
+    checkSelected(pattern);
+  }
+  await app.click('choose-pattern-prism');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'prism'});checkSelected('prism');
+  await app.click('undo-change');checkSelected('cutpaper');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'cutpaper'});
+  await app.click('redo-change');checkSelected('prism');
+  await app.click('choose-pattern-contour');checkSelected('contour');
 });
 
 test('layout arrows wrap, preserve the complete draft and create one undo entry per click', async () => {
@@ -505,44 +696,308 @@ test('existing custom layout and artwork remain in the arrow sequence and keep e
   assert.equal(app.artworkOpened,0);
 });
 
-test('Wide and Tall buttons synchronize the backing field and canvas without losing draft state',async()=>{
-  const initial={...core.defaults,design:'signal',pattern:'overprint',height:300,portraitData:localPortrait,artworkPlacement:'flow',artworkScale:125};
+test('Horizontal and Vertical change only orientation and synchronize selection through undo and redo',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',nameLine2:'River',title:'Designer',email:'jordan@example.com',design:'signal',pattern:'overprint',
+    width:400,height:300,portraitData:localPortrait,portraitSize:80,portraitShape:'rounded',artworkPlacement:'flow',artworkScale:125,
+    artworkPositionX:34,artworkPositionY:68,motifScale:77,motifPositionX:20,motifPositionY:40,frontBackground:'#f0edfa',backBackground:'#231c32',accent:'#ab4971'};
   const app=harness({initialDraft:initial});
   assert.equal(app.node('layout').hidden,true,'the select is retained for state rather than a duplicate visible control');
   const selected=value=>{for(const button of app.arrangementButtons) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.arrangement===value));};
   selected('paired');await app.arrange('stacked');
   assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,layout:'stacked'});selected('stacked');
-  assert.equal(app.node('layout').value,'stacked');assert.equal(app.node('dimension-label').textContent,'321 × 620 px');
+  assert.equal(app.node('layout').value,'stacked');assert.equal(app.node('dimension-label').textContent,'400 × 620 px');
   await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);selected('paired');
   assert.equal(app.node('undo-change').disabled,true);
   await app.arrange('paired');assert.equal(app.node('undo-change').disabled,true,'reselecting the active arrangement is not an edit');
+  await app.click('redo-change');selected('stacked');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,layout:'stacked'});
+  await app.arrange('paired');selected('paired');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
 });
 
-test('legacy Layout and Icons session tabs restore to their new visible sections and re-export canonical tabs',async()=>{
-  for(const [legacyTab,currentTab,disclosure] of [['layout','design','size-disclosure'],['icons','details','icons-disclosure']]) {
+test('Layout exposes primary orientation and template cards while secondary settings stay collapsed',async()=>{
+  const app=harness();await app.click('layout-tab');
+  assert.equal(app.node('editor-heading').textContent,'Layout');
+  assert.equal(app.node('editor-description').textContent,'Arrange your signature.');
+  assert.equal(app.node('editor-description').hidden,false);
+  assert.equal(Boolean(app.node('size-disclosure').open),false);
+  assert.deepEqual(app.arrangementButtons.map(button=>button.getAttribute('aria-label')),['Horizontal','Vertical']);
+  for(const id of ['orientation-horizontal','orientation-vertical','change-template']) {
+    const button=app.node(id);
+    assert.equal(button.closest('details'),null,id+' is available without opening secondary settings');
+    assert.equal(button.closest('[data-editor-panel]')?.id,'layout-panel');
+    for(let parent=button.parentElement;parent;parent=parent.parentElement)assert.equal(Boolean(parent.hidden),false);
+  }
+  assert.equal(app.node('change-template').dataset.openLibrary,'layouts');
+  const templateSelect=app.node('design');
+  assert.equal(templateSelect.closest('details')?.getAttribute('class'),'advanced-settings');
+  assert.equal(templateSelect.closest('details')?.parentElement.parentElement.id,'size-disclosure','custom template controls remain accessible in secondary settings');
+  for(const tab of ['design','details','photo']) {
+    await app.click(tab+'-tab');
+    assert.equal(app.node('editor-heading').textContent,tab==='details'?'Details':tab==='photo'?'Photo':'Edit signature');
+    assert.equal(app.node('editor-description').hidden,tab==='design');
+    if(tab==='details')assert.equal(app.node('editor-description').textContent,'Your name and contact information.');
+    if(tab==='photo')assert.equal(app.node('editor-description').textContent,'Make your signature feel personal.');
+  }
+});
+
+test('live layout thumbnails retain custom templates and current portrait details colors and artwork without interactive contents',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',title:'Designer',email:'jordan@example.com',width:400,height:300,
+    design:'custom',customLayout:JSON.stringify({composition:'editorial',font:'serif',align:'center'}),portraitData:localPortrait,
+    pattern:'overprint',artworkPlacement:'flow',accent:'#ab4971',frontBackground:'#f0edfa',backBackground:'#231c32'};
+  const app=harness({initialDraft:initial});
+  const check=firstName=>{
+    for(const [prefix,artwork] of [['orientation-horizontal','wide'],['orientation-vertical','tall'],['current-template',app.node('layout').value==='stacked'?'tall':'wide']]) {
+      const frame=app.node(prefix+'-frame'),preview=app.node(prefix+'-preview'),html=preview.innerHTML;
+      assert.equal(frame.getAttribute('aria-hidden'),'true');assert.equal(frame.getAttribute('inert'),'');
+      assert.ok(html.includes(firstName));assert.ok(html.includes('jordan@example.com'));assert.ok(html.includes(localPortrait));
+      for(const color of ['#ab4971','#f0edfa','#231c32'])assert.ok(html.includes(color),prefix+' reflects current colors');
+      assert.ok(html.includes('Georgia'),prefix+' preserves the custom serif recipe');
+      assert.ok(html.includes('pattern-overprint-'+artwork+'.png'),prefix+' reflects candidate orientation');
+      assert.doesNotMatch(html,/<(?:a|button|input|select|textarea)\b|\b(?:href|tabindex)=/i);
+      assert.match(preview.style.transform,/^scale\([\d.]+\)$/);
+      assert.ok(Number.isFinite(parseFloat(preview.style.left))&&Number.isFinite(parseFloat(preview.style.top)));
+    }
+    assert.equal(app.node('current-template-name').textContent,'Custom layout');
+    const active=app.node('layout').value==='stacked'?'orientation-vertical-preview':'orientation-horizontal-preview';
+    assert.equal(app.node('current-template-preview').innerHTML,app.node(active).innerHTML);
+  };
+  check('Jordan');await app.input('nameLine1','Taylor');check('Taylor');
+  await app.arrange('stacked');check('Taylor');
+  await app.click('choose-design-orbit');
+  assert.equal(app.node('current-template-name').textContent,'Orbit');
+  assert.equal(app.imageSettings.getDraft().portraitData,localPortrait);
+  assert.equal(app.imageSettings.getDraft().customLayout,initial.customLayout,'the custom recipe remains available');
+});
+
+test('an orientation that cannot fit is disabled without clearing working previews and recovers after resizing',async()=>{
+  const initial={...core.defaults,design:'orbit',width:280,height:180,nameLine1:'Alexanderthegreat'};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey);
+  assert.equal(app.node('orientation-horizontal').disabled,false);
+  assert.equal(app.node('orientation-vertical').disabled,true);
+  assert.ok(app.node('orientation-horizontal-preview').innerHTML.includes('<table'));
+  assert.equal(app.node('orientation-vertical-preview').innerHTML,'');
+  assert.ok(app.node('current-template-preview').innerHTML.includes('<table'));
+  assert.equal(app.node('orientation-note').hidden,false);assert.match(app.node('orientation-note').textContent,/Vertical.*more room/);
+  await app.arrange('stacked');assert.equal(app.storage.get(storageKey),saved,'disabled orientation cannot replace a valid draft');
+  await app.input('width-range',420);
+  assert.equal(app.node('orientation-vertical').disabled,false);assert.equal(app.node('orientation-note').hidden,true);
+  assert.ok(app.node('orientation-vertical-preview').innerHTML.includes('<table'));
+  await app.arrange('stacked');assert.equal(app.node('layout').value,'stacked');
+});
+
+test('a template change can enable an orientation that repairs the current invalid draft',async()=>{
+  const initial={...core.defaults,design:'editorial',layout:'stacked',width:280,height:180,nameLine1:'Avery',
+    title:'Software engineer and software developer expert',email:'avery@example.com'};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey),lastPreview=app.node('signature-preview').innerHTML;
+  assert.equal(app.node('orientation-horizontal').disabled,true);
+  assert.equal(app.node('orientation-vertical').disabled,false);
+  await app.click('choose-design-orbit');
+  assert.equal(app.node('current-template-name').textContent,'Orbit');
+  assert.equal(app.node('title').getAttribute('aria-invalid'),'true');
+  assert.equal(app.storage.get(storageKey),saved,'the invalid template change is not persisted');
+  assert.equal(app.node('signature-preview').innerHTML,lastPreview,'the canvas retains the last valid preview');
+  assert.equal(app.node('orientation-horizontal').disabled,false,'availability must use Orbit instead of the last valid Editorial draft');
+  assert.equal(app.node('orientation-vertical').disabled,true);
+  assert.ok(app.node('orientation-horizontal-preview').innerHTML.includes('expert'));
+  assert.equal(app.node('orientation-vertical-preview').innerHTML,'');
+  assert.equal(app.node('current-template-preview').innerHTML,'','the selected invalid orientation must not show an obsolete template thumbnail');
+  await app.arrange('paired');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'orbit',layout:'paired'});
+  assert.equal(app.node('title').getAttribute('aria-invalid'),'false');
+  assert.equal(app.node('orientation-horizontal').getAttribute('aria-pressed'),'true');
+  assert.ok(app.node('current-template-preview').innerHTML.includes('expert'));
+});
+
+test('direct invalid text edits refresh orientation availability and allow repair without losing the edit',async()=>{
+  const initial={...core.defaults,design:'orbit',layout:'stacked',width:280,height:180};
+  const app=harness({initialDraft:initial}),lastPreview=app.node('signature-preview').innerHTML;
+  assert.equal(app.node('orientation-vertical').disabled,false);
+  const title='Software engineer and software developer expert';
+  await app.input('title',title);
+  assert.equal(app.node('title').getAttribute('aria-invalid'),'true');
+  assert.equal(app.node('orientation-vertical').disabled,true,'direct inputs must update candidate availability even when the current layout fails validation');
+  assert.equal(app.node('orientation-vertical-preview').innerHTML,'');
+  assert.equal(app.node('current-template-preview').innerHTML,'');
+  assert.equal(app.node('orientation-horizontal').disabled,false);
+  assert.ok(app.node('orientation-horizontal-preview').innerHTML.includes('expert'));
+  assert.equal(app.node('signature-preview').innerHTML,lastPreview);
+  await app.arrange('paired');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,title,layout:'paired'});
+  await app.input('website','javascript:invalid');
+  for(const orientation of ['horizontal','vertical']) {
+    assert.equal(app.node('orientation-'+orientation).disabled,true);
+    assert.equal(app.node('orientation-'+orientation+'-preview').innerHTML,'');
+  }
+  assert.match(app.node('orientation-note').textContent,/highlighted fields/);
+  await app.input('website',initial.website);
+  assert.equal(app.node('orientation-horizontal').disabled,false);
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,title,layout:'paired',websiteLabel:''});
+});
+
+test('Details keeps full name and primary contacts visible while footer and manual line controls are secondary',async()=>{
+  const app=harness();await app.click('details-tab');
+  assert.equal(app.node('editor-heading').textContent,'Details');
+  assert.equal(app.node('editor-description').textContent,'Your name and contact information.');
+  assert.equal(app.node('editor-description').hidden,false);
+  const full=app.node('full-name');assert.equal(full.name,'fullName');assert.equal(full.closest('details'),null);
+  const contacts=['website','email','phone','linkedin','location'];
+  const section=app.node('website').parentElement.parentElement;
+  assert.equal(section.tagName,'FIELDSET');
+  for(const key of contacts) {
+    const field=app.node(key);assert.equal(field.closest('details'),null);
+    assert.equal(field.parentElement.parentElement,section,key+' occupies its own primary contact row');
+  }
+  assert.deepEqual(section.children.filter(child=>child.children.some(field=>contacts.includes(field.id))).map(child=>child.children.find(field=>contacts.includes(field.id)).id),contacts);
+  assert.equal(Boolean(app.node('icons-disclosure').open),false);
+  assert.match(pageSource,/<details\b[^>]*id="icons-disclosure"[^>]*>\s*<summary>Footer &amp; icons<\/summary>/);
+  for(const key of ['websiteLabel','tags'])assert.equal(app.node(key).closest('details')?.id,'icons-disclosure');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.node(key).closest('details')?.id,'name-lines-disclosure');
+  assert.equal(app.node('name-lines-disclosure').parentElement.closest('details')?.id,'icons-disclosure');
+});
+
+test('viewing or restyling a saved full name never rewrites its intentional line break',async()=>{
+  const initial={...core.defaults,width:420,height:300,nameLine1:'Zoë María',nameLine2:'de la Cruz'};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey);
+  assert.equal(app.node('full-name').value,'Zoë María de la Cruz');
+  for(const tab of ['details','photo','layout','design','details'])await app.click(tab+'-tab');
+  await app.input('full-name','Zoë María de la Cruz');
+  assert.equal(app.storage.get(storageKey),saved);assert.equal(app.node('undo-change').disabled,true);
+  await app.click('choose-palette-cobalt');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.imageSettings.getDraft()[key],initial[key]);
+  const reloaded=harness({initialDraft:JSON.parse(app.storage.get(storageKey))});
+  assert.equal(reloaded.node('full-name').value,'Zoë María de la Cruz');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(reloaded.imageSettings.getDraft()[key],initial[key]);
+});
+
+test('full-name edits preserve Unicode words and update both stored lines in one undo group',async()=>{
+  const initial={...core.defaults,width:420,height:300,nameLine1:'Avery Morgan',nameLine2:'',portraitData:localPortrait};
+  const app=harness({initialDraft:initial}),name='María José 李 O’Connor';
+  for(const value of ['María','María José',name])await app.input('full-name',value);
+  const edited=JSON.parse(app.storage.get(storageKey)),lines=[edited.nameLine1,edited.nameLine2].filter(Boolean);
+  assert.equal(lines.join(' '),name);assert.deepEqual(lines.flatMap(line=>line.split(' ')),name.split(' '));
+  assert.equal(Object.keys(core.validate(edited)).length,0);
+  assert.deepEqual({...edited,nameLine1:initial.nameLine1,nameLine2:initial.nameLine2},initial,'editing the full name changes no other draft field');
+  assert.equal(app.node('full-name').getAttribute('aria-invalid'),'false');
+  assert.equal(app.node('nameLine1').value,edited.nameLine1);assert.equal(app.node('nameLine2').value,edited.nameLine2);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('undo-change').disabled,true,'all keystrokes and both name lines undo together');
+  assert.equal(app.node('full-name').value,'Avery Morgan');
+  await app.click('redo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),edited);
+  assert.equal(app.node('full-name').value,name);
+});
+
+test('an unfinished email does not prevent a fitting name split or silently replace the invalid email',async()=>{
+  const initial={...core.defaults,design:'original',width:280,portraitData:localPortrait,portraitSize:40};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey),email='avery@';
+  await app.input('email',email);
+  await app.input('full-name','William Maximilian Wilhelm');
+  const split={nameLine1:'William Maximilian',nameLine2:'Wilhelm'};
+  assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),{...initial,...split,email},'measurement must choose a fitting word boundary without altering any unrelated edit');
+  assert.equal(app.node('email').value,email);assert.equal(app.node('email').getAttribute('aria-invalid'),'true');
+  assert.equal(app.node('error-email').hidden,false);assert.ok(app.node('error-email').textContent.length>0);
+  assert.equal(app.storage.get(storageKey),saved,'an unfinished email remains unsaved');
+  await app.input('email',initial.email);
+  const repaired=JSON.parse(app.storage.get(storageKey));
+  assert.deepEqual(repaired,{...initial,...split});assert.equal(Object.keys(core.validate(repaired)).length,0);
+  assert.equal(app.node('full-name').value,'William Maximilian Wilhelm');
+  assert.equal(app.node('full-name').getAttribute('aria-invalid'),'false');
+  assert.equal(app.node('email').getAttribute('aria-invalid'),'false');assert.equal(app.node('error-email').hidden,true);
+  assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait),'repair retains the selected photo');
+});
+
+test('an overlong single-word name stays intact and reports its error on the visible full-name field',async()=>{
+  const app=harness(),saved=app.storage.get(storageKey),name='Alexanderthegreat'.repeat(4);
+  await app.input('full-name',name);
+  const draft=app.imageSettings.getDraft();
+  assert.equal([draft.nameLine1,draft.nameLine2].filter(Boolean).join(' '),name);
+  assert.equal(app.node('full-name').value,name,'validation must not truncate the entered word');
+  assert.equal(app.storage.get(storageKey),saved);
+  assert.equal(app.node('full-name').getAttribute('aria-invalid'),'true');
+  assert.equal(app.node('error-full-name').hidden,false);assert.match(app.node('error-full-name').textContent,/36 characters|shorten/i);
+  await app.click('layout-tab');await app.click('copy-signature');
+  assert.equal(app.node('details-tab').getAttribute('aria-selected'),'true');assert.equal(app.activeElement.id,'full-name');
+  assert.equal(app.node('full-name').closest('details'),null);
+  assert.equal(app.attempts.modern,0);assert.equal(Boolean(app.node('name-lines-disclosure').open),false);
+});
+
+test('re-entering an unchanged full name repairs an invalid manual or saved line split',async()=>{
+  const initial={...freshDraft,portraitData:localPortrait},invalid={...initial,nameLine1:''};
+  for(const source of ['manual','saved']) {
+    const app=harness({initialDraft:source==='saved'?invalid:initial,expectPreview:source!=='saved'});
+    if(source==='manual'){await app.input('nameLine1','');await app.finishEdit();}
+    assert.equal(app.node('full-name').value,'Morgan');
+    assert.equal(app.node('full-name').getAttribute('aria-invalid'),'true');
+    assert.equal(app.node('error-full-name').hidden,false);
+    assert.match(app.node('error-full-name').textContent,/Re-enter your name.*Name line breaks/);
+    const storedBefore=app.storage.get(storageKey);
+    await app.click('photo-tab');await app.click('details-tab');
+    assert.equal(app.storage.get(storageKey),storedBefore,'viewing the invalid name must not rewrite its lines');
+    assert.equal(app.imageSettings.getDraft().nameLine1,'');
+    await app.input('full-name','Morgan');
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,nameLine1:'Morgan',nameLine2:''},source+' split is repaired without changing other fields');
+    assert.equal(app.node('nameLine1').value,'Morgan');assert.equal(app.node('nameLine2').value,'');
+    assert.equal(app.node('full-name').getAttribute('aria-invalid'),'false');
+    assert.equal(app.node('error-full-name').hidden,true);
+    assert.ok(app.node('signature-preview').innerHTML.includes('Morgan'));
+  }
+});
+
+test('hash imports session restores and manual line edits synchronize full name without resplitting',async()=>{
+  const app=harness(),imported={...core.defaults,width:420,height:300,nameLine1:'María José',nameLine2:'O’Connor'};
+  await app.navigateHash(draftHash(imported));assert.equal(app.node('full-name').value,'María José O’Connor');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.imageSettings.getDraft()[key],imported[key]);
+  const restored={...imported,nameLine1:'Zoë',nameLine2:'李 de la Cruz'};
+  await app.click('import-data');await app.pasteSession(JSON.stringify(restored));await app.click('session-restore');
+  assert.equal(app.node('full-name').value,'Zoë 李 de la Cruz');
+  for(const key of ['nameLine1','nameLine2'])assert.equal(app.imageSettings.getDraft()[key],restored[key]);
+  app.node('icons-disclosure').open=true;app.node('name-lines-disclosure').open=true;
+  await app.input('nameLine1','Zoë María');await app.finishEdit();await app.input('nameLine2','李');
+  assert.equal(app.node('full-name').value,'Zoë María 李');
+  assert.equal(app.imageSettings.getDraft().nameLine1,'Zoë María');assert.equal(app.imageSettings.getDraft().nameLine2,'李');
+  await app.click('undo-change');assert.equal(app.node('full-name').value,'Zoë María 李 de la Cruz');
+});
+
+test('website edits replace only the exact example label and preserve all custom link text',async()=>{
+  const website='https://rivera.example/work';
+  for(const [initial,label] of [[{...freshDraft},''],[{...freshDraft,websiteLabel:'Portfolio'},'Portfolio'],
+    [{...freshDraft,website:'https://different.example'},core.defaults.websiteLabel]]) {
+    const app=harness({initialDraft:initial});await app.input('website',website);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,website,websiteLabel:label});
+    assert.equal(app.node('websiteLabel').value,label);
+    const html=app.node('signature-preview').innerHTML;assert.ok(html.includes('href="'+website+'"'));
+    if(!label){assert.ok(html.includes('rivera.example/work'));assert.doesNotMatch(html,/>example\.com<\/a>/);}
+    else assert.ok(html.includes('>'+label+'</a>'));
+    await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  }
+});
+
+test('Layout and legacy Colors or Icons sessions restore visible sections and re-export canonical tabs',async()=>{
+  for(const [legacyTab,currentTab,disclosure] of [['layout','layout',null],['colors','design',null],['icons','details','icons-disclosure']]) {
     const initial={...core.defaults,nameLine1:'Jordan',design:'signal',pattern:'overprint'};
     const app=harness(), incoming=JSON.stringify({format:'signature-editor-session',version:1,exportedAt:'2026-09-09T12:00:00.000Z',draft:initial,themes:[],ui:{editorTab:legacyTab}});
     await app.click('import-data');await app.pasteSession(incoming);
     assert.equal(app.node('session-restore').disabled,false,legacyTab+' remains an accepted backup value');
     await app.click('session-restore');
     assert.equal(app.node(currentTab+'-tab').getAttribute('aria-selected'),'true');
-    assert.equal(app.node(disclosure).open,true);assert.equal(app.node(currentTab+'-panel').hidden,false);
+    if(disclosure) assert.equal(app.node(disclosure).open,true);
+    assert.equal(app.node(currentTab+'-panel').hidden,false);
     assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
     await app.click('export-data');assert.equal(JSON.parse(app.node('session-json').value).ui.editorTab,currentTab);
-    await app.click('close-session');await app.click('colors-tab');
+    await app.click('close-session');await app.click('design-tab');
     await app.click('import-data');await app.pasteSession(incoming);await app.importParts(true,false);await app.click('session-restore');
-    assert.equal(app.node('colors-tab').getAttribute('aria-selected'),'true','information-only import preserves the current editor section');
+    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true','information-only import preserves the current editor section');
   }
 });
 
 test('copy validation reveals moved size fields and every nested disclosure before focusing the error',async()=>{
   for(const [key,invalid] of [['width','999'],['imageBase','javascript:invalid']]) {
-    const app=harness();await app.input(key,invalid);await app.click('colors-tab');
+    const app=harness();await app.input(key,invalid);await app.click('design-tab');
     const field=app.node(key),disclosures=[];
     for(let parent=field.parentElement;parent;parent=parent.parentElement) if(parent.tagName==='DETAILS'){disclosures.push(parent);parent.removeAttribute('open');}
     assert.ok(disclosures.length>=1,key+' is actually inside a disclosure in the real page');
     await app.click('copy-signature');
-    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.node('layout-tab').getAttribute('aria-selected'),'true');
     assert.equal(app.activeElement,field,key+' receives focus');
     assert.equal(field.getAttribute('aria-invalid'),'true');
     for(let parent=field.parentElement;parent;parent=parent.parentElement) {
@@ -550,6 +1005,25 @@ test('copy validation reveals moved size fields and every nested disclosure befo
       if(parent.tagName==='DETAILS') assert.equal(parent.open,true,key+' has no closed disclosure ancestor');
     }
     assert.equal(app.attempts.modern,0,'invalid fields prevent copying');
+  }
+});
+
+test('invalid colors select Design and focus the visible inline hex input', async () => {
+  for(const key of ['frontBackground','backBackground','accent']) {
+    const app=harness(), field=app.node(key+'-hex');
+    assert.equal(field.closest('details'),null,'hex values are directly visible');
+    assert.equal(app.node(key).parentElement,field.parentElement,'native color and hex values remain inline together');
+    assert.match(field.parentElement.getAttribute('class'),/\bcolor-control\b/);
+    await app.input(key+'-hex','invalid');
+    await app.click('photo-tab');await app.click('copy-signature');
+    assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.activeElement,field);
+    assert.equal(field.getAttribute('aria-invalid'),'true');
+    for(let parent=field.parentElement;parent;parent=parent.parentElement) {
+      assert.equal(Boolean(parent.hidden),false);
+      if(parent.tagName==='DETAILS') assert.equal(parent.open,true);
+    }
+    assert.equal(app.attempts.modern,0);
   }
 });
 
@@ -635,9 +1109,11 @@ test('Studio Tall Grid exposes side-artwork controls and every slider changes re
   const initial={...core.defaults,design:'studio',layout:'stacked',pattern:'signal'},app=harness({initialDraft:initial});
   assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-motif-settings').hidden,false);
   for(const key of ['motifScale','motifPositionX','motifPositionY']) {
-    const field=app.node(key);assert.equal(field.closest('details'),null,key+' is discoverable without opening a disclosure');
+    const field=app.node(key);
+    assert.equal(field.closest('details')?.id || null,key==='motifScale'?null:'motif-position-disclosure',key+' is grouped under the appropriate adjustment');
     for(let parent=field.parentElement;parent;parent=parent.parentElement)assert.equal(Boolean(parent.hidden),false,key+' starts visible');
   }
+  assert.equal(Boolean(app.node('motif-position-disclosure').open),false,'fine positioning starts collapsed while artwork size stays visible');
   assert.equal(app.node('motifPositionY').disabled,true,'the fitted vertical edge does not offer a dead motion control');
   assert.equal(app.node('motif-position-note').hidden,false);
   const baseline=app.node('signature-preview').innerHTML;
@@ -651,6 +1127,7 @@ test('Studio Tall Grid exposes side-artwork controls and every slider changes re
   await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
   assert.equal(app.node('undo-change').disabled,true,'one native slider gesture is one undo action');
   await app.click('redo-change');
+  app.node('motif-position-disclosure').setAttribute('open','');
   for(const [key,value] of [['motifPositionX',100],['motifPositionY',100]]) {
     const before=app.node('signature-preview').innerHTML;await app.input(key,value);await app.finishEdit();
     assert.notEqual(app.node('signature-preview').innerHTML,before,key+' moves the actual artwork');
@@ -751,8 +1228,11 @@ test('uploaded-only portraits never silently become broken email HTML or oversiz
   assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait));
   await app.click('copy-signature'); assert.equal(app.clipboardItems.length,0);
   assert.equal(app.node('photo-tab').getAttribute('aria-selected'),'true');
+  assert.deepEqual(app.portraitReveals,['true'],'Copy selects Photo before revealing its hosted URL controls');
   assert.match(app.node('status').textContent,/photo|portrait|hosted/i);
+  await app.click('details-tab');
   await app.click('download-html'); assert.equal(app.downloads.length,0);
+  assert.deepEqual(app.portraitReveals,['true','true'],'HTML export also selects Photo and reveals the URL field');
   await app.click('share-link'); assert.equal(app.clipboardTexts.length,0);
   assert.match(app.node('status').textContent,/Export data/);
   await app.click('export-data'); assert.equal(JSON.parse(app.node('session-json').value).draft.portraitData,localPortrait);
@@ -947,6 +1427,73 @@ test('compact older drafts retain their details and height when icons are inheri
   assert.match(app.node('signature-preview').innerHTML, /icon-mail\.png/);
 });
 
+test('resizing a stale tab cannot erase another tab’s hosted or uploaded photo', async () => {
+  for (const photo of [{portraitUrl:'https://example.com/portrait.jpg'}, {portraitData:localPortrait}]) {
+    const sharedStorage = new Map(), latest = harness({sharedStorage}), stale = harness({sharedStorage});
+    await latest.navigateHash(draftHash({...freshDraft,...photo}));
+    const saved = sharedStorage.get(storageKey);
+    await stale.input('motifScale',75);
+    await stale.input('width-range',350);
+    await stale.input('height-range',220);
+    assert.equal(sharedStorage.get(storageKey),saved,'size edits in the older tab never replace the saved photo');
+    assert.equal(stale.imageSettings.getDraft().motifScale,75,'the older tab remains editable');
+    assert.equal(stale.imageSettings.getDraft().width,350);
+    assert.match(stale.node('save-status').textContent,/Not saved.*another tab/);
+    assert.match(stale.footer.textContent,/Export data.*reload.*latest saved draft/);
+    assert.equal(stale.footer.hidden,false);
+    await stale.click('export-data');
+    assert.equal(JSON.parse(stale.node('session-json').value).draft.width,350,'local work remains available for backup');
+    const reloaded = harness({sharedStorage});
+    for (const [key,value] of Object.entries(photo)) assert.equal(reloaded.imageSettings.getDraft()[key],value);
+    await reloaded.input('width-range',360);
+    assert.equal(JSON.parse(sharedStorage.get(storageKey)).width,360,'reloading establishes the current storage baseline');
+    for (const [key,value] of Object.entries(photo)) assert.equal(JSON.parse(sharedStorage.get(storageKey))[key],value);
+    assert.match(reloaded.node('save-status').textContent,/Saved in this browser/);
+  }
+});
+
+test('an explicit session restore in a stale tab establishes the baseline for later edits', async () => {
+  const sharedStorage = new Map(), latest = harness({sharedStorage}), stale = harness({sharedStorage});
+  await latest.navigateHash(draftHash({...freshDraft,portraitUrl:'https://example.com/latest.jpg'}));
+  await stale.input('motifScale',75);
+  assert.match(stale.node('save-status').textContent,/another tab/);
+  const imported = {...freshDraft,nameLine1:'Restored',portraitUrl:'https://example.com/imported.jpg'};
+  await stale.click('import-data'); await stale.pasteSession(JSON.stringify(imported)); await stale.click('session-restore');
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).portraitUrl,imported.portraitUrl);
+  await stale.input('width-range',370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).width,370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).portraitUrl,imported.portraitUrl);
+  assert.match(stale.node('save-status').textContent,/Saved in this browser/);
+});
+
+test('a failed stale-tab restore preserves the saved draft and can retry after storage recovers', async () => {
+  const sharedStorage = new Map(), latest = harness({sharedStorage}), stale = harness({sharedStorage});
+  await latest.navigateHash(draftHash({...freshDraft,portraitUrl:'https://example.com/latest.jpg'}));
+  const saved = sharedStorage.get(storageKey);
+  const imported = {...freshDraft,nameLine1:'Restored',portraitData:localPortrait};
+  stale.failNextWrite(storageKey);
+  await stale.click('import-data'); await stale.pasteSession(JSON.stringify(imported)); await stale.click('session-restore');
+  assert.equal(sharedStorage.get(storageKey),saved,'failed explicit replacement rolls back without losing the newer photo');
+  assert.match(stale.node('status').textContent,/this tab/);
+  await stale.input('width-range',370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).width,370);
+  assert.equal(JSON.parse(sharedStorage.get(storageKey)).portraitData,localPortrait);
+  assert.match(stale.node('save-status').textContent,/Saved in this browser/);
+});
+
+test('a failed ordinary save keeps its storage baseline until a successful retry', async () => {
+  const app = harness();
+  const saved = app.storage.get(storageKey);
+  app.failNextWrite(storageKey);
+  await app.input('motifScale',75);
+  assert.equal(app.storage.get(storageKey),saved);
+  assert.match(app.node('save-status').textContent,/Storage unavailable/);
+  await app.input('width-range',350);
+  assert.equal(JSON.parse(app.storage.get(storageKey)).motifScale,75);
+  assert.equal(JSON.parse(app.storage.get(storageKey)).width,350);
+  assert.match(app.node('save-status').textContent,/Saved in this browser/);
+});
+
 test('unusable saved drafts are not overwritten by startup', () => {
   const invalid = { ...core.defaults, nameLine1: 'Jamie', website: 'javascript:alert(1)' };
   const app = harness({ initialDraft: invalid, expectPreview: false });
@@ -991,12 +1538,12 @@ test('session JSON exports and restores draft, themes, and view settings after r
   const app = harness();
   await app.input('nameLine1','Zoë'); await app.input('websiteIcon','mail');
   await app.input('theme-name','My colors'); await app.click('save-theme');
-  await app.click('colors-tab');
+  await app.click('design-tab');
   await app.click('export-data');
   const exported = app.node('session-json').value;
   const session = JSON.parse(exported);
   assert.equal(session.draft.nameLine1,'Zoë'); assert.equal(session.themes[0].name,'My colors');
-  assert.equal(session.ui.editorTab,'colors');
+  assert.equal(session.ui.editorTab,'design');
   await app.click('session-download');
   const file = app.downloads.at(-1);
   assert.match(file.filename,/^signature-session-\d{4}-\d{2}-\d{2}\.json$/);
@@ -1007,7 +1554,7 @@ test('session JSON exports and restores draft, themes, and view settings after r
   await app.click('session-restore');
   assert.equal(app.node('nameLine1').value,'Zoë');
   assert.equal(app.node('websiteIcon').value,'mail');
-  assert.equal(app.node('colors-tab').getAttribute('aria-selected'),'true');
+  assert.equal(app.node('design-tab').getAttribute('aria-selected'),'true');
   assert.equal(JSON.parse(app.storage.get(storageKey)).nameLine1,'Zoë');
   assert.equal(JSON.parse(app.storage.get('signature-studio:themes:v1')).themes.length,1);
   await app.click('undo-change'); assert.equal(app.node('nameLine1').value,'Avery');

@@ -44,7 +44,7 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   const restored = session.parse(JSON.stringify(envelope(legacyDraft)));
   for (const [key, value] of Object.entries(legacyDraft)) assert.equal(restored.draft[key], value, key);
   assert.deepEqual(restored.themes, [savedTheme]);
-  assert.deepEqual(restored.ui, oldUI);
+  assert.deepEqual(restored.ui, {...oldUI, editorTab: 'design'});
   assert.deepEqual(Object.fromEntries(['design', 'pattern', 'portraitData', 'portraitUrl', 'portraitShape', 'portraitSize'].map(key => [key, restored.draft[key]])), {
     design: 'original', pattern: 'auto', portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64
   });
@@ -100,7 +100,7 @@ test('restored data-only photos remain exportable backups and fail email HTML ex
 // Independent expected delivery roster: an accidentally removed model, license,
 // entry point, or pattern must fail even if the implementation allowlist shrinks.
 const expectedPublicFiles = [
-  'index.html', 'signature.html', 'app.js', 'editor.css', 'signature-core.js',
+  'index.html', 'signature.html', 'app.js', 'preview-dom.js', 'editor.css', 'signature-core.js',
   'editor-history.js', 'signature-image.js', 'session-data.js', 'session-controls.js',
   'signature-only.html', 'portrait-core.js', 'portrait-controls.js', 'portrait-worker.js', 'portrait.css',
   'design-collections.js', 'ai-extension-core.js', 'ai-extension-controls.js', 'ai-extension.css',
@@ -145,7 +145,7 @@ async function sourceFixture(t) {
 }
 
 test('actual public build retains the complete reviewed runtime and excludes test photos, private files, and docs', async t => {
-  assert.equal(expectedPublicFiles.length, 69);
+  assert.equal(expectedPublicFiles.length, 70);
   assert.deepEqual([...PUBLIC_FILES].sort(), [...expectedPublicFiles].sort());
   const root = await sourceFixture(t), { output } = await buildSite(root), files = [];
   async function walk(directory) {
