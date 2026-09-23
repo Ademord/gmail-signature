@@ -6,26 +6,26 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=ded346349a6a7ecb">
-  <link rel="stylesheet" href="portrait.css?v=ded346349a6a7ecb">
-  <link rel="stylesheet" href="ai-extension.css?v=ded346349a6a7ecb">
-  <link rel="stylesheet" href="library.css?v=ded346349a6a7ecb">
-  <link rel="stylesheet" href="artwork.css?v=ded346349a6a7ecb">
-  <script src="portrait-core.js?v=ded346349a6a7ecb" defer></script>
-  <script src="signature-core.js?v=ded346349a6a7ecb" defer></script>
-  <script src="editor-history.js?v=ded346349a6a7ecb" defer></script>
-  <script src="signature-image.js?v=ded346349a6a7ecb" defer></script>
-  <script src="session-data.js?v=ded346349a6a7ecb" defer></script>
-  <script src="session-controls.js?v=ded346349a6a7ecb" defer></script>
-  <script src="portrait-controls.js?v=ded346349a6a7ecb" defer></script>
-  <script src="design-collections.js?v=ded346349a6a7ecb" defer></script>
-  <script src="ai-extension-core.js?v=ded346349a6a7ecb" defer></script>
-  <script src="ai-extension-controls.js?v=ded346349a6a7ecb" defer></script>
-  <script src="library-controls.js?v=ded346349a6a7ecb" defer></script>
-  <script src="artwork-core.js?v=ded346349a6a7ecb" defer></script>
-  <script src="artwork-controls.js?v=ded346349a6a7ecb" defer></script>
-  <script src="preview-dom.js?v=ded346349a6a7ecb" defer></script>
-  <script src="app.js?v=ded346349a6a7ecb" defer></script>
+  <link rel="stylesheet" href="editor.css?v=43d4fb1a3202ba5a">
+  <link rel="stylesheet" href="portrait.css?v=43d4fb1a3202ba5a">
+  <link rel="stylesheet" href="ai-extension.css?v=43d4fb1a3202ba5a">
+  <link rel="stylesheet" href="library.css?v=43d4fb1a3202ba5a">
+  <link rel="stylesheet" href="artwork.css?v=43d4fb1a3202ba5a">
+  <script src="portrait-core.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="signature-core.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="editor-history.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="signature-image.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="session-data.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="session-controls.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="portrait-controls.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="design-collections.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="ai-extension-core.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="ai-extension-controls.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="library-controls.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="artwork-core.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="artwork-controls.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="preview-dom.js?v=43d4fb1a3202ba5a" defer></script>
+  <script src="app.js?v=43d4fb1a3202ba5a" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -210,6 +210,14 @@
                   <div class="range-field"><label for="artworkScale">Artwork size <output id="artworkScale-value" for="artworkScale">100%</output></label><input id="artworkScale" name="artworkScale" type="range" min="25" max="400" step="1" value="100"></div>
                   <p id="artwork-layer-note" class="field-note">Artwork sits behind your details and photo. The card edges crop it.</p>
                   <div id="artwork-opacity-field" class="range-field" hidden><label for="artworkOpacity">Opacity <output id="artworkOpacity-value" for="artworkOpacity">100%</output></label><input id="artworkOpacity" name="artworkOpacity" type="range" min="0" max="100" step="1" value="100"></div>
+                  <div id="artwork-fade-field" hidden>
+                    <div class="field"><label for="artworkFade">Opacity fade</label><select id="artworkFade" name="artworkFade"><option value="none">Uniform</option><option value="linear">Linear</option><option value="radial">Radial</option></select></div>
+                    <div id="artwork-linear-fade-fields" hidden><div class="range-field"><label for="artworkFadeAngle">Fade angle <output id="artworkFadeAngle-value" for="artworkFadeAngle">90°</output></label><input id="artworkFadeAngle" name="artworkFadeAngle" type="range" min="0" max="360" step="1" value="90"></div></div>
+                    <div id="artwork-radial-fade-fields" hidden><div class="range-field"><label for="artworkFadeX">Fade center · horizontal <output id="artworkFadeX-value" for="artworkFadeX">50%</output></label><input id="artworkFadeX" name="artworkFadeX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="artworkFadeY">Fade center · vertical <output id="artworkFadeY-value" for="artworkFadeY">50%</output></label><input id="artworkFadeY" name="artworkFadeY" type="range" min="0" max="100" step="1" value="50"></div></div>
+                    <select id="artworkFadeDirection" name="artworkFadeDirection" hidden aria-label="Fade direction"><option value="normal">Normal</option><option value="reverse">Reverse</option></select>
+                    <button id="reverse-artwork-fade" type="button" class="button button-secondary" aria-pressed="false" hidden>Reverse fade</button>
+                    <p id="artwork-fade-note" class="field-note" hidden></p>
+                  </div>
                   <details id="artwork-position-disclosure" class="nested-disclosure"><summary>Position</summary><div class="disclosure-content"><div class="range-field"><label for="artworkPositionX">Horizontal position <output id="artworkPositionX-value" for="artworkPositionX">50%</output></label><input id="artworkPositionX" name="artworkPositionX" type="range" min="0" max="100" step="1" value="50"></div><div class="range-field"><label for="artworkPositionY">Vertical position <output id="artworkPositionY-value" for="artworkPositionY">50%</output></label><input id="artworkPositionY" name="artworkPositionY" type="range" min="0" max="100" step="1" value="50"></div><p id="artwork-position-note" class="field-note">The artwork fits one edge exactly. Change Artwork size to move it along that edge.</p></div></details>
                 </div>
                 <div id="artwork-motif-settings">

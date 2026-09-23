@@ -13,6 +13,7 @@
     location: 'Zurich, Switzerland', tags: 'SOFTWARE · DATA · AI',
     width: 321, height: 208, cardGap: 20, cardFormat: 'auto', layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
     artworkPlacement: 'auto', artworkScale: 100, artworkOpacity: 100, artworkPositionX: 50, artworkPositionY: 50,
+    artworkFade: 'none', artworkFadeAngle: 90, artworkFadeDirection: 'normal', artworkFadeX: 50, artworkFadeY: 50,
     motifScale: 100, motifPositionX: 50, motifPositionY: 0,
     portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64,
     frontBackground: '#f3f0ea', backBackground: '#1c1c1c',
@@ -105,6 +106,9 @@
     result.cardGap = dimension(input.cardGap, defaults.cardGap, 0, 60);
     result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 25, 400);
     result.artworkOpacity = dimension(input.artworkOpacity, defaults.artworkOpacity, 0, 100);
+    result.artworkFadeAngle = dimension(input.artworkFadeAngle, defaults.artworkFadeAngle, 0, 360);
+    result.artworkFadeX = dimension(input.artworkFadeX, defaults.artworkFadeX, 0, 100);
+    result.artworkFadeY = dimension(input.artworkFadeY, defaults.artworkFadeY, 0, 100);
     result.artworkPositionX = dimension(input.artworkPositionX, defaults.artworkPositionX, 0, 100);
     result.artworkPositionY = dimension(input.artworkPositionY, defaults.artworkPositionY, 0, 100);
     result.motifScale = dimension(input.motifScale, defaults.motifScale, 25, 100);
@@ -490,7 +494,7 @@
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
+    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkFadeAngle',0,360],['artworkFadeX',0,100],['artworkFadeY',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
         String(raw).trim() === '' || !Number.isInteger(Number(raw)) || Number(raw) < rule[1] || Number(raw) > rule[2])) {
@@ -512,6 +516,8 @@
     if (v.design !== 'custom' && !designs.some(function (design) { return design.id === v.design; })) errors.design = 'Choose an available design.';
     if (!Object.prototype.hasOwnProperty.call(patterns, v.pattern)) errors.pattern = 'Choose an available pattern or None.';
     if (!['auto','motif','flow','background'].includes(v.artworkPlacement)) errors.artworkPlacement = 'Choose automatic, motif, flowing or background artwork.';
+    if (!['none','linear','radial'].includes(v.artworkFade)) errors.artworkFade = 'Choose no fade, linear or radial.';
+    if (!['normal','reverse'].includes(v.artworkFadeDirection)) errors.artworkFadeDirection = 'Choose normal or reverse fade direction.';
     if (v.artworkPlacement === 'flow' && !flowingPatterns.includes(selectedPattern(v))) errors.artworkPlacement = 'Flow is available for the six abstract artworks. Choose automatic or motif for this pattern.';
     [['customPattern',parseCustomPattern],['customLayout',parseCustomLayout]].forEach(function (entry) {
       if (v[entry[0]]) try { entry[1](v[entry[0]]); } catch (error) { errors[entry[0]] = error.message; }
@@ -610,8 +616,18 @@
     function px(value) { return Math.round(value * 1000) / 1000; }
     function paintStyle(x,y,background,width,height) {
       var color = background || v.frontBackground, alpha = (100 - v.artworkOpacity) / 100;
-      var wash = 'rgba(' + [1,3,5].map(function (i) { return parseInt(color.slice(i,i + 2),16); }).join(',') + ',' + alpha + ')';
+      var channels = [1,3,5].map(function (i) { return parseInt(color.slice(i,i + 2),16); }).join(',');
+      var wash = 'rgba(' + channels + ',' + alpha + ')';
       var images = ['linear-gradient(' + wash + ',' + wash + ')'], sizes = ['100% 100%'], positions = ['0px 0px'];
+      if (v.artworkFade !== 'none') {
+        var opaque = 'rgba(' + channels + ',1)', first = v.artworkFadeDirection === 'reverse' ? opaque : wash, last = v.artworkFadeDirection === 'reverse' ? wash : opaque;
+        images[0] = v.artworkFade === 'radial' ? 'radial-gradient(circle farthest-corner at ' + v.artworkFadeX + '% ' + v.artworkFadeY + '%,' + first + ' 0%,' + last + ' 100%)' :
+          'linear-gradient(' + v.artworkFadeAngle + 'deg,' + first + ' 0%,' + last + ' 100%)';
+        // Each face samples the same full-canvas opacity field. Positioning the
+        // wash in card coordinates would restart its fade at every panel seam.
+        sizes[0] = bounds.availableWidth + 'px ' + bounds.availableHeight + 'px';
+        positions[0] = px(-(x || 0)) + 'px ' + px(-(y || 0)) + 'px';
+      }
       function layer(image,w,h,left,top) {
         images.push(image); sizes.push(px(w) + 'px ' + px(h) + 'px'); positions.push(px(left) + 'px ' + px(top) + 'px');
       }

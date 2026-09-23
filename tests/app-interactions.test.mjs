@@ -1538,6 +1538,79 @@ test('background placement stays selected across built-in, custom and absent art
   assert.deepEqual(JSON.parse(app.storage.get(storageKey)),custom,'returning to the background keeps its framing');
 });
 
+test('opacity fade controls switch between uniform, linear and radial with reversible edits and unchanged photo geometry',async()=>{
+  const initial={...core.defaults,cardFormat:'single',layout:'stacked',width:400,height:300,pattern:'dots',artworkPlacement:'background',artworkOpacity:65,portraitData:localPortrait,portraitUrl:'https://example.com/profile.png',portraitShape:'rounded',portraitSize:80};
+  const app=harness({initialDraft:initial}),dimensions=app.node('dimension-label').textContent;
+  const assertPhoto=()=>{
+    const draft=JSON.parse(app.storage.get(storageKey));
+    for(const key of ['portraitData','portraitUrl','portraitShape','portraitSize'])assert.equal(draft[key],initial[key],key+' survives opacity fades');
+    assert.ok(app.node('signature-preview').innerHTML.includes('src="'+localPortrait+'" width="80" height="80"'));
+    assert.equal(app.node('dimension-label').textContent,dimensions,'only decorative opacity changes');
+    assert.equal(draft.artworkOpacity,65,'fade settings preserve overall opacity');
+  };
+  assert.equal(app.node('artwork-fade-field').hidden,false);
+  assert.equal(app.node('artwork-linear-fade-fields').hidden,true);assert.equal(app.node('artwork-radial-fade-fields').hidden,true);assert.equal(app.node('reverse-artwork-fade').hidden,true);
+  assert.deepEqual(app.node('artworkFade').options.map(option=>option.value),['none','linear','radial']);
+  await app.input('artworkFade','linear');await app.finishEdit();assertPhoto();
+  assert.equal(app.node('artwork-linear-fade-fields').hidden,false);assert.equal(app.node('artwork-radial-fade-fields').hidden,true);assert.equal(app.node('reverse-artwork-fade').hidden,false);
+  assert.equal(app.node('artworkFadeAngle').getAttribute('min'),'0');assert.equal(app.node('artworkFadeAngle').getAttribute('max'),'360');
+  assert.match(app.node('signature-preview').innerHTML,/linear-gradient\(90deg,/);
+  await app.input('artworkFadeAngle',45);await app.input('artworkFadeAngle',180);await app.finishEdit();assertPhoto();
+  assert.equal(app.node('artworkFadeAngle-value').textContent,'180°');assert.equal(JSON.parse(app.storage.get(storageKey)).artworkFadeAngle,180);
+  assert.match(app.node('signature-preview').innerHTML,/linear-gradient\(180deg,/);
+  await app.click('undo-change');assert.equal(Number(app.node('artworkFadeAngle').value),90,'one angle gesture makes one undo step');
+  await app.click('redo-change');assert.equal(Number(app.node('artworkFadeAngle').value),180);
+  const forward=app.node('signature-preview').innerHTML;
+  await app.click('reverse-artwork-fade');assertPhoto();
+  assert.equal(app.node('artworkFadeDirection').value,'reverse');assert.equal(app.node('reverse-artwork-fade').getAttribute('aria-pressed'),'true');
+  assert.notEqual(app.node('signature-preview').innerHTML,forward,'reverse changes the rendered fade');
+  await app.click('undo-change');assert.equal(app.node('artworkFadeDirection').value,'normal');assert.equal(app.node('reverse-artwork-fade').getAttribute('aria-pressed'),'false');
+  await app.click('redo-change');assert.equal(app.node('artworkFadeDirection').value,'reverse');
+  await app.input('artworkFade','radial');await app.finishEdit();assertPhoto();
+  assert.equal(app.node('artwork-linear-fade-fields').hidden,true);assert.equal(app.node('artwork-radial-fade-fields').hidden,false);
+  assert.equal(Number(app.node('artworkFadeAngle').value),180,'radial mode preserves the last linear angle');
+  for(const [key,value] of [['artworkFadeX',0],['artworkFadeY',100]]) {
+    const before=app.node('signature-preview').innerHTML;
+    await app.input(key,value);await app.finishEdit();assertPhoto();
+    assert.notEqual(app.node('signature-preview').innerHTML,before,key+' changes the radial center');
+    assert.equal(app.node(key+'-value').textContent,value+'%');assert.equal(JSON.parse(app.storage.get(storageKey))[key],value);
+  }
+  assert.match(app.node('signature-preview').innerHTML,/radial-gradient\(circle farthest-corner at 0% 100%,/);
+  const adjusted={...initial,artworkFade:'radial',artworkFadeAngle:180,artworkFadeDirection:'reverse',artworkFadeX:0,artworkFadeY:100};
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),adjusted);
+  const reloaded=harness({sharedStorage:app.storage});
+  assert.equal(reloaded.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);assert.equal(reloaded.node('artwork-radial-fade-fields').hidden,false);
+  await app.click('export-data');const backup=app.node('session-json').value;
+  await app.click('close-session');await app.click('reset-draft');await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),adjusted);assertPhoto();
+  await app.input('artworkFade','none');await app.finishEdit();assertPhoto();
+  assert.equal(app.node('artwork-linear-fade-fields').hidden,true);assert.equal(app.node('artwork-radial-fade-fields').hidden,true);assert.equal(app.node('reverse-artwork-fade').hidden,true);
+  assert.doesNotMatch(app.node('signature-preview').innerHTML,/radial-gradient|linear-gradient\(\d+deg/);
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...adjusted,artworkFade:'none'},'uniform mode retains framing for the next fade');
+});
+
+test('opacity fades remain background-only while pattern changes and custom drawing preserve every fade setting',async()=>{
+  const initial={...core.defaults,cardFormat:'single',width:400,height:300,pattern:'dots',artworkPlacement:'background',artworkFade:'radial',artworkFadeDirection:'reverse',artworkFadeAngle:270,artworkFadeX:20,artworkFadeY:80};
+  const app=harness({initialDraft:initial});
+  for(const pattern of ['gesture','moonlight','none','dots']) {
+    await app.input('pattern',pattern);await app.finishEdit();
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern},'changing artwork preserves the fade');
+    assert.equal(app.node('artwork-flow-settings').hidden,pattern==='none');
+  }
+  const customPattern=JSON.stringify({palette:['#2348c7'],rows:['00..','00..','....','....']});
+  app.artworkSettings.applyChanges({customPattern});
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern:'custom',customPattern});
+  assert.match(app.node('signature-preview').innerHTML,/radial-gradient/);assert.match(app.node('signature-preview').innerHTML,/linear-gradient\(#2348c7,#2348c7\)/);
+  await app.input('artworkPlacement','motif');await app.finishEdit();assert.equal(app.node('artwork-fade-field').hidden,true);
+  await app.input('pattern','gesture');await app.finishEdit();await app.input('artworkPlacement','flow');await app.finishEdit();
+  assert.equal(app.node('artwork-flow-settings').hidden,false);assert.equal(app.node('artwork-fade-field').hidden,true,'legacy flowing artwork does not expose unsupported fades');
+  assert.doesNotMatch(app.node('signature-preview').innerHTML,/radial-gradient/);
+  await app.input('artworkPlacement','background');await app.finishEdit();
+  assert.equal(app.node('artwork-fade-field').hidden,false);assert.equal(app.node('artwork-radial-fade-fields').hidden,false);
+  const restored=JSON.parse(app.storage.get(storageKey));
+  for(const key of ['artworkFade','artworkFadeDirection','artworkFadeAngle','artworkFadeX','artworkFadeY'])assert.equal(restored[key],initial[key],key+' is restored when returning to the background');
+});
+
 test('editor appearance defaults to red and persists independently of draft colors, exports and undo',async()=>{
   const app=harness(),before=app.storage.get(storageKey),html=app.node('signature-preview').innerHTML;
   assert.equal(app.editorSkin,'red');assert.equal(app.node('skin-red').getAttribute('aria-pressed'),'true');

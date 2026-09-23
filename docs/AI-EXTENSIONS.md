@@ -43,8 +43,8 @@ Omit unchanged fields. A response never accepts raw HTML, CSS, JavaScript, SVG, 
 
 | Section | Allowed fields |
 | --- | --- |
-| `design` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkOpacity`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
-| `artwork` | `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkOpacity`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent` |
+| `design` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkOpacity`, `artworkFade`, `artworkFadeAngle`, `artworkFadeDirection`, `artworkFadeX`, `artworkFadeY`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
+| `artwork` | `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkOpacity`, `artworkFade`, `artworkFadeAngle`, `artworkFadeDirection`, `artworkFadeX`, `artworkFadeY`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent` |
 | `layout` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap` |
 | `colors` | `frontBackground`, `backBackground`, `accent` |
 | `details`, option off | `title`, `subtitle`, `tags` |
@@ -64,6 +64,10 @@ The broad Design section changes visual settings only. It cannot change personal
 | `artworkPlacement` | `auto`, `motif`, `flow`, or `background` |
 | `artworkScale` | JSON integer 25–400, percent |
 | `artworkOpacity` | JSON integer 0–100, percent; default 100, used for background placement |
+| `artworkFade` | `none` (default), `linear`, or `radial`; background placement only |
+| `artworkFadeAngle` | JSON integer 0–360 CSS degrees; default 90; 0 up, 90 right, 180 down, 270 left |
+| `artworkFadeDirection` | `normal` (default) or `reverse`, swapping opaque and clear ends |
+| `artworkFadeX`, `artworkFadeY` | JSON integers 0–100, radial center percentage of the canvas; default 50 |
 | `artworkPositionX`, `artworkPositionY` | JSON integers 0–100, percent |
 | `cardFormat` | `auto` for the legacy template format; `single` for one card; `front-back` for two separate cards |
 | `layout` | `paired` for Horizontal; `stacked` for Vertical |
@@ -110,7 +114,7 @@ A proposal containing a `customLayout` must also set `design` to `custom`. Selec
 
 ## Artwork placement
 
-`auto` uses full-card artwork for `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, and `gesture`; other patterns and custom grids use a side detail. `flow` explicitly requires one of those six abstract patterns. `motif` selects a side detail. `background` places any built-in pattern or custom grid behind the content, with no reserved side area. It fits the entire artwork at 100%, grows beyond the card at higher scales, and clips at the card edges. Opacity affects only the artwork. Size and position affect background/flow placement and remain saved when another placement is selected.
+`auto` uses full-card artwork for `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, and `gesture`; other patterns and custom grids use a side detail. `flow` explicitly requires one of those six abstract patterns. `motif` selects a side detail. `background` places any built-in pattern or custom grid behind the content, with no reserved side area. It fits the entire artwork at 100%, grows beyond the card at higher scales, and clips at the card edges. Opacity affects only the artwork. Linear fades run from that maximum opacity to transparent along the angle; radial fades run from the chosen center to the farthest corner. Reverse swaps the opaque and clear ends. Each card samples one continuous fade across the complete signature, independent of artwork zoom and position. Size and position affect background/flow placement and remain saved when another placement is selected.
 
 When changing from flowing artwork to a custom grid, include `artworkPlacement: "motif"` or `"background"`. A proposal with explicit `flow` and an unsupported pattern is rejected. The dedicated Wide/Tall images remain PNG assets; custom grids do not edit those images.
 
