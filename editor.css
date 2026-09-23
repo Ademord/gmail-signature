@@ -326,6 +326,21 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 @media(min-width:741px) and (max-width:900px){.studio-shell .workspace{--editor-column-width:275px}}
 @media(max-width:740px){.studio-shell .editor-tabs{max-width:none}}
 
+/* Layout choices reuse the template cards; only their arrangement is new. */
+.orientation-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;clear:both}
+.orientation-choice{position:relative}
+.orientation-choice .design-caption{justify-content:center;padding-bottom:10px}
+.orientation-choice[aria-pressed="true"]{background:var(--ui-selected)}
+.orientation-check{position:absolute;top:7px;right:7px;border-radius:50%;background:var(--ui-accent);color:#fff}
+.orientation-choice[aria-pressed="false"] .orientation-check{display:none}
+.layout-thumbnail{height:116px;min-height:0;pointer-events:none}
+.current-template{display:grid;grid-template-columns:38% minmax(0,1fr);align-items:center;width:100%}
+.current-template .layout-thumbnail{height:90px;border-bottom:0}
+.current-template-caption{display:flex;flex-direction:column;min-width:0;padding:10px 11px}
+.current-template-caption>strong{font-size:14px;font-weight:600}
+.current-template-caption .gallery-jump{min-height:0;margin-top:5px;padding:0;line-height:1.5;flex-wrap:wrap}
+.layout-orientation .field-note{margin-top:11px}
+
 /* Header action menus reuse the existing appearance-menu treatment. */
 .export-menu,.editor-options{position:relative}
 .export-menu>summary,.editor-options>summary{list-style:none;cursor:pointer}

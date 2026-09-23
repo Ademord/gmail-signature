@@ -73,7 +73,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
       this.tagName = tag.toUpperCase(); this.id = id; this.name = '';
       this.dataset = {}; this.style = new Proxy({}, {set:(target,key,value)=>{if(this.id==='signature-preview'&&key==='transform')previewTransformWrites++;target[key]=value;return true;}}); this.attributes = new Map(); this.events = new Map();
       this.children = []; this.parentElement = null; this.value = ''; this.hidden = false;
-      this.clientWidth = 800; this.scrollHeight = 500; this._text = ''; this._html = '';
+      this.clientWidth = 800; this.clientHeight = 400; this.scrollHeight = 500; this._text = ''; this._html = '';
       const classes = new Set();
       this.classList = {
         add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name),
@@ -132,6 +132,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
       throw new Error('Unsupported element selector: ' + selector);
     }
     click() {
+      if(this.disabled&&['BUTTON','INPUT','SELECT','TEXTAREA'].includes(this.tagName)) return Promise.resolve();
       if (this.tagName === 'A') downloads.push({ href: this.href, filename: this.download });
       return dispatch(this,'click');
     }
@@ -287,12 +288,12 @@ const expectedPalettes = [
   ['moonlight','#f1e7fa','#402e63','#b95689'], ['frost','#d7eef6','#102d47','#4489b3']
 ];
 
-test('the simplified browser has two sections, collapsible layouts and eighteen distinct color palettes', () => {
+test('the browser has two library sections, secondary sizing and eighteen distinct color palettes', () => {
   const app=harness();
   assert.deepEqual([...pageSource.matchAll(/data-library-tab="([^"]+)"/g)].map(match=>match[1]),['layouts','artwork']);
   for(const id of ['library-tab-themes','library-panel-themes','collection-gallery','abstract-collection-gallery']) assert.equal(app.hasNode(id),false,id+' is removed');
   assert.doesNotMatch(appSource,/choose-collection-/);
-  assert.match(pageSource,/<details\b[^>]*id="layout-disclosure"[^>]*>[\s\S]*?<summary>Layout<\/summary>/);
+  assert.match(pageSource,/<details\b[^>]*id="size-disclosure"[^>]*>\s*<summary>Size &amp; spacing<\/summary>/);
   assert.match(pageSource,/<details\b[^>]*id="more-palettes"[^>]*>/);
   assert.match(pageSource,/<details\b[^>]*id="saved-palettes"[^>]*>/);
   assert.deepEqual(app.node('palette-choices').children.map(button=>button.id),expectedPalettes.slice(0,6).map(([id])=>'choose-palette-'+id));
@@ -407,7 +408,7 @@ test('desktop and mobile email previews change only the viewing frame, leaving s
   assert.equal(parseFloat(app.node('preview-sizer').style.width),366,'mobile email uses 390px minus 24px padding');
   assert.equal(app.node('signature-preview').style.width,'662px','device choice does not change exported card dimensions');
   assert.equal(app.node('signature-preview').innerHTML,signature,'links and signature markup are unchanged');
-  assert.match(app.node('preview-size-note').textContent,/Choose Tall in Layout/);
+  assert.match(app.node('preview-size-note').textContent,/Choose Vertical in Layout/);
   assert.equal(app.storage.get(storageKey),stored);assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),initial);
   assert.equal(app.node('undo-change').disabled,true,'view controls do not enter design history');
   for(const button of app.emailDevices) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.emailDevice==='mobile'));
@@ -504,7 +505,7 @@ test('the original branded header keeps exports while the editor rail owns tabs 
   const ancestors=element=>{const list=[];for(let parent=element.parentElement;parent;parent=parent.parentElement)list.push(parent);return list;};
   assert.match(pageSource,/<span class="brand-mark"[^>]*>/);
   assert.match(pageSource,/<span>Signature<span class="brand-descriptor">STUDIO<\/span><\/span>/);
-  assert.match(pageSource,/<div class="rail-heading">\s*<div><h1>Edit signature<\/h1><\/div>/);
+  assert.match(pageSource,/<div class="rail-heading">\s*<div><h1 id="editor-heading">Edit signature<\/h1>/);
   for(const id of ['copy-signature','export-image','download-html','share-link','export-data','import-data']) {
     assert.ok(ancestors(app.node(id)).some(parent=>parent.tagName==='HEADER'),id+' is available in the shared header');
     assert.equal(app.node(id).closest('[data-editor-panel]'),null);
@@ -693,17 +694,140 @@ test('existing custom layout and artwork remain in the arrow sequence and keep e
   assert.equal(app.artworkOpened,0);
 });
 
-test('Wide and Tall buttons synchronize the backing field and canvas without losing draft state',async()=>{
-  const initial={...core.defaults,design:'signal',pattern:'overprint',height:300,portraitData:localPortrait,artworkPlacement:'flow',artworkScale:125};
+test('Horizontal and Vertical change only orientation and synchronize selection through undo and redo',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',nameLine2:'River',title:'Designer',email:'jordan@example.com',design:'signal',pattern:'overprint',
+    width:400,height:300,portraitData:localPortrait,portraitSize:80,portraitShape:'rounded',artworkPlacement:'flow',artworkScale:125,
+    artworkPositionX:34,artworkPositionY:68,motifScale:77,motifPositionX:20,motifPositionY:40,frontBackground:'#f0edfa',backBackground:'#231c32',accent:'#ab4971'};
   const app=harness({initialDraft:initial});
   assert.equal(app.node('layout').hidden,true,'the select is retained for state rather than a duplicate visible control');
   const selected=value=>{for(const button of app.arrangementButtons) assert.equal(button.getAttribute('aria-pressed'),String(button.dataset.arrangement===value));};
   selected('paired');await app.arrange('stacked');
   assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,layout:'stacked'});selected('stacked');
-  assert.equal(app.node('layout').value,'stacked');assert.equal(app.node('dimension-label').textContent,'321 × 620 px');
+  assert.equal(app.node('layout').value,'stacked');assert.equal(app.node('dimension-label').textContent,'400 × 620 px');
   await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);selected('paired');
   assert.equal(app.node('undo-change').disabled,true);
   await app.arrange('paired');assert.equal(app.node('undo-change').disabled,true,'reselecting the active arrangement is not an edit');
+  await app.click('redo-change');selected('stacked');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,layout:'stacked'});
+  await app.arrange('paired');selected('paired');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+});
+
+test('Layout exposes primary orientation and template cards while secondary settings stay collapsed',async()=>{
+  const app=harness();await app.click('layout-tab');
+  assert.equal(app.node('editor-heading').textContent,'Layout');
+  assert.equal(app.node('editor-description').textContent,'Arrange your signature.');
+  assert.equal(app.node('editor-description').hidden,false);
+  assert.equal(Boolean(app.node('size-disclosure').open),false);
+  assert.deepEqual(app.arrangementButtons.map(button=>button.getAttribute('aria-label')),['Horizontal','Vertical']);
+  for(const id of ['orientation-horizontal','orientation-vertical','change-template']) {
+    const button=app.node(id);
+    assert.equal(button.closest('details'),null,id+' is available without opening secondary settings');
+    assert.equal(button.closest('[data-editor-panel]')?.id,'layout-panel');
+    for(let parent=button.parentElement;parent;parent=parent.parentElement)assert.equal(Boolean(parent.hidden),false);
+  }
+  assert.equal(app.node('change-template').dataset.openLibrary,'layouts');
+  const templateSelect=app.node('design');
+  assert.equal(templateSelect.closest('details')?.getAttribute('class'),'advanced-settings');
+  assert.equal(templateSelect.closest('details')?.parentElement.parentElement.id,'size-disclosure','custom template controls remain accessible in secondary settings');
+  for(const tab of ['design','details','photo']) {
+    await app.click(tab+'-tab');
+    assert.equal(app.node('editor-heading').textContent,'Edit signature');assert.equal(app.node('editor-description').hidden,true);
+  }
+});
+
+test('live layout thumbnails retain custom templates and current portrait details colors and artwork without interactive contents',async()=>{
+  const initial={...core.defaults,nameLine1:'Jordan',title:'Designer',email:'jordan@example.com',width:400,height:300,
+    design:'custom',customLayout:JSON.stringify({composition:'editorial',font:'serif',align:'center'}),portraitData:localPortrait,
+    pattern:'overprint',artworkPlacement:'flow',accent:'#ab4971',frontBackground:'#f0edfa',backBackground:'#231c32'};
+  const app=harness({initialDraft:initial});
+  const check=firstName=>{
+    for(const [prefix,artwork] of [['orientation-horizontal','wide'],['orientation-vertical','tall'],['current-template',app.node('layout').value==='stacked'?'tall':'wide']]) {
+      const frame=app.node(prefix+'-frame'),preview=app.node(prefix+'-preview'),html=preview.innerHTML;
+      assert.equal(frame.getAttribute('aria-hidden'),'true');assert.equal(frame.getAttribute('inert'),'');
+      assert.ok(html.includes(firstName));assert.ok(html.includes('jordan@example.com'));assert.ok(html.includes(localPortrait));
+      for(const color of ['#ab4971','#f0edfa','#231c32'])assert.ok(html.includes(color),prefix+' reflects current colors');
+      assert.ok(html.includes('Georgia'),prefix+' preserves the custom serif recipe');
+      assert.ok(html.includes('pattern-overprint-'+artwork+'.png'),prefix+' reflects candidate orientation');
+      assert.doesNotMatch(html,/<(?:a|button|input|select|textarea)\b|\b(?:href|tabindex)=/i);
+      assert.match(preview.style.transform,/^scale\([\d.]+\)$/);
+      assert.ok(Number.isFinite(parseFloat(preview.style.left))&&Number.isFinite(parseFloat(preview.style.top)));
+    }
+    assert.equal(app.node('current-template-name').textContent,'Custom layout');
+    const active=app.node('layout').value==='stacked'?'orientation-vertical-preview':'orientation-horizontal-preview';
+    assert.equal(app.node('current-template-preview').innerHTML,app.node(active).innerHTML);
+  };
+  check('Jordan');await app.input('nameLine1','Taylor');check('Taylor');
+  await app.arrange('stacked');check('Taylor');
+  await app.click('choose-design-orbit');
+  assert.equal(app.node('current-template-name').textContent,'Orbit');
+  assert.equal(app.imageSettings.getDraft().portraitData,localPortrait);
+  assert.equal(app.imageSettings.getDraft().customLayout,initial.customLayout,'the custom recipe remains available');
+});
+
+test('an orientation that cannot fit is disabled without clearing working previews and recovers after resizing',async()=>{
+  const initial={...core.defaults,design:'orbit',width:280,height:180,nameLine1:'Alexanderthegreat'};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey);
+  assert.equal(app.node('orientation-horizontal').disabled,false);
+  assert.equal(app.node('orientation-vertical').disabled,true);
+  assert.ok(app.node('orientation-horizontal-preview').innerHTML.includes('<table'));
+  assert.equal(app.node('orientation-vertical-preview').innerHTML,'');
+  assert.ok(app.node('current-template-preview').innerHTML.includes('<table'));
+  assert.equal(app.node('orientation-note').hidden,false);assert.match(app.node('orientation-note').textContent,/Vertical.*more room/);
+  await app.arrange('stacked');assert.equal(app.storage.get(storageKey),saved,'disabled orientation cannot replace a valid draft');
+  await app.input('width-range',420);
+  assert.equal(app.node('orientation-vertical').disabled,false);assert.equal(app.node('orientation-note').hidden,true);
+  assert.ok(app.node('orientation-vertical-preview').innerHTML.includes('<table'));
+  await app.arrange('stacked');assert.equal(app.node('layout').value,'stacked');
+});
+
+test('a template change can enable an orientation that repairs the current invalid draft',async()=>{
+  const initial={...core.defaults,design:'editorial',layout:'stacked',width:280,height:180,nameLine1:'Avery',
+    title:'Software engineer and software developer expert',email:'avery@example.com'};
+  const app=harness({initialDraft:initial}),saved=app.storage.get(storageKey),lastPreview=app.node('signature-preview').innerHTML;
+  assert.equal(app.node('orientation-horizontal').disabled,true);
+  assert.equal(app.node('orientation-vertical').disabled,false);
+  await app.click('choose-design-orbit');
+  assert.equal(app.node('current-template-name').textContent,'Orbit');
+  assert.equal(app.node('title').getAttribute('aria-invalid'),'true');
+  assert.equal(app.storage.get(storageKey),saved,'the invalid template change is not persisted');
+  assert.equal(app.node('signature-preview').innerHTML,lastPreview,'the canvas retains the last valid preview');
+  assert.equal(app.node('orientation-horizontal').disabled,false,'availability must use Orbit instead of the last valid Editorial draft');
+  assert.equal(app.node('orientation-vertical').disabled,true);
+  assert.ok(app.node('orientation-horizontal-preview').innerHTML.includes('expert'));
+  assert.equal(app.node('orientation-vertical-preview').innerHTML,'');
+  assert.equal(app.node('current-template-preview').innerHTML,'','the selected invalid orientation must not show an obsolete template thumbnail');
+  await app.arrange('paired');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'orbit',layout:'paired'});
+  assert.equal(app.node('title').getAttribute('aria-invalid'),'false');
+  assert.equal(app.node('orientation-horizontal').getAttribute('aria-pressed'),'true');
+  assert.ok(app.node('current-template-preview').innerHTML.includes('expert'));
+});
+
+test('direct invalid text edits refresh orientation availability and allow repair without losing the edit',async()=>{
+  const initial={...core.defaults,design:'orbit',layout:'stacked',width:280,height:180};
+  const app=harness({initialDraft:initial}),lastPreview=app.node('signature-preview').innerHTML;
+  assert.equal(app.node('orientation-vertical').disabled,false);
+  const title='Software engineer and software developer expert';
+  await app.input('title',title);
+  assert.equal(app.node('title').getAttribute('aria-invalid'),'true');
+  assert.equal(app.node('orientation-vertical').disabled,true,'direct inputs must update candidate availability even when the current layout fails validation');
+  assert.equal(app.node('orientation-vertical-preview').innerHTML,'');
+  assert.equal(app.node('current-template-preview').innerHTML,'');
+  assert.equal(app.node('orientation-horizontal').disabled,false);
+  assert.ok(app.node('orientation-horizontal-preview').innerHTML.includes('expert'));
+  assert.equal(app.node('signature-preview').innerHTML,lastPreview);
+  await app.arrange('paired');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,title,layout:'paired'});
+  await app.input('website','javascript:invalid');
+  for(const orientation of ['horizontal','vertical']) {
+    assert.equal(app.node('orientation-'+orientation).disabled,true);
+    assert.equal(app.node('orientation-'+orientation+'-preview').innerHTML,'');
+  }
+  assert.match(app.node('orientation-note').textContent,/highlighted fields/);
+  await app.input('website',initial.website);
+  assert.equal(app.node('orientation-horizontal').disabled,false);
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,title,layout:'paired'});
 });
 
 test('Layout and legacy Colors or Icons sessions restore visible sections and re-export canonical tabs',async()=>{

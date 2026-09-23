@@ -182,6 +182,11 @@
   // All miniature cards use the same renderer as the working canvas and exports.
   const designs = core.designs || [];
   const designButtons = [], patternButtons = [], paletteButtons = [];
+  const layoutMiniatures = [
+    {frame: $('orientation-horizontal-frame'), preview: $('orientation-horizontal-preview'), button: $('orientation-horizontal'), layout: 'paired'},
+    {frame: $('orientation-vertical-frame'), preview: $('orientation-vertical-preview'), button: $('orientation-vertical'), layout: 'stacked'},
+    {frame: $('current-template-frame'), preview: $('current-template-preview')}
+  ];
   const studioPalettes = [
     plumPalette,
     { name: 'Vermilion', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -224,7 +229,7 @@
   }));
   document.querySelectorAll('[data-arrangement]').forEach(button => button.addEventListener('click', () => {
     if (draft.layout === button.dataset.arrangement) return;
-    applyStyle({ layout: button.dataset.arrangement }, button.textContent.trim() + ' arrangement applied.');
+    applyStyle({ layout: button.dataset.arrangement }, button.getAttribute('aria-label') + ' orientation applied.');
   }));
   for (const [index, item] of designs.entries()) {
     const option = document.createElement('option'); option.value = item.id; option.textContent = item.name;
@@ -281,6 +286,40 @@
       preview.style.width = width + 'px'; preview.style.transform = 'scale(' + scale + ')';
       viewport.style.height = Math.ceil(lastValid.height * scale + 20) + 'px';
     }
+    for (const {frame, preview, size} of layoutMiniatures) {
+      if (!size || !frame.clientWidth || !frame.clientHeight) continue;
+      const {width, height} = size;
+      const scale = Math.min(1, Math.max(1, frame.clientWidth - 20) / width, Math.max(1, frame.clientHeight - 20) / height);
+      preview.style.width = width + 'px';
+      preview.style.transform = 'scale(' + scale + ')';
+      preview.style.left = (frame.clientWidth - width * scale) / 2 + 'px';
+      preview.style.top = (frame.clientHeight - height * scale) / 2 + 'px';
+    }
+  }
+  function layoutMiniatureMarkup(value) {
+    const options = {preview: true, ...(value.imageBase === core.defaults.imageBase ? {assetBase: './sig'} : {})};
+    // A miniature is decorative; only its surrounding choice may receive focus.
+    return core.render(value, options).replace(/<a\b[^>]*style="([^"]*)"[^>]*>/gi, '<span style="$1">').replace(/<a\b[^>]*>/gi, '<span>').replace(/<\/a>/gi, '</span>');
+  }
+  function syncLayoutMiniatures() {
+    const unavailable = [];
+    for (const item of layoutMiniatures) {
+      const {preview, button, layout = draft.layout} = item;
+      try {
+        const value = {...draft, layout};
+        window.SignaturePreview.update(preview, layoutMiniatureMarkup(value));
+        const normalized = core.normalize(value), tall = layout === 'stacked';
+        item.size = {width: tall ? normalized.width : normalized.width * 2 + 20, height: tall ? normalized.height * 2 + 20 : normalized.height};
+        if (button) button.disabled = false;
+      } catch {
+        item.size = null;
+        preview.textContent = '';
+        if (button) { button.disabled = true; unavailable.push(button.getAttribute('aria-label')); }
+      }
+    }
+    $('orientation-note').hidden = !unavailable.length;
+    $('orientation-note').textContent = unavailable.length === 2 ? 'Fix the highlighted fields or increase the panel size to preview these orientations.' : unavailable.length ? unavailable[0] + ' needs more room. Increase the panel size or shorten your text.' : '';
+    fitMiniatures();
   }
   function syncStudio() {
     const selected = designById(draft.design);
@@ -305,6 +344,7 @@
     for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
     for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
     $('design-description').textContent = selected.description;
+    $('current-template-name').textContent = selected.name;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';
     const customized = !colorKeys.every(key => selected[key] === draft[key]) || draft.pattern !== 'auto';
     const activePalette = [...studioPalettes,...extraPalettes].find(matchesColors);
@@ -330,6 +370,7 @@
       }
     }
     for (const { button, item } of paletteButtons) button.setAttribute('aria-pressed', String(matchesColors(item)));
+    syncLayoutMiniatures();
     if (lastValid) {
       for (const { item, preview } of designButtons) {
         const miniature = { ...lastValid, design: item.id, layout: 'paired' };
@@ -493,6 +534,9 @@
     if (name === 'icons') { name = 'details'; $('icons-disclosure').setAttribute('open', ''); }
     if (!['layout','details','photo','design'].includes(name)) name = 'design';
     activeTab = name;
+    $('editor-heading').textContent = name === 'layout' ? 'Layout' : 'Edit signature';
+    $('editor-description').textContent = name === 'layout' ? 'Arrange your signature.' : '';
+    $('editor-description').hidden = name !== 'layout';
     document.querySelectorAll('[data-editor-tab]').forEach(button => {
       const active = button.dataset.editorTab === name;
       button.setAttribute('aria-selected', String(active));
@@ -567,7 +611,7 @@
     $('dimension-label').textContent = `${width} × ${height} px`;
     $('scale-label').textContent = scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%';
     $('preview-size-note').textContent = emailDevice === 'mobile'
-      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Tall in Layout for larger text.')
+      ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Vertical in Layout for larger text.')
       : 'Preview your signature in a message. Export dimensions stay the same.';
     const column = document.querySelector('.preview-column');
     column.classList.toggle('is-tall', column.scrollHeight > innerHeight - 56);
@@ -575,6 +619,7 @@
   }
   function render() {
     if (!validate()) {
+      syncLayoutMiniatures();
       announce('Fix the highlighted field to update the preview.', true);
       return;
     }
@@ -722,6 +767,7 @@
   $('install-help').addEventListener('click', () => $('help-dialog').showModal());
   $('help-dialog').querySelectorAll('[data-close-dialog], .dialog-close, #close-help').forEach(button => button.addEventListener('click', () => $('help-dialog').close()));
   new ResizeObserver(fitPreview).observe($('preview-viewport'));
+  new ResizeObserver(fitMiniatures).observe($('layout-panel'));
   addEventListener('hashchange', () => {
     if (!loadLink(true)) return;
     fill(); render(); save(); announce(startupMessage);
