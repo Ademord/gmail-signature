@@ -185,8 +185,9 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
   // included in the generic selector so confusing it with buttons fails here.
   const cycleButtons = pageElements.filter(element => element.dataset.cycleField);
   const arrangementButtons = pageElements.filter(element => element.dataset.arrangement);
+  const formatButtons = pageElements.filter(element => element.dataset.cardFormat);
   const skinButtons = pageElements.filter(element => element.tagName==='BUTTON'&&element.dataset.editorSkin);
-  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices],['[data-cycle-field]',cycleButtons],['button[data-cycle-field]',cycleButtons],['[data-arrangement]',arrangementButtons],['button[data-arrangement]',arrangementButtons],['button[data-editor-skin]',skinButtons]]);
+  const many = new Map([['[data-editor-tab]', tabs], ['[data-editor-panel]', panels], ['[data-view]', views],['[data-edit-artwork]',artworkEditButtons],['[data-email-device]',[workspace,...emailDevices]],['button[data-email-device]',emailDevices],['[data-cycle-field]',cycleButtons],['button[data-cycle-field]',cycleButtons],['[data-arrangement]',arrangementButtons],['button[data-arrangement]',arrangementButtons],['[data-card-format]',formatButtons],['button[data-card-format]',formatButtons],['button[data-editor-skin]',skinButtons]]);
   const location = new URL('http://127.0.0.1:4173/?source=regression' + initialHash);
   const document = {
     activeElement: null, body: new Element('body'),documentElement:pageElements.find(element=>element.tagName==='HTML'),
@@ -1192,6 +1193,167 @@ test('switching to a joined named or custom template keeps an invalid gap editab
     assert.equal(app.node('dimension-label').textContent,'820 × 300 px');
     assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,...template,cardGap:0});
   }
+});
+
+test('card format is a primary independent choice and format edits retain the complete draft through undo and redo',async()=>{
+  const initial={...core.defaults,width:400,height:300,cardGap:37,portraitData:localPortrait,pattern:'contour',
+    nameLine1:'Jordan',email:'jordan@example.com',frontBackground:'#faf6ef',backBackground:'#263830',accent:'#d47745'};
+  const app=harness({initialDraft:initial});
+  for(const id of ['format-single','format-front-back']) {
+    const button=app.node(id);
+    assert.equal(button.closest('details'),null,'Format choices are available without opening advanced settings');
+    assert.equal(button.closest('[data-editor-panel]')?.id,'layout-panel');
+  }
+  assert.ok(pageSource.indexOf('id="format-single"')<pageSource.indexOf('id="orientation-horizontal"'));
+  assert.equal(app.node('cardFormat').value,'auto');
+  assert.equal(app.node('format-front-back').getAttribute('aria-pressed'),'true');
+  await app.click('format-single');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,cardFormat:'single'});
+  assert.equal(app.node('format-single').getAttribute('aria-pressed'),'true');
+  assert.equal(app.node('format-front-back').getAttribute('aria-pressed'),'false');
+  await app.click('format-single');
+  await app.click('undo-change');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('format-front-back').getAttribute('aria-pressed'),'true');
+  assert.equal(app.node('undo-change').disabled,true,'Reselecting a format does not create an extra edit');
+  await app.click('redo-change');assert.equal(app.node('cardFormat').value,'single');
+  await app.click('format-front-back');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,cardFormat:'front-back'});
+  assert.equal(app.node('cardGap').disabled,false);
+  assert.equal(app.node('portraitData').value,localPortrait);
+});
+
+test('explicit Single uses one compact background and adapts its controls and dimensions to orientation',async()=>{
+  const initial={...core.defaults,height:180,cardGap:37,layout:'stacked',pattern:'none',portraitData:localPortrait,
+    nameLine1:'Avery',nameLine2:'',title:'',subtitle:'',website:'',websiteLabel:'',email:'avery@example.com',phone:'',linkedin:'',location:'',tags:'',
+    frontBackground:'#faf6ef',backBackground:'#263830'};
+  const app=harness({initialDraft:initial,viewportWidth:1200,screenWidth:1280});
+  assert.equal(app.node('dimension-label').textContent,'321 × 397 px');
+  await app.click('format-single');
+  assert.equal(app.node('dimension-label').textContent,'321 × 180 px');
+  assert.equal(app.node('signature-preview').style.width,'321px');
+  assert.equal(app.node('preview-sizer').style.height,'180px');
+  assert.equal(app.node('current-template-preview').style.width,'321px');
+  const markup=app.node('signature-preview').innerHTML;
+  assert.ok(markup.includes(initial.frontBackground));
+  assert.ok(!markup.includes(initial.backBackground),'The saved back color does not create a second Single background');
+  assert.equal((markup.match(new RegExp('background-color:'+initial.accent,'g'))||[]).length,1,'Single carries one brand mark');
+  assert.ok(markup.includes(localPortrait));assert.ok(markup.includes('avery@example.com'));
+  assert.equal(app.node('card-gap-control').hidden,true);
+  assert.equal(app.node('back-background-field').hidden,true);
+  assert.equal(app.node('swap-colors').hidden,true);
+  assert.equal(app.node('front-background-label').textContent,'Card background');
+  assert.equal(app.node('width-label').textContent,'Card width');
+  assert.equal(app.node('height-label').textContent,'Minimum height');
+  assert.equal(app.node('single-size-note').hidden,false);
+  await app.arrange('paired');
+  assert.equal(app.node('dimension-label').textContent,'642 × 180 px');
+  assert.equal(app.node('width-label').textContent,'Column width');
+  assert.equal(app.node('width').getAttribute('aria-label'),'Column width in pixels');
+  assert.equal(app.node('cardGap').value,37);
+  assert.equal(app.node('backBackground').value,initial.backBackground);
+  await app.click('format-front-back');
+  assert.equal(app.node('dimension-label').textContent,'679 × 180 px');
+  assert.equal(app.node('card-gap-control').hidden,false);
+  assert.equal(app.node('back-background-field').hidden,false);
+  assert.equal(app.node('swap-colors').hidden,false);
+  assert.equal(app.node('single-size-note').hidden,true);
+  assert.equal(app.node('width-label').textContent,'Panel width');
+  assert.equal(app.node('height-label').textContent,'Panel height');
+});
+
+test('explicit formats remain selected across template changes while legacy auto keeps each original layout',async()=>{
+  const initial={...core.defaults,width:400,height:300,cardGap:37,portraitData:localPortrait,pattern:'none'};
+  const app=harness({initialDraft:initial});
+  await app.click('choose-design-orbit');
+  assert.equal(app.node('cardFormat').value,'auto');
+  assert.equal(app.node('format-single').getAttribute('aria-pressed'),'false');
+  assert.equal(app.node('format-front-back').getAttribute('aria-pressed'),'false','Legacy joined layouts do not claim either explicit format');
+  assert.match(app.node('card-format-note').textContent,/saved template layout is preserved/);
+  assert.equal(app.node('dimension-label').textContent,'820 × 300 px','Legacy auto retains its pre-format canvas');
+  assert.equal(app.node('back-background-field').hidden,false,'Legacy auto retains its existing color controls');
+  await app.click('format-front-back');
+  assert.equal(app.node('dimension-label').textContent,'837 × 300 px','Explicit front/back gives named templates two faces and the selected gap');
+  assert.equal(app.node('cardGap').disabled,false);
+  assert.ok(app.node('signature-preview').innerHTML.includes(initial.backBackground));
+  for(const design of ['editorial','original']) {
+    await app.click('choose-design-'+design);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design,cardFormat:'front-back'});
+    assert.equal(app.node('format-front-back').getAttribute('aria-pressed'),'true');
+  }
+  await app.click('format-single');
+  for(const design of ['orbit','editorial','original']) {
+    await app.click('choose-design-'+design);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design,cardFormat:'single'});
+    assert.equal(app.node('format-single').getAttribute('aria-pressed'),'true');
+    assert.equal(app.node('signature-preview').style.width,'800px');
+    assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait));
+  }
+});
+
+test('explicit Single survives reload draft links session restoration and both HTML export paths',async()=>{
+  const initial={...core.defaults,width:400,height:300,layout:'stacked',pattern:'none',cardGap:37,portraitUrl:'https://example.com/portrait.jpg',backBackground:'#294036'};
+  const app=harness({initialDraft:initial,clipboardSucceeds:true});
+  await app.click('format-single');
+  const expected={...initial,cardFormat:'single'},saved=JSON.parse(app.storage.get(storageKey));
+  assert.deepEqual(saved,expected);
+  const reloaded=harness({initialDraft:saved});assert.equal(reloaded.node('cardFormat').value,'single');
+  assert.equal(reloaded.node('format-single').getAttribute('aria-pressed'),'true');
+  await app.click('share-link');
+  const shared=new URL(app.clipboardTexts.at(-1)),linked=harness({initialHash:shared.hash});
+  assert.equal(linked.node('cardFormat').value,'single');assert.equal(linked.node('portraitUrl').value,initial.portraitUrl);
+  await app.click('copy-signature');
+  const copied=await app.clipboardItems.at(-1).parts['text/html'].text();
+  assert.equal(Number(copied.match(/<table\b[^>]*\bwidth="(\d+)"/)[1]),400);
+  assert.ok(copied.includes(initial.portraitUrl));assert.ok(!copied.includes(initial.backBackground));
+  assert.doesNotMatch(copied,/data-(?:preview|signature)-/,'Preview-only image provenance must not enter email HTML');
+  await app.click('download-html');
+  assert.ok((await app.objectURLs.get(app.downloads.at(-1).href).text()).includes(copied));
+  await app.click('export-data');const backup=app.node('session-json').value;
+  assert.equal(JSON.parse(backup).draft.cardFormat,'single');
+  await app.click('close-session');await app.click('reset-draft');assert.equal(app.node('cardFormat').value,'auto');
+  await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),expected);
+  assert.equal(app.node('back-background-field').hidden,true);
+  assert.equal(app.node('card-gap-control').hidden,true);
+});
+
+test('Single keeps invalid hidden settings visible for repair and focuses the right visible control',async()=>{
+  for(const [key,invalid,target,tab,wrapper] of [
+    ['cardGap','61','cardGap','layout','card-gap-control'],
+    ['backBackground-hex','invalid','backBackground-hex','design','back-background-field']
+  ]) {
+    const app=harness({initialDraft:{...core.defaults,portraitData:localPortrait}});
+    await app.input(key,invalid);await app.finishEdit();await app.click('format-single');
+    assert.equal(app.node(wrapper).hidden,false,'Changing format must not conceal the error');
+    await app.click('photo-tab');await app.click('copy-signature');
+    assert.equal(app.node(tab+'-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.activeElement?.id,target);
+    for(let element=app.node(target);element;element=element.parentElement) {
+      assert.equal(Boolean(element.hidden),false);
+      if(element.tagName==='DETAILS')assert.equal(element.open,true);
+    }
+    assert.equal(app.attempts.modern,0);
+    await app.input(key,key==='cardGap'?20:core.defaults.backBackground);
+    assert.equal(app.node(wrapper).hidden,true,'Repair restores the focused Single interface');
+    assert.equal(app.node('portraitData').value,localPortrait);
+  }
+  const app=harness();await app.input('cardFormat','invalid');await app.click('photo-tab');await app.click('copy-signature');
+  assert.equal(app.node('layout-tab').getAttribute('aria-selected'),'true');
+  assert.equal(app.activeElement?.id,'format-single','Invalid format focuses a visible choice instead of the hidden select');
+});
+
+test('repairing a Single background through a saved palette hides the now-valid secondary field',async()=>{
+  const app=harness();
+  await app.input('theme-name','My colors');await app.click('save-theme');
+  const themeId=JSON.parse(app.storage.get('signature-studio:themes:v1')).themes[0].id;
+  await app.input('backBackground-hex','invalid');await app.click('format-single');
+  assert.equal(app.node('back-background-field').hidden,false);
+  assert.equal(app.node('backBackground-hex').getAttribute('aria-invalid'),'true');
+  await app.selectTheme(themeId);
+  assert.equal(app.node('cardFormat').value,'single');
+  assert.equal(app.node('back-background-field').hidden,true);
+  assert.notEqual(app.node('backBackground-hex').getAttribute('aria-invalid'),'true');
 });
 
 test('legacy preset identities still restore, export and apply colors without resetting artwork',async()=>{

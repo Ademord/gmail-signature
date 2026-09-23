@@ -107,8 +107,8 @@ test('layout and design proposals accept the card gap bounds and document zero c
     assert.match(prompt,/"cardGap":0/);
     assert.match(prompt,/cardGap is an integer 0–60 pixels/);
     assert.match(prompt,/width\*2\+cardGap/); assert.match(prompt,/height\*2\+cardGap/);
-    assert.match(prompt,/cardGap affects only the Original two-card composition/);
-    assert.match(prompt,/Other compositions already join their content/);
+    assert.match(prompt,/With front-back, or auto on Original/);
+    assert.match(prompt,/With auto, other compositions retain/);
   }
   for(const section of ['artwork','colors','details','icons','photo']) {
     assert.throws(()=>parse(section,{cardGap:0}),/Unsupported changes field: cardGap/);
@@ -129,6 +129,48 @@ test('older proposals preserve a missing gap as 20 and gap-only changes invalida
     assert.deepEqual(ai.applyProposal(refreshed,{...legacy,cardGap}),{accent:'#123456'});
     assert.throws(()=>ai.applyProposal(refreshed,{...legacy,cardGap:20}),/changed since this preview/);
   }
+});
+
+test('only layout and design may change card format, with strict choices and measured-size guidance',()=>{
+  for(const section of ['layout','design']) {
+    for(const cardFormat of ['auto','single','front-back']) {
+      const original=draft({width:420,height:320,cardGap:43,backBackground:'#123456'});
+      const proposal=ai.createProposal(envelope(section,{cardFormat}),{section,draft:original});
+      assert.equal(proposal.candidate.cardFormat,cardFormat);
+      assert.equal(proposal.candidate.cardGap,43); assert.equal(proposal.candidate.backBackground,'#123456');
+      assert.deepEqual(ai.applyProposal(proposal,original),{cardFormat});
+    }
+    for(const cardFormat of ['', 'Single', 'paired', 'frontBack', 0, false, null, [], {}]) {
+      assert.throws(()=>parse(section,{cardFormat}),/cardFormat/);
+    }
+    const prompt=ai.buildPrompt(section,draft({cardFormat:'single'}));
+    assert.match(prompt,/"cardFormat":"single"/);
+    assert.match(prompt,/cardFormat is auto\|single\|front-back/);
+    assert.match(prompt,/preserving but ignoring backBackground and cardGap/);
+    assert.match(prompt,/height is measured from the content with height as its minimum/);
+    assert.match(prompt,/SignatureCore\.dimensions/);
+  }
+  for(const section of ['artwork','colors','details','icons','photo']) {
+    assert.throws(()=>parse(section,{cardFormat:'single'}),/Unsupported changes field: cardFormat/);
+  }
+});
+
+test('old AI responses preserve auto or the selected format and format-only edits make proposals stale',()=>{
+  const legacy=draft({width:420,height:320}); delete legacy.cardFormat;
+  const before=structuredClone(legacy);
+  const proposal=ai.createProposal(envelope('layout',{layout:'stacked'}),{section:'layout',draft:legacy});
+  assert.equal(proposal.version,1); assert.equal(proposal.candidate.cardFormat,'auto');
+  assert.deepEqual(ai.applyProposal(proposal,{...legacy,cardFormat:'auto'}),{layout:'stacked'});
+  for(const cardFormat of ['single','front-back']) {
+    assert.throws(()=>ai.applyProposal(proposal,{...legacy,cardFormat}),/changed since this preview/);
+    const current={...legacy,cardFormat,cardGap:43,backBackground:'#123456'};
+    const refreshed=ai.createProposal(envelope('colors',{accent:'#654321'}),{section:'colors',draft:current});
+    assert.equal(refreshed.candidate.cardFormat,cardFormat);
+    assert.equal(refreshed.candidate.cardGap,43); assert.equal(refreshed.candidate.backBackground,'#123456');
+    assert.deepEqual(ai.applyProposal(refreshed,current),{accent:'#654321'});
+    assert.throws(()=>ai.applyProposal(refreshed,{...current,cardFormat:'auto'}),/changed since this preview/);
+  }
+  assert.deepEqual(legacy,before);
 });
 
 test('custom recipes are parsed strictly and stored in session-compatible JSON strings',()=>{

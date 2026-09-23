@@ -46,6 +46,27 @@ test('card gap belongs to Design and zero survives selective import',()=>{
   assert.equal(codec.selectParts(legacy,current,{information:true,design:false}).draft.cardGap,44);
   assert.equal(current.draft.cardGap,44); assert.equal(incoming.draft.cardGap,0);
 });
+
+test('card format imports with Design while information-only restore preserves the current format',()=>{
+  const current=example({cardFormat:'front-back',nameLine1:'Casey',cardGap:44,backBackground:'#123456'});
+  const before=structuredClone(current);
+  for(const cardFormat of ['auto','single','front-back']) {
+    const incoming=example({cardFormat,nameLine1:'Jordan',cardGap:0,backBackground:'#654321'});
+    const information=codec.selectParts(incoming,current,{information:true,design:false});
+    assert.equal(information.draft.cardFormat,'front-back');
+    assert.equal(information.draft.cardGap,44); assert.equal(information.draft.backBackground,'#123456');
+    for(const includeInformation of [false,true]) {
+      const restored=codec.selectParts(incoming,current,{information:includeInformation,design:true});
+      assert.equal(restored.draft.cardFormat,cardFormat);
+      assert.equal(restored.draft.cardGap,0); assert.equal(restored.draft.backBackground,'#654321');
+      assert.equal(restored.draft.nameLine1,includeInformation?'Jordan':'Casey');
+    }
+  }
+  const legacy=example(); delete legacy.draft.cardFormat;
+  assert.equal(codec.selectParts(legacy,current,{information:false,design:true}).draft.cardFormat,'auto');
+  assert.equal(codec.selectParts(legacy,current,{information:true,design:false}).draft.cardFormat,'front-back');
+  assert.deepEqual(current,before);
+});
 test('chat-pasted email escapes and identical Markdown URL wrappers are cleaned explicitly',()=>{
   const draft=example({email:'jordan@example.com',linkedin:'https://www.linkedin.com/in/example',imageBase:'https://example.com/sig'});
   let text=codec.serialize(draft).replace('jordan@example.com','jordan\\@example.com');

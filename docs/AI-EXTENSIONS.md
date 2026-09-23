@@ -43,9 +43,9 @@ Omit unchanged fields. A response never accepts raw HTML, CSS, JavaScript, SVG, 
 
 | Section | Allowed fields |
 | --- | --- |
-| `design` | `design`, `customLayout`, `layout`, `width`, `height`, `cardGap`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
+| `design` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap`, `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent`, all five icon fields, `portraitShape`, `portraitSize` |
 | `artwork` | `pattern`, `customPattern`, `artworkPlacement`, `artworkScale`, `artworkPositionX`, `artworkPositionY`, `frontBackground`, `backBackground`, `accent` |
-| `layout` | `design`, `customLayout`, `layout`, `width`, `height`, `cardGap` |
+| `layout` | `design`, `customLayout`, `cardFormat`, `layout`, `width`, `height`, `cardGap` |
 | `colors` | `frontBackground`, `backBackground`, `accent` |
 | `details`, option off | `title`, `subtitle`, `tags` |
 | `details`, option on | `nameLine1`, `nameLine2`, `title`, `subtitle`, `website`, `websiteLabel`, `email`, `phone`, `linkedin`, `location`, `tags` |
@@ -64,15 +64,18 @@ The broad Design section changes visual settings only. It cannot change personal
 | `artworkPlacement` | `auto`, `motif`, or `flow` |
 | `artworkScale` | JSON integer 75–150, percent |
 | `artworkPositionX`, `artworkPositionY` | JSON integers 0–100, percent |
-| `layout` | `paired` for Wide; `stacked` for Tall |
+| `cardFormat` | `auto` for the legacy template format; `single` for one card; `front-back` for two separate cards |
+| `layout` | `paired` for Horizontal; `stacked` for Vertical |
 | `width` | JSON integer 280–420 |
-| `height` | JSON integer 180–320 |
-| `cardGap` | JSON integer 0–60 pixels for Original's two cards; default 20; zero removes the gap |
+| `height` | JSON integer 180–320; minimum content height for explicit `single` format |
+| `cardGap` | JSON integer 0–60 pixels between two separate cards; default 20; zero removes the gap |
 | Icon fields | `web`, `mail`, `phone`, `linkedin`, `pin`, or `none` |
 | `portraitShape` | `circle`, `rounded`, or `square` |
 | `portraitSize` | JSON integer 40–96 |
 
-For the Original two-card composition, horizontal output is `(width × 2 + cardGap) × height`; vertical output is `width × (height × 2 + cardGap)`. Other compositions already join their content and retain `(width × 2 + 20) × height` horizontally or `width × (height × 2 + 20)` vertically. They preserve the stored gap for a later switch back to Original. Values must be numbers, not numeric strings. Older drafts and session files without `cardGap` retain the original 20 pixel gap. Version 1 AI responses may omit it to preserve the current gap. Do not assume that every combination fits the current name and contacts: the full candidate passes the signature's existing validation before a preview can appear.
+Card format is independent of template and orientation. Explicit `single` uses one continuous `frontBackground` surface. It preserves `backBackground` and `cardGap` without displaying them. Its height is measured from the content with the requested `height` as a minimum; `SignatureCore.dimensions` supplies the actual preview and export dimensions. Explicit `front-back` creates two cards with any template: horizontal output is `(width × 2 + cardGap) × height`; vertical output is `width × (height × 2 + cardGap)`.
+
+`auto` preserves existing signatures exactly: Original uses the two-card dimensions above, while joined named/custom compositions retain `(width × 2 + 20) × height` horizontally or `width × (height × 2 + 20)` vertically. Older drafts and session files without `cardFormat` restore as `auto`; a missing `cardGap` retains the original 20 pixel gap. Stored colors and gap survive format switches. Version 1 AI responses may omit either field to preserve its current value. Numeric values must be numbers, not strings. Do not assume that every combination fits the current name and contacts: the full candidate passes the signature's existing validation before a preview can appear.
 
 Detail text is a single line, without control characters or markup. Normal URL, email, and required-field validation also applies. Maximum lengths:
 

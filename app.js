@@ -202,6 +202,7 @@
     ...(window.SignatureCollections || [])
   ];
   const designById = id => (id === 'custom' ? core.customDesign : designs.find(item => item.id === id)) || designs[0];
+  const designDescription = item => draft.cardFormat === 'single' && item.id === 'original' ? 'One accent mark, a quiet dot field, and your details together.' : item.description;
   function applyStyle(patch, message) {
     const before = { ...draft };
     if (Object.hasOwn(patch,'pattern') && !flowingPatterns.includes(patch.pattern) && draft.artworkPlacement === 'flow' && !Object.hasOwn(patch,'artworkPlacement')) patch = {...patch,artworkPlacement:'auto'};
@@ -231,6 +232,10 @@
     if (draft.layout === button.dataset.arrangement) return;
     applyStyle({ layout: button.dataset.arrangement }, button.getAttribute('aria-label') + ' orientation applied.');
   }));
+  document.querySelectorAll('[data-card-format]').forEach(button => button.addEventListener('click', () => {
+    if (draft.cardFormat === button.dataset.cardFormat) return;
+    applyStyle({cardFormat: button.dataset.cardFormat}, button.textContent + ' format applied.');
+  }));
   for (const [index, item] of designs.entries()) {
     const option = document.createElement('option'); option.value = item.id; option.textContent = item.name;
     $('design').append(option);
@@ -243,7 +248,7 @@
     const number = document.createElement('span'); number.className = 'design-number'; number.textContent = String(index + 1).padStart(2, '0'); caption.append(number); button.append(caption);
     const description = document.createElement('span'); description.className = 'design-caption-note'; description.textContent = item.description; button.append(description);
     button.addEventListener('click', () => applyDesign(item.id));
-    $('design-gallery').append(button); designButtons.push({ button, item, viewport, preview });
+    $('design-gallery').append(button); designButtons.push({ button, item, viewport, preview, description });
   }
   if (core.customDesign) {
     const option = document.createElement('option'); option.value = 'custom'; option.id = 'custom-design-option'; option.textContent = 'Custom layout'; $('design').append(option);
@@ -342,7 +347,7 @@
     $('pattern-note').hidden = isFlow || hasMotif;
     for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
     for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
-    $('design-description').textContent = selected.description;
+    $('design-description').textContent = designDescription(selected);
     $('current-template-name').textContent = selected.name;
     $('canvas-design-label').textContent = selected.name.toUpperCase() + ' / LIVE CANVAS';
     const customized = !colorKeys.every(key => selected[key] === draft[key]) || draft.pattern !== 'auto';
@@ -353,7 +358,7 @@
     document.querySelectorAll('[data-cycle-field]').forEach(button => {
       button.disabled = Array.from($(button.dataset.cycleField).options).filter(option => !option.disabled).length < 2;
     });
-    for (const { button, item } of designButtons) { const active = item.id === draft.design; button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-selected', active); }
+    for (const { button, item, description } of designButtons) { const active = item.id === draft.design; button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-selected', active); description.textContent = designDescription(item); }
     for (const { button, id, artwork } of patternButtons) {
       button.setAttribute('aria-pressed', String(id === draft.pattern));
       if (flowingPatterns.includes(id) && artwork.children[0]) {
@@ -516,13 +521,29 @@
   }
   function syncSizeControls() {
     for (const key of ['width', 'height', 'cardGap']) $(key + '-range').value = draft[key];
-    let composition = draft.design;
-    if (composition === 'custom') { try { composition = core.parseCustomLayout(draft.customLayout).composition; } catch {} }
-    const joined = composition !== 'original';
+    const single = draft.cardFormat === 'single', joined = core.effectiveFormat(draft) === 'single';
     const invalidGap = draft.cardGap === '' || !Number.isInteger(Number(draft.cardGap)) || Number(draft.cardGap) < 0 || Number(draft.cardGap) > 60;
     $('cardGap').disabled = joined && !invalidGap;
     $('cardGap-range').disabled = joined && !invalidGap;
+    $('card-gap-control').hidden = single && !invalidGap;
     $('cardGap-note').textContent = joined ? 'This template already joins the cards.' : 'Set to 0 px to join the two cards.';
+    const widthLabel = single ? (draft.layout === 'stacked' ? 'Card width' : 'Column width') : 'Panel width';
+    const heightLabel = single ? 'Minimum height' : 'Panel height';
+    $('width-label').textContent = widthLabel; $('width').setAttribute('aria-label', widthLabel + ' in pixels');
+    $('height-label').textContent = heightLabel; $('height').setAttribute('aria-label', heightLabel + ' in pixels');
+    $('single-size-note').hidden = !single;
+    $('single-size-note').textContent = draft.layout === 'stacked' ? 'Height grows to fit your details.' : 'Two columns share one card. Height grows to fit your details.';
+    const legacySingle = draft.cardFormat === 'auto' && joined;
+    $('card-format-note').textContent = single ? 'One background, with your details arranged together.' : legacySingle ? 'Your saved template layout is preserved. Choose a format to rearrange it.' : 'Two faces, each with its own background.';
+    document.querySelectorAll('[data-card-format]').forEach(button => {
+      const active = !legacySingle && button.dataset.cardFormat === core.effectiveFormat(draft);
+      button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-active', active);
+    });
+    $('front-background-label').textContent = single ? 'Card background' : 'Name card background';
+    $('frontBackground-hex').setAttribute('aria-label', single ? 'Card background hex code' : 'Name card background hex code');
+    $('back-background-field').hidden = single && /^#[0-9a-f]{6}$/i.test(draft.backBackground);
+    $('swap-colors').hidden = single;
+    $('colors-panel').classList.toggle('is-single-card', single);
     document.querySelectorAll('[data-arrangement]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.arrangement === draft.layout)));
   }
   function save() {
@@ -623,7 +644,9 @@
     $('copy-signature').setAttribute('aria-disabled', String(keys.length > 0));
     if (focus && keys.length) {
       const input = form.elements.namedItem(keys[0]);
-      if (keys[0].startsWith('portrait')) {
+      if (keys[0] === 'cardFormat') {
+        setTab('layout'); $('format-single').focus();
+      } else if (keys[0].startsWith('portrait')) {
         setTab('photo');
         if (keys[0] === 'portraitUrl') portraitControls?.revealLink?.();
         const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-circle' }[keys[0]] || 'portrait-file';
@@ -666,6 +689,7 @@
     fitMiniatures();
   }
   function render() {
+    syncSizeControls();
     if (!validate()) {
       syncLayoutMiniatures();
       announce('Fix the highlighted field to update the preview.', true);
@@ -712,7 +736,6 @@
     } else return;
     preserveUnreadableDraft = false;
     recordEdit(before, input.tagName === 'SELECT' ? undefined : (input.dataset.colorField || (input.id.endsWith('-range') ? input.id.replace('-range', '') : input.name)));
-    syncSizeControls();
     if (iconKeys.includes(input.name)) syncIcons();
     render(); save(); syncThemeState();
   });

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import preview from '../preview-dom.js';
 import core from '../signature-core.js';
 
@@ -79,4 +80,29 @@ test('repeated image URLs keep separate nodes and update each geometry', () => {
   assert.deepEqual(target.images,originals);
   assert.equal(target.images[0].getAttribute('width'),'80');
   assert.equal(target.images[1].getAttribute('width'),'30');
+});
+
+test('switching between explicit Single and front/back formats retains the actual portrait node', () => {
+  // The inline source is distinct from every URL-backed icon or artwork source.
+  const localPhoto='data:image/png;base64,'+readFileSync(new URL('../sig/icon-web.png',import.meta.url)).toString('base64');
+  for(const portrait of [{portraitUrl:url},{portraitUrl:'',portraitData:localPhoto}]) {
+    const source=portrait.portraitData||portrait.portraitUrl;
+    const initial={width:400,height:300,pattern:'none',...portrait};
+    const target=container(render(initial)),photo=target.images.find(image=>image.getAttribute('src')===source);
+    assert.ok(photo,'The unique portrait source is present before switching format');
+    photo.complete=false;photo.naturalWidth=0;
+    for(const changes of [
+      {cardFormat:'single'},
+      {cardFormat:'single',layout:'stacked'},
+      {cardFormat:'single',layout:'stacked',design:'editorial'},
+      {cardFormat:'front-back',layout:'stacked',design:'editorial'},
+      {cardFormat:'front-back',portraitSize:80,portraitShape:'rounded'},
+      {cardFormat:'single',portraitSize:80,portraitShape:'rounded'}
+    ]) {
+      preview.update(target,render({...initial,...changes}));
+      assert.equal(target.images.find(image=>image.getAttribute('src')===source),photo,'Format changes preserve the loaded or pending portrait node');
+      assert.equal(photo.srcWrites,0,'Changing format does not restart its image request');
+      photo.complete=true;photo.naturalWidth=384;
+    }
+  }
 });

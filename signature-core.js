@@ -11,7 +11,7 @@
     subtitle: 'AI & AUTOMATION', website: 'example.com', websiteLabel: 'example.com',
     email: '', phone: '+41 00 000 00 00', linkedin: 'https://www.linkedin.com/',
     location: 'Zurich, Switzerland', tags: 'SOFTWARE · DATA · AI',
-    width: 321, height: 208, cardGap: 20, layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
+    width: 321, height: 208, cardGap: 20, cardFormat: 'auto', layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
     artworkPlacement: 'auto', artworkScale: 100, artworkPositionX: 50, artworkPositionY: 50,
     motifScale: 100, motifPositionX: 50, motifPositionY: 0,
     portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64,
@@ -115,13 +115,23 @@
     return result;
   }
   function canvasSize(v) {
+    if (v.cardFormat === 'single') {
+      var composed = v;
+      try { composed = compositionValues(v); } catch (_) { /* Incomplete custom drafts remain measurable. */ }
+      var single = singlePlan(composed);
+      return {width:single.W,height:single.H};
+    }
     // Joined compositions use their original canvas dimensions; only Original
     // has two separate cards and therefore a physical inter-card gap.
-    var gap = v.design === 'original' ? v.cardGap : defaults.cardGap;
+    var gap = v.cardFormat === 'front-back' || v.design === 'original' ? v.cardGap : defaults.cardGap;
     return {width:v.layout === 'stacked' ? v.width : v.width * 2 + gap,
       height:v.layout === 'stacked' ? v.height * 2 + gap : v.height};
   }
   function dimensions(values) { return canvasSize(normalize(values)); }
+  function effectiveFormat(values) {
+    var v = normalize(values);
+    return v.cardFormat === 'auto' ? (v.design === 'original' ? 'front-back' : 'single') : v.cardFormat;
+  }
   function webURL(value) {
     if (!value || /[\s\\<>"'\u0000-\u001f\u007f]/.test(value)) return null;
     var candidate = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : 'https://' + value;
@@ -299,14 +309,17 @@
   }
   function plan(v) {
     v = compositionValues(v);
-    if (v.design !== 'original') return designPlan(v);
+    if (v.cardFormat === 'single') return singlePlan(v);
+    if (v.design !== 'original' && v.cardFormat !== 'front-back') return designPlan(v);
     var pad = Math.round(18 + (v.width - 280) * 0.1), top = v.height < 200 ? 18 : 22;
     var dotH = Math.min(v.height - 26, 182), dotW = Math.round(dotH * 76 / 182);
     if (selectedPattern(v) === 'none' || isFlow(v)) dotW = 0;
     if (hasPortrait(v)) dotW = Math.max(dotW, v.portraitSize);
     var right = 11, gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
     var matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
-    var nameFont = Math.min(24, 22 * v.width / 321), longest = Math.max(units(v.nameLine1), units(v.nameLine2), 1);
+    var typography = nameTypography(v), styledFace = v.cardFormat === 'front-back' && v.design !== 'original';
+    var nameFont = styledFace ? typography.size : Math.min(24, 22 * v.width / 321);
+    var longest = Math.max(units(v.nameLine1,styledFace && typography.fixed), units(v.nameLine2,styledFace && typography.fixed), 1) * (styledFace && typography.serif ? 1.12 : 1);
     nameFont = Math.min(nameFont, (contentW - 2) / longest);
     var nameLine = Math.ceil(nameFont * 1.12), titleFont = 9, subFont = 9;
     var titleLines = wrap(v.title, contentW, titleFont, true, 0.73);
@@ -330,11 +343,64 @@
     var contactH = rows.reduce(function (sum, row) { return sum + row.lines.length * 14; }, 0) + Math.max(0, rows.length - 1) * rowGap;
     var tagH = tagLines.length ? 12 + 1 + 8 + tagLines.length * 11 : 0;
     var backSpace = v.height - top * 2 - square - contactH - tagH - matPad * 2;
-    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true)));
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,styledFace && typography.fixed,0,styledFace && typography.serif ? 1.12 : 1),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true)));
     var groupW = Math.min(innerW - matPad * 2,Math.max(lineWidth(tagLines,8.5,true),Math.max.apply(null,rows.map(function (row) { return 39 + lineWidth(row.lines,contactFont,true); }).concat(0))));
     return {pad:pad,top:top,dotH:dotH,dotW:dotW,right:right,gap:gap,textW:textW,nameFont:nameFont,
       nameLine:nameLine,names:names,square:square,titleLines:titleLines,subLines:subLines,frontSpace:frontSpace,
       innerW:innerW,contactW:contactW,contactFont:contactFont,rows:rows,rowGap:rowGap,tagLines:tagLines,backSpace:backSpace,matPad:matPad,identityW:identityW,groupW:groupW};
+  }
+  function nameTypography(v) {
+    var font = v.customFont || (v.design === 'editorial' ? 'serif' : v.design === 'signal' ? 'mono' : 'sans');
+    return {family:font === 'serif' ? 'Georgia,Times,serif' : font === 'mono' ? mono : sans,
+      fixed:font === 'mono',serif:font === 'serif',weight:font === 'serif' ? 400 : 600,
+      size:v.design === 'original' ? Math.min(24,22 * v.width / 321) : v.design === 'editorial' ? 34 : v.design === 'studio' ? 32 : 30};
+  }
+  // Single cards measure complete content groups instead of joining two fixed
+  // faces. This plan never calls canvasSize, so dimensions can share it safely.
+  function singlePlan(v) {
+    var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2;
+    var frame = v.design === 'signal' ? 4 : 0, rail = v.design === 'studio' ? 14 : 0;
+    var pad = v.width < 300 ? 18 : 22, bodyW = W - frame * 2 - rail, innerW = bodyW - pad * 2;
+    var sectionGap = tall ? 18 : 24, idW = tall ? innerW : Math.floor((innerW - sectionGap) * .5);
+    var contactPanelW = tall ? innerW : innerW - idW - sectionGap;
+    var motif = selectedPattern(v) !== 'none' && !isFlow(v);
+    var dotW = motif ? 76 : 0, dotH = motif ? Math.min(160,v.height - 26) : 0;
+    if (hasPortrait(v)) { dotW = Math.max(dotW,v.portraitSize); dotH = Math.max(dotH,v.portraitSize); }
+    var gap = dotW ? 14 : 0, textW = idW - dotW - gap, matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
+    var typography = nameTypography(v), names = [v.nameLine1,v.nameLine2].filter(Boolean);
+    var longest = Math.max.apply(null,names.map(function (name) { return units(name,typography.fixed); }).concat(1)) * (typography.serif ? 1.12 : 1);
+    var nameFont = Math.min(typography.size,(contentW - 2) / longest), nameLine = Math.ceil(nameFont * 1.12);
+    var titleLines = wrap(v.title,contentW - 2,9,true,.73), subLines = wrap(v.subtitle,contentW - 2,9,true);
+    var textH = names.length * nameLine + (titleLines.length ? 7 + titleLines.length * 11 : 0) + (subLines.length ? 11 + subLines.length * 12 : 0) + matPad * 2;
+    var brandH = frame || rail ? 0 : v.design === 'original' ? 17 : v.design === 'orbit' ? 3 : 2;
+    var brandW = v.design === 'original' ? 17 : v.design === 'editorial' ? 42 : 28, brandGap = brandH ? 14 : 0;
+    dotH = Math.min(dotH,Math.max(hasPortrait(v) ? v.portraitSize : 0,brandH + brandGap + textH));
+    var identityH = Math.max(brandH + brandGap + textH,dotH);
+    var contactW = contactPanelW - 39 - matPad * 2, contactFont = 10.5, rowGap = 6, labelH = v.design === 'signal' ? 10 : 0;
+    var rows = [];
+    function add(key,label,text,href) {
+      if (text) rows.push({key:key,label:label,icon:v[key + 'Icon'],lines:wrap(text,contactW - 2,contactFont,true),href:href});
+    }
+    add('website','Website',v.website && (v.websiteLabel || linkLabel(v.website)),webURL(v.website));
+    add('email','Email',v.email,'mailto:' + encodeURIComponent(v.email).replace(/%40/g,'@'));
+    add('phone','Phone',v.phone,phoneHref(v.phone));
+    add('linkedin','LinkedIn',v.linkedin && linkLabel(v.linkedin),webURL(v.linkedin));
+    add('location','Location',v.location,'');
+    var tagLines = wrap(v.tags,contactPanelW - matPad * 2,8.5,true);
+    var contactH = rows.reduce(function (sum,row) { return sum + row.lines.length * 14 + labelH; },0) + Math.max(0,rows.length - 1) * rowGap;
+    var tagSpace = v.design === 'original' ? (rows.length ? 12 : 0) + 1 + 8 : (rows.length ? 14 : 0);
+    contactH += tagLines.length ? tagSpace + tagLines.length * 11 : 0;
+    if (rows.length || tagLines.length) contactH += matPad * 2;
+    var hasContacts = contactH > 0, groupH = tall ? identityH + (hasContacts ? sectionGap + contactH : 0) : Math.max(identityH,contactH);
+    var H = Math.max(v.height,Math.ceil(groupH + pad * 2 + frame * 2));
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,typography.fixed,0,typography.serif ? 1.12 : 1),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true)));
+    var groupW = Math.min(contactPanelW - matPad * 2,Math.max(lineWidth(tagLines,8.5,true),Math.max.apply(null,rows.map(function (row) {return 39 + Math.max(lineWidth(row.lines,contactFont,true),labelH ? lineWidth([row.label.toUpperCase()],7.5,true) : 0);}).concat(0))));
+    return {single:true,tall:tall,W:W,H:H,frame:frame,rail:rail,pad:pad,bodyW:bodyW,bodyH:H - frame * 2,innerW:innerW,
+      idW:idW,contactPanelW:contactPanelW,sectionGap:sectionGap,textW:textW,matPad:matPad,dotW:dotW,dotH:dotH,gap:gap,
+      typography:typography,names:names,nameFont:nameFont,nameLine:nameLine,titleLines:titleLines,subLines:subLines,
+      brandW:brandW,brandH:brandH,brandGap:brandGap,identityH:identityH,identityW:identityW,
+      rows:rows,contactW:contactW,contactFont:contactFont,rowGap:rowGap,labelH:labelH,tagLines:tagLines,contactH:contactH,groupW:groupW,
+      hasContacts:hasContacts,frontSpace:0,backSpace:0};
   }
   // Every design uses this measured plan for both validation and rendering.
   // Fixed line breaks keep email clients from stretching the declared cards.
@@ -439,6 +505,7 @@
       if (!/^#[0-9a-f]{6}$/i.test(v[key])) errors[key] = 'Use a six-digit hex color, such as #c8362a.';
     });
     if (v.layout !== 'paired' && v.layout !== 'stacked') errors.layout = 'Choose paired or stacked.';
+    if (!['auto','single','front-back'].includes(v.cardFormat)) errors.cardFormat = 'Choose Single card or Front & back.';
     if (v.design !== 'custom' && !designs.some(function (design) { return design.id === v.design; })) errors.design = 'Choose an available design.';
     if (!Object.prototype.hasOwnProperty.call(patterns, v.pattern)) errors.pattern = 'Choose an available pattern or None.';
     if (!['auto','motif','flow'].includes(v.artworkPlacement)) errors.artworkPlacement = 'Choose automatic, motif or flowing artwork.';
@@ -471,7 +538,8 @@
     if (p.subLines.length > 2) errors.subtitle = 'Shorten the subtitle to fit two lines at this width.';
     p.rows.forEach(function (row) { if (row.lines.length > 2) errors[row.key] = 'Shorten this text to fit two lines at this width.'; });
     if (p.tagLines.length > 2) errors.tags = 'Shorten the tags to fit two lines at this width.';
-    if (p.frontSpace < (v.design === 'original' && !isFlow(v) ? 10 : 0) || p.backSpace < (v.design === 'original' && !isFlow(v) ? 10 : 0)) errors.height = 'Increase the card height or shorten the text to keep everything readable.';
+    var minimumSpace = v.cardFormat !== 'single' && (v.design === 'original' || v.cardFormat === 'front-back') && !isFlow(v) ? 10 : 0;
+    if (p.frontSpace < minimumSpace || p.backSpace < minimumSpace) errors.height = 'Increase the card height or shorten the text to keep everything readable.';
     if (!Object.keys(errors).length && renderUnchecked(v).length >= 10000) {
       errors[v.pattern === 'custom' ? 'customPattern' : 'website'] = v.pattern === 'custom' ? 'Simplify the custom artwork or shorten URLs to keep the email under 10,000 HTML characters.' : 'Shorten the URLs to keep the HTML under 10,000 characters.';
     }
@@ -694,6 +762,49 @@
     return table(p.W,p.H,output,p.frame ? v.accent : v.frontBackground);
   }
 
+  function renderSingle(v, p, assetBase, options) {
+    var background = v.frontBackground, ink = readable(background,black), quiet = readable(background,'#5a5651');
+    var flow = isFlow(v), surface = flowSurface(v,assetBase);
+    function cell(width,html,style) { return '<td width="' + width + '" valign="top" style="padding:0;vertical-align:top' + (style ? ';' + style : '') + '">' + html + '</td>'; }
+    var names = textRow(p.names,Math.floor(p.nameFont * 10) / 10,p.nameLine,ink,p.typography.family,p.typography.weight);
+    var title = p.titleLines.length ? spacer(7) + textRow(p.titleLines,9,11,readable(background,v.accent),roleMono,400,.73) : '';
+    var subtitle = p.subLines.length ? textRow(p.subLines,9,12,quiet,mono,400) : '';
+    var identityRows = v.design === 'prism' || v.design === 'signal' ? subtitle + (subtitle ? spacer(11) : '') + names + title : names + title + (subtitle ? spacer(11) + subtitle : '');
+    var centered = v.customAlign ? v.customAlign === 'center' : v.design === 'contour';
+    if (centered) identityRows = identityRows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
+    var mat = flow ? informationMat(p.identityW,identityRows,background,p.matPad) : '';
+    if (centered && mat) mat = mat.replace('<table ','<table align="center" ');
+    var identity = flow ? '<tr><td style="padding:0">' + mat + '</td></tr>' : identityRows;
+    if (p.brandH) identity = ruleRow(p.brandW,p.brandH,v.accent) + spacer(p.brandGap) + identity;
+    var text = cell(p.textW,table(p.textW,0,identity));
+    var art = p.dotW ? cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options))) : '';
+    var identityContent = v.design === 'orbit' || v.design === 'studio' ? art + (art ? blankCol(p.gap) : '') + text : text + (art ? blankCol(p.gap) : '') + art;
+    var identityTable = table(p.idW,0,'<tr>' + identityContent + '</tr>');
+    var contacts = p.rows.map(function (row,index) {
+      var bottom = index === p.rows.length - 1 ? 0 : p.rowGap, label = row.lines.map(escape).join('<br>');
+      if (row.href) label = '<a href="' + escape(row.href) + '" style="color:' + ink + ';text-decoration:none">' + label + '</a>';
+      if (p.labelH) label = '<span style="display:block;font-size:7.5px;line-height:10px;color:' + quiet + '">' + row.label.toUpperCase() + '</span>' + label;
+      var icon = row.icon === 'none' ? '' : '<img src="' + escape(assetBase + '/' + iconFile(row.icon,background)) + '" width="14" height="14" alt="' + row.label + '" style="display:block;width:14px;height:14px;border:0">';
+      return '<tr><td width="28" valign="top" style="padding:' + p.labelH + 'px 0 ' + bottom + 'px;font-size:0;line-height:0">' + icon +
+        '</td><td width="1" style="padding:0;background-color:' + quiet + ';font-size:0;line-height:0">&nbsp;</td>' + blankCol(10) +
+        '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + mono + ';font-size:' + p.contactFont + 'px;line-height:14px;color:' + ink + ';white-space:nowrap">' + label + '</td></tr>';
+    }).join('');
+    var contactRows = contacts ? '<tr><td style="padding:0">' + table(flow ? p.groupW : p.contactPanelW,0,contacts) + '</td></tr>' : '';
+    if (p.tagLines.length) contactRows += (v.design === 'original'
+      ? (contacts ? spacer(12) : '') + ruleRow(flow ? p.groupW : p.contactPanelW,1,v.accent) + spacer(8)
+      : (contacts ? spacer(14) : '')) + textRow(p.tagLines,8.5,11,quiet,mono);
+    var contactTable = flow ? informationMat(p.groupW,contactRows,background,p.matPad) : table(p.contactPanelW,0,contactRows);
+    var groupRows = p.tall ? '<tr>' + cell(p.innerW,identityTable) + '</tr>' + (p.hasContacts ? spacer(p.sectionGap) + '<tr>' + cell(p.innerW,contactTable) + '</tr>' : '') :
+      '<tr>' + cell(p.idW,identityTable) + blankCol(p.sectionGap) + cell(p.contactPanelW,p.hasContacts ? contactTable : '') + '</tr>';
+    var body = surface(p.bodyW,p.bodyH,'<tr><td width="' + p.innerW + '" valign="top" style="padding:' + p.pad + 'px;vertical-align:top">' + table(p.innerW,0,groupRows) + '</td></tr>',background,p.frame + p.rail,p.frame);
+    if (p.frame) {
+      var edge = '<tr>' + blankCol(p.frame).replace('style="','height="' + p.frame + '" style="height:' + p.frame + 'px;') + blankCol(p.bodyW) + blankCol(p.frame) + '</tr>';
+      return table(p.W,p.H,edge + '<tr>' + blankCol(p.frame) + cell(p.bodyW,body) + blankCol(p.frame) + '</tr>' + edge,v.accent);
+    }
+    if (p.rail) return table(p.W,p.H,'<tr>' + cell(p.rail,'','background-color:' + v.accent) + cell(p.bodyW,body) + '</tr>',background);
+    return body;
+  }
+
   function renderUnchecked(v, options) {
     v = compositionValues(v);
     var p = plan(v), assetBase = webURL(v.imageBase).replace(/\/+$/, '');
@@ -712,16 +823,25 @@
     // All tables already declare zero cellspacing, cellpadding and borders.
     // The duplicate collapse rule buys no extra geometry here; removing it in
     // Flow leaves room for the decorative surface URLs inside Gmail's budget.
-    if (v.design !== 'original') {
+    if (v.cardFormat === 'single') {
+      var single = renderSingle(v,p,assetBase,options);
+      return isFlow(v) ? single.replace(/border-collapse:collapse;/g,'') : single;
+    }
+    if (v.design !== 'original' && v.cardFormat !== 'front-back') {
       var designed = renderDesign(v, p, assetBase, options);
       return isFlow(v) ? designed.replace(/border-collapse:collapse;/g,'') : designed;
     }
     var flow = isFlow(v), surface = flowSurface(v,assetBase);
-    var identityRows = textRow(p.names, Math.floor(p.nameFont * 10) / 10, p.nameLine, frontText, sans, 600);
+    var faceTypography = v.cardFormat === 'front-back' ? nameTypography(v) : {family:sans,weight:600};
+    var identityRows = textRow(p.names, Math.floor(p.nameFont * 10) / 10, p.nameLine, frontText, faceTypography.family, faceTypography.weight);
     if (p.titleLines.length) identityRows += spacer(7) + textRow(p.titleLines, 9, 11, titleColor, roleMono, 400, 0.73);
     if (p.subLines.length) identityRows += spacer(11) + textRow(p.subLines, 9, 12, frontMuted, mono);
+    var centeredFace = v.cardFormat === 'front-back' && (v.customAlign ? v.customAlign === 'center' : v.design === 'contour');
+    if (centeredFace) identityRows = identityRows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
+    var faceMat = flow ? informationMat(p.identityW,identityRows,v.frontBackground,p.matPad) : '';
+    if (centeredFace && faceMat) faceMat = faceMat.replace('<table ','<table align="center" ');
     var frontRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>' +
-      spacer(Math.min(Math.round(v.height * 0.19), p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + informationMat(p.identityW,identityRows,v.frontBackground,p.matPad) + '</td></tr>' : identityRows);
+      spacer(Math.min(Math.round(v.height * 0.19), p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + faceMat + '</td></tr>' : identityRows);
     var dots = spacer(13) + '<tr><td style="padding:0;font-size:0;line-height:0"><img src="' + escape(assetBase + '/dots.png') +
       '" width="' + p.dotW + '" height="' + p.dotH + '" alt="" style="display:block;width:' + p.dotW + 'px;height:' + p.dotH + 'px;border:0"></td></tr>';
     if (selectedPattern(v) !== 'dots' || hasPortrait(v)) dots = spacer(13) + decoration(v, p, assetBase, options);
@@ -771,5 +891,5 @@
     if (v.tags) lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, validate:validate, render:render, plainText:plainText});
+  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, plainText:plainText});
 }));
