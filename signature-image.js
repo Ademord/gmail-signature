@@ -38,6 +38,35 @@
       img.src = url;
     });
   }
+  // Split generated CSS layers without splitting color stops or quoted URLs.
+  // Keeping this small allowlist means export cannot silently lose unsupported
+  // image functions while reporting that the signature was rendered correctly.
+  function backgroundLayers(value) {
+    var layers = [], start = 0, depth = 0, quote = '', escaped = false;
+    function invalid() { throw new Error('This artwork background could not be embedded.'); }
+    for (var i = 0; i < value.length; i++) {
+      var character = value[i];
+      if (escaped) { escaped = false; continue; }
+      if (quote) {
+        if (character === '\\') escaped = true;
+        else if (character === quote) quote = '';
+      } else if (character === '"' || character === "'") quote = character;
+      else if (character === '(') depth++;
+      else if (character === ')') { if (--depth < 0) invalid(); }
+      else if (character === ',' && !depth) { layers.push(value.slice(start,i).trim()); start = i + 1; }
+    }
+    if (quote || depth || escaped) invalid();
+    layers.push(value.slice(start).trim());
+    return layers.map(function (layer) {
+      var url = layer.match(/^url\((["']?)(.*?)\1\)$/);
+      if (url && url[2] && !/[\r\n\\]/.test(url[2])) return { source: url[2] };
+      // The renderer emits only solid washes or cell gradients, using CSS color
+      // tokens and numeric positions. Other image functions need explicit support.
+      if (/^linear-gradient\([a-z\d#%+.,()\s-]+\)$/i.test(layer) &&
+        (layer.match(/[a-z-]+\s*\(/gi) || []).every(function (name) { return /^(?:linear-gradient|rgb|rgba)\s*\($/i.test(name); })) return { css: layer };
+      invalid();
+    });
+  }
   async function render(values, options) {
     options = options || {};
     var scale = options.scale === undefined ? 4 : options.scale;
@@ -85,10 +114,12 @@
     var backgroundWork = Array.from(element.querySelectorAll('[style]')).map(async function (surface) {
       var backgroundImage = surface.style && surface.style.backgroundImage;
       if (!backgroundImage || /^(none|initial|inherit|unset|revert|revert-layer)$/.test(backgroundImage)) return;
-      var match = backgroundImage.match(/^url\((["']?)(.*?)\1\)$/);
-      if (!match) throw new Error('This artwork background could not be embedded.');
-      var source = new URL(match[2], element.baseURI || document.baseURI).href;
-      surface.style.backgroundImage = 'url("' + await embeddedAsset(source) + '")';
+      var layers = await Promise.all(backgroundLayers(backgroundImage).map(async function (layer) {
+        if (layer.css) return layer.css;
+        var source = new URL(layer.source, element.baseURI || document.baseURI).href;
+        return 'url("' + await embeddedAsset(source) + '")';
+      }));
+      surface.style.backgroundImage = layers.join(', ');
     });
     var fallbackWork = Array.from(element.querySelectorAll('[background]')).map(async function (surface) {
       if (!surface.getAttribute) return;

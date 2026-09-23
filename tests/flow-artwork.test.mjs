@@ -188,7 +188,7 @@ test('flow text and links remain readable when decorative backgrounds are omitte
 });
 
 test('flow bounds and unsupported combinations fail explicitly rather than silently changing user choices',()=>{
-  for(const [key,min,max] of [['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100]]) {
+  for(const [key,min,max] of [['artworkScale',25,400],['artworkPositionX',0,100],['artworkPositionY',0,100]]) {
     for(const value of [min-1,max+1,1.5,NaN,Infinity,'',null,true,{},[]]) {
       const candidate=draft({pattern:'gesture',[key]:value});
       assert.ok(core.validate(candidate)[key],key+' rejects '+String(value));
@@ -252,8 +252,8 @@ test('the real public server delivers all twelve flow images as their exact revi
   }
 });
 
-test('40-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
-  assert.equal(Object.keys(core.defaults).length,40);
+test('41-field sessions keep flow settings in the design import group and migrate older drafts',()=>{
+  assert.equal(Object.keys(core.defaults).length,41);
   for(const key of fields) {assert.ok(codec.designFields.includes(key),key);assert.ok(!codec.informationFields.includes(key),key);}
   const current={draft:draft({nameLine1:'Current',pattern:'gesture',artworkPlacement:'motif',artworkScale:75,artworkPositionX:2,artworkPositionY:4}),themes:[],ui:{}};
   const incoming={draft:draft({nameLine1:'Incoming',pattern:'overprint',artworkPlacement:'flow',artworkScale:150,artworkPositionX:97,artworkPositionY:81}),themes:[],ui:{}};
@@ -285,7 +285,7 @@ test('AI artwork controls enforce section boundaries, bounds, stale previews and
     const json=JSON.stringify({format:'signature-ai',version:1,section:'colors',name:'Wrong section',changes:{[key]:changes[key]}});
     assert.throws(()=>ai.createProposal(json,{section:'colors',draft:before}),/Unsupported changes/);
   }
-  for(const [key,values] of [['artworkScale',[74,151,'100',100.5]],['artworkPositionX',[-1,101,'50']],['artworkPositionY',[-1,101,null]]])
+  for(const [key,values] of [['artworkScale',[24,401,'100',100.5]],['artworkPositionX',[-1,101,'50']],['artworkPositionY',[-1,101,null]]])
     for(const value of values) assert.throws(()=>ai.createProposal(envelope({[key]:value}),{section:'artwork',draft:before}),/whole number/);
   assert.throws(()=>ai.createProposal(envelope({pattern:'custom',customPattern:recipe}),{section:'artwork',draft:before}),/Flow|flow|abstract/);
   const custom=ai.createProposal(envelope({pattern:'custom',customPattern:recipe,artworkPlacement:'motif'}),{section:'artwork',draft:before});

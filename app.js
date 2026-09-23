@@ -45,7 +45,7 @@
   // Fresh drafts use the new palette; legacy normalization keeps its original defaults.
   const newDraft = () => ({...core.defaults,...Object.fromEntries(colorKeys.map(key => [key,plumPalette[key]]))});
   const flowingPatterns = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
-  const artworkNumbers = ['artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
+  const artworkNumbers = ['artworkScale','artworkOpacity','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
   const hexColor = /^#[0-9a-f]{6}$/i;
   const presets = [
     { id: 'preset-original', name: 'Original', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -328,23 +328,25 @@
   function syncStudio() {
     const selected = designById(draft.design);
     if (!selected) return;
-    const canFlow = flowingPatterns.includes(draft.pattern), isFlow = canFlow && draft.artworkPlacement !== 'motif';
+    const canFlow = flowingPatterns.includes(draft.pattern), isBackground = draft.artworkPlacement === 'background';
+    const isFlow = core.resolveArtworkPlacement(draft) === 'flow', isSurface = isFlow || isBackground;
     $('artwork-flow-option').disabled = !canFlow;
     $('artworkPlacement').value = draft.artworkPlacement;
-    $('artwork-placement-field').hidden = !canFlow;
-    $('artwork-flow-settings').hidden = !isFlow;
-    const motif = core.motifBounds(draft), hasMotif = !isFlow && motif.width > 0 && motif.height > 0;
+    $('artwork-placement-field').hidden = draft.pattern === 'none';
+    $('artwork-flow-settings').hidden = !isSurface || draft.pattern === 'none';
+    $('artwork-opacity-field').hidden = !isBackground;
+    $('artwork-layer-note').textContent = isBackground ? 'Artwork sits behind your details and photo. The card edges crop it.' : 'Only the artwork changes. Your photo stays in place.';
+    const motif = core.motifBounds(draft), hasMotif = !isSurface && motif.width > 0 && motif.height > 0;
     $('artwork-motif-settings').hidden = !hasMotif;
     $('motifPositionX').disabled = !hasMotif || motif.availableWidth - motif.width < 1;
     $('motifPositionY').disabled = !hasMotif || motif.availableHeight - motif.height < 1;
     $('motif-position-note').hidden = !hasMotif || (!$('motifPositionX').disabled && !$('motifPositionY').disabled);
-    const tallArt = draft.layout === 'stacked', {width: canvasW, height: canvasH} = core.dimensions(draft);
-    const artW = tallArt ? 420 : 860, artH = tallArt ? 660 : 320, artScale = Math.max(canvasW / artW, canvasH / artH) * draft.artworkScale / 100;
-    $('artworkPositionX').disabled = Math.abs(canvasW - artW * artScale) < 0.01;
-    $('artworkPositionY').disabled = Math.abs(canvasH - artH * artScale) < 0.01;
-    $('artwork-position-note').hidden = !isFlow || (!$('artworkPositionX').disabled && !$('artworkPositionY').disabled);
-    $('pattern-note').textContent = isFlow ? 'Adjust the artwork across your signature.' : draft.pattern === 'none' ? 'Choose artwork above to start adjusting.' : !hasMotif ? 'Your photo fills the artwork space. Reduce the photo size to show artwork alongside it.' : 'Resize and move the artwork within its side area.';
-    $('pattern-note').hidden = isFlow || hasMotif;
+    const bounds = core.artworkBounds(draft);
+    $('artworkPositionX').disabled = Math.abs(bounds.availableWidth - bounds.width) < 0.01;
+    $('artworkPositionY').disabled = Math.abs(bounds.availableHeight - bounds.height) < 0.01;
+    $('artwork-position-note').hidden = !isSurface || (!$('artworkPositionX').disabled && !$('artworkPositionY').disabled);
+    $('pattern-note').textContent = draft.pattern === 'none' ? 'Choose artwork above to start adjusting.' : !hasMotif ? 'Choose Behind content to give the artwork its own space, independent of your photo.' : 'Resize and move the artwork within its side area.';
+    $('pattern-note').hidden = isSurface || hasMotif;
     for (const button of document.querySelectorAll('[data-edit-artwork]')) button.textContent = draft.pattern === 'custom' ? 'Edit your drawing' : 'Draw your own';
     for (const key of artworkNumbers) $(key + '-value').textContent = draft[key] + '%';
     $('design-description').textContent = designDescription(selected);
@@ -362,7 +364,7 @@
     for (const { button, id, artwork } of patternButtons) {
       button.setAttribute('aria-pressed', String(id === draft.pattern));
       if (flowingPatterns.includes(id) && artwork.children[0]) {
-        const previewFlow = draft.artworkPlacement !== 'motif';
+        const previewFlow = draft.artworkPlacement === 'auto' || draft.artworkPlacement === 'flow';
         artwork.children[0].src = previewFlow ? 'sig/' + core.flowAsset({...draft,pattern:id}) : patternAsset(id);
         button.classList.toggle('is-flow-wide', previewFlow && draft.layout !== 'stacked');
         button.classList.toggle('is-flow-tall', previewFlow && draft.layout === 'stacked');

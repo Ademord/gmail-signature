@@ -18,7 +18,7 @@ test('design and pattern catalogs are immutable and old 23-field sessions inheri
     assert.equal(typeof d.name,'string');assert.equal(typeof d.description,'string');assert.equal(d.pattern,'auto');
     for(const k of ['accent','frontBackground','backBackground'])assert.match(d[k],/^#[a-f0-9]{6}$/);
   }
-  const old={...core.defaults};for(const key of ['cardFormat','cardGap','design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'])delete old[key];
+  const old={...core.defaults};for(const key of ['cardFormat','cardGap','design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkOpacity','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'])delete old[key];
   assert.equal(Object.keys(old).length,23);
   assert.equal(core.normalize(old).design,'original');assert.equal(core.normalize(old).pattern,'auto');
   assert.equal(core.normalize(old).portraitData,'');assert.equal(core.normalize(old).portraitSize,64);

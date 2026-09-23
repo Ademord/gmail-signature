@@ -93,6 +93,43 @@ test('fields are validated without number coercion, truncation or unsupported en
   assert.throws(()=>parse('details',{title:'W'.repeat(65)}),/too long/);
 });
 
+test('artwork and design proposals accept background placement, expanded zoom and strict opacity bounds only',()=>{
+  for(const section of ['artwork','design']) {
+    for(const artworkScale of [25,100,250,400]) for(const artworkOpacity of [0,35,100]) {
+      const changes={artworkPlacement:'background',artworkScale,artworkOpacity};
+      const current=draft({cardFormat:'single',width:400,height:300,portraitData:photo,portraitUrl:'https://example.com/profile.png'});
+      const proposal=ai.createProposal(envelope(section,changes),{section,draft:current});
+      assert.deepEqual(ai.applyProposal(proposal,current),changes);
+      for(const [key,value] of Object.entries(changes))assert.equal(proposal.candidate[key],value);
+      assert.equal(proposal.candidate.portraitData,photo);assert.equal(proposal.candidate.portraitUrl,current.portraitUrl);
+    }
+    for(const artworkScale of [24,401,1.5,'250',null,true,{},[]]) assert.throws(()=>parse(section,{artworkScale}),/artworkScale must be a whole number from 25 to 400/);
+    for(const artworkOpacity of [-1,101,1.5,'35',null,true,{},[]]) assert.throws(()=>parse(section,{artworkOpacity}),/artworkOpacity must be a whole number from 0 to 100/);
+    for(const artworkPlacement of ['Background','overlay','absolute',false,null,{},[]]) assert.throws(()=>parse(section,{artworkPlacement}),/artworkPlacement/);
+    const prompt=ai.buildPrompt(section,draft({artworkPlacement:'background',artworkScale:250,artworkOpacity:45}));
+    assert.match(prompt,/"artworkPlacement":"background"/);assert.match(prompt,/"artworkScale":250/);assert.match(prompt,/"artworkOpacity":45/);
+    assert.match(prompt,/25–400/);assert.match(prompt,/artworkOpacity.*0–100/);
+    const custom=ai.createProposal(envelope(section,{artworkPlacement:'background',pattern:'custom',customPattern}),{section,draft:core.defaults});
+    assert.equal(custom.candidate.artworkPlacement,'background');assert.match(core.render(custom.candidate),/linear-gradient/);
+  }
+  for(const section of ['layout','colors','details','icons','photo']) {
+    for(const changes of [{artworkPlacement:'background'},{artworkScale:250},{artworkOpacity:45}])assert.throws(()=>parse(section,changes),/Unsupported changes field/);
+  }
+});
+
+test('legacy AI previews default missing opacity to 100 and opacity-only edits invalidate stale proposals',()=>{
+  const legacy=draft();delete legacy.artworkOpacity;
+  const original=structuredClone(legacy),proposal=ai.createProposal(envelope('colors',{accent:'#123456'}),{section:'colors',draft:legacy});
+  assert.equal(proposal.candidate.artworkOpacity,100);
+  assert.deepEqual(ai.applyProposal(proposal,{...legacy,artworkOpacity:100}),{accent:'#123456'});
+  assert.throws(()=>ai.applyProposal(proposal,{...legacy,artworkOpacity:35}),/changed since this preview/);
+  assert.deepEqual(legacy,original);
+  const background=draft({artworkPlacement:'background',artworkScale:250,artworkOpacity:35});
+  const refreshed=ai.createProposal(envelope('artwork',{artworkOpacity:55}),{section:'artwork',draft:background});
+  assert.deepEqual(ai.applyProposal(refreshed,background),{artworkOpacity:55});
+  assert.throws(()=>ai.applyProposal(refreshed,{...background,artworkOpacity:36}),/changed since this preview/);
+});
+
 test('layout and design proposals accept the card gap bounds and document zero correctly',()=>{
   for(const section of ['layout','design']) {
     for(const cardGap of [0,20,60]) {

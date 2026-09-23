@@ -1450,7 +1450,7 @@ test('side, flowing, custom and absent artwork show only useful controls while p
   for(const pattern of ['dots','orbit','studio','contour','prism','editorial','signal','neural','latent','tokenweave','resonance','galaxy','starlight','moonlight','frost','auto']) {
     await app.input('pattern',pattern);
     assert.equal(app.node('artwork-motif-settings').hidden,false,pattern+' exposes side-artwork adjustments');
-    assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-placement-field').hidden,true);
+    assert.equal(app.node('artwork-flow-settings').hidden,true);assert.equal(app.node('artwork-placement-field').hidden,false,'every artwork offers a background placement');
     assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern});
   }
   await app.input('pattern','gesture');
@@ -1467,7 +1467,75 @@ test('side, flowing, custom and absent artwork show only useful controls while p
   await app.click('undo-change');assert.equal(app.node('pattern').value,'custom');assert.equal(app.node('artwork-motif-settings').hidden,false);
   const filled=harness({initialDraft:{...core.defaults,design:'contour',layout:'paired',pattern:'signal',width:280,height:180,portraitSize:96,portraitUrl:'https://example.com/photo.png'}});
   assert.equal(filled.node('artwork-motif-settings').hidden,true,'a photo-occupied slot has no working artwork controls');
-  assert.match(filled.node('pattern-note').textContent,/photo.*fills|photo.*space/i);
+  assert.match(filled.node('pattern-note').textContent,/Behind content.*independent of your photo/i);
+});
+
+test('background artwork zooms beyond its card without changing the photo or card dimensions, and framing survives history and reload',async()=>{
+  const initial={...core.defaults,cardFormat:'single',layout:'stacked',width:400,height:300,pattern:'dots',portraitData:localPortrait,portraitUrl:'https://example.com/profile.png',portraitShape:'rounded',portraitSize:80};
+  const app=harness({initialDraft:initial});
+  assert.equal(app.node('artwork-placement-field').hidden,false);
+  assert.equal(app.node('artwork-opacity-field').hidden,true);
+  await app.input('artworkPlacement','background');await app.finishEdit();
+  const background={...initial,artworkPlacement:'background'};
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),background);
+  assert.equal(app.node('artwork-flow-settings').hidden,false);assert.equal(app.node('artwork-opacity-field').hidden,false);assert.equal(app.node('artwork-motif-settings').hidden,true);
+  assert.equal(app.node('artworkScale').getAttribute('min'),'25');assert.equal(app.node('artworkScale').getAttribute('max'),'400');
+  const dimensions=app.node('dimension-label').textContent,baseline=app.node('signature-preview').innerHTML;
+  const assertPhoto=()=>{
+    const saved=JSON.parse(app.storage.get(storageKey));
+    for(const key of ['portraitData','portraitUrl','portraitShape','portraitSize'])assert.equal(saved[key],initial[key],key+' survives background edits');
+    assert.ok(app.node('signature-preview').innerHTML.includes('src="'+localPortrait+'" width="80" height="80"'),'preview retains the complete local photo source and size');
+    assert.equal(app.node('dimension-label').textContent,dimensions,'artwork zoom and opacity do not resize the card');
+  };
+  await app.input('artworkScale',250);assertPhoto();
+  await app.input('artworkScale',400);await app.finishEdit();assertPhoto();
+  assert.notEqual(app.node('signature-preview').innerHTML,baseline);assert.equal(app.node('artworkScale-value').textContent,'400%');
+  assert.equal(app.node('artworkPositionX').disabled,false);assert.equal(app.node('artworkPositionY').disabled,false);
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),background,'one zoom gesture makes one undo entry');
+  await app.click('redo-change');assert.equal(Number(app.node('artworkScale').value),400);assertPhoto();
+  for(const [key,value] of [['artworkPositionX',0],['artworkPositionY',100],['artworkOpacity',35]]) {
+    const before=app.node('signature-preview').innerHTML;
+    await app.input(key,value);await app.finishEdit();assertPhoto();
+    assert.notEqual(app.node('signature-preview').innerHTML,before,key+' changes the rendered artwork');
+    assert.equal(app.node(key+'-value').textContent,value+'%');
+  }
+  const adjusted={...background,artworkScale:400,artworkPositionX:0,artworkPositionY:100,artworkOpacity:35};
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),adjusted);
+  const reloaded=harness({sharedStorage:app.storage});
+  assert.equal(reloaded.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);
+  assert.equal(reloaded.node('artwork-opacity-field').hidden,false);assert.equal(Number(reloaded.node('artworkOpacity').value),35);
+  await app.input('artworkOpacity',0);await app.finishEdit();assertPhoto();
+  assert.doesNotMatch(app.node('signature-preview').innerHTML,/background-image/,'zero opacity hides decoration only');
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),adjusted);
+});
+
+test('background placement stays selected across built-in, custom and absent artwork without losing framing or photo data',async()=>{
+  const initial={...core.defaults,cardFormat:'single',width:400,height:300,pattern:'dots',artworkPlacement:'background',artworkScale:250,artworkOpacity:55,artworkPositionX:14,artworkPositionY:82,motifScale:65,portraitUrl:'https://example.com/profile.png'};
+  const app=harness({initialDraft:initial});
+  for(const pattern of ['cutpaper','colorfield','chromatic','counterform','overprint','gesture']) {
+    assert.equal(app.node('choose-pattern-'+pattern).children[0].children[0].src,'sig/pattern-'+pattern+'.png','background mode keeps the abstract gallery thumbnail for '+pattern);
+  }
+  for(const pattern of ['auto','signal','gesture','neural','none','dots']) {
+    await app.input('pattern',pattern);await app.finishEdit();
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,pattern});
+    assert.equal(app.node('artworkPlacement').value,'background');
+    assert.equal(app.node('artwork-placement-field').hidden,pattern==='none');
+    assert.equal(app.node('artwork-flow-settings').hidden,pattern==='none');
+    assert.equal(app.node('artwork-motif-settings').hidden,true);
+    assert.ok(app.node('signature-preview').innerHTML.includes(initial.portraitUrl));
+  }
+  const customPattern=JSON.stringify({palette:['#2348c7'],rows:['00..','00..','....','....']});
+  app.artworkSettings.applyChanges({customPattern});
+  const custom={...initial,pattern:'custom',customPattern};
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),custom);
+  assert.equal(app.node('artwork-flow-settings').hidden,false);assert.equal(app.node('artwork-opacity-field').hidden,false);
+  assert.match(app.node('signature-preview').innerHTML,/linear-gradient\(#2348c7,#2348c7\)/);
+  await app.click('undo-change');assert.equal(app.node('pattern').value,'dots');assert.equal(app.node('artworkPlacement').value,'background');
+  await app.click('redo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),custom);
+  await app.input('artworkPlacement','motif');await app.finishEdit();
+  assert.equal(app.node('artwork-opacity-field').hidden,true);assert.equal(app.node('artwork-flow-settings').hidden,true);
+  await app.input('artworkPlacement','background');await app.finishEdit();
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),custom,'returning to the background keeps its framing');
 });
 
 test('editor appearance defaults to red and persists independently of draft colors, exports and undo',async()=>{
