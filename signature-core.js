@@ -11,7 +11,7 @@
     subtitle: 'AI & AUTOMATION', website: 'example.com', websiteLabel: 'example.com',
     email: '', phone: '+41 00 000 00 00', linkedin: 'https://www.linkedin.com/',
     location: 'Zurich, Switzerland', tags: 'SOFTWARE · DATA · AI',
-    width: 321, height: 208, layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
+    width: 321, height: 208, cardGap: 20, layout: 'paired', design: 'original', pattern: 'auto', customPattern: '', customLayout: '', accent: '#c8362a',
     artworkPlacement: 'auto', artworkScale: 100, artworkPositionX: 50, artworkPositionY: 50,
     motifScale: 100, motifPositionX: 50, motifPositionY: 0,
     portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64,
@@ -102,6 +102,7 @@
     });
     result.width = dimension(input.width, defaults.width, 280, 420);
     result.height = dimension(input.height, defaults.height, 180, 320);
+    result.cardGap = dimension(input.cardGap, defaults.cardGap, 0, 60);
     result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 75, 150);
     result.artworkPositionX = dimension(input.artworkPositionX, defaults.artworkPositionX, 0, 100);
     result.artworkPositionY = dimension(input.artworkPositionY, defaults.artworkPositionY, 0, 100);
@@ -113,6 +114,14 @@
     result.imageBase = result.imageBase.replace(/\/+$/, '');
     return result;
   }
+  function canvasSize(v) {
+    // Joined compositions use their original canvas dimensions; only Original
+    // has two separate cards and therefore a physical inter-card gap.
+    var gap = v.design === 'original' ? v.cardGap : defaults.cardGap;
+    return {width:v.layout === 'stacked' ? v.width : v.width * 2 + gap,
+      height:v.layout === 'stacked' ? v.height * 2 + gap : v.height};
+  }
+  function dimensions(values) { return canvasSize(normalize(values)); }
   function webURL(value) {
     if (!value || /[\s\\<>"'\u0000-\u001f\u007f]/.test(value)) return null;
     var candidate = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : 'https://' + value;
@@ -330,7 +339,7 @@
   // Every design uses this measured plan for both validation and rendering.
   // Fixed line breaks keep email clients from stretching the declared cards.
   function designPlan(v) {
-    var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2 + 20, H = tall ? v.height * 2 + 20 : v.height;
+    var tall = v.layout === 'stacked', size = canvasSize(v), W = size.width, H = size.height;
     var pad = H < 220 ? 16 : 22, compact = !tall && H < 220, idPad = tall ? pad : compact ? 8 : 12;
     var cPad = tall ? pad : compact ? (v.design === 'signal' ? 7 : 8) : 12, rowGap = compact ? 4 : 10, gridGap = 18;
     var matPad = isFlow(v) ? 7 : 0;
@@ -412,7 +421,7 @@
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320],['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
+    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',75,150],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
         String(raw).trim() === '' || !Number.isInteger(Number(raw)) || Number(raw) < rule[1] || Number(raw) > rule[2])) {
@@ -483,7 +492,7 @@
   // Only backgrounds are decorative: removing them leaves every text/link intact.
   function flowSurface(v, assetBase) {
     if (!isFlow(v)) return table;
-    var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2 + 20, H = tall ? v.height * 2 + 20 : v.height;
+    var tall = v.layout === 'stacked', size = canvasSize(v), W = size.width, H = size.height;
     var baseW = tall ? 420 : 860, baseH = tall ? 660 : 320;
     var scale = Math.max(W / baseW,H / baseH) * v.artworkScale / 100;
     var imageW = baseW * scale, imageH = baseH * scale;
@@ -596,8 +605,9 @@
   }
   function combineCards(v, front, back) {
     var cell = function (html) { return '<td valign="top" style="padding:0;vertical-align:top">' + html + '</td>'; };
-    return v.layout === 'stacked' ? table(v.width, v.height * 2 + 20, '<tr>' + cell(front) + '</tr>' + spacer(20) + '<tr>' + cell(back) + '</tr>') :
-      table(v.width * 2 + 20, v.height, '<tr>' + cell(front) + blankCol(20) + cell(back) + '</tr>');
+    var size = canvasSize(v);
+    return v.layout === 'stacked' ? table(size.width, size.height, '<tr>' + cell(front) + '</tr>' + (v.cardGap ? spacer(v.cardGap) : '') + '<tr>' + cell(back) + '</tr>') :
+      table(size.width, size.height, '<tr>' + cell(front) + (v.cardGap ? blankCol(v.cardGap) : '') + cell(back) + '</tr>');
   }
   function renderDesign(v, p, assetBase, options) {
     var ink = readable(v.frontBackground,black), muted = readable(v.frontBackground,'#5a5651');
@@ -734,10 +744,11 @@
     if (flow && (backInformation || tagRows)) backRows += spacer(Math.min(21,p.backSpace)) + '<tr><td style="padding:0">' + informationMat(p.groupW,backInformation + tagRows,v.backBackground,p.matPad) + '</td></tr>';
     else if (!flow) backRows += (contacts ? spacer(Math.min(21,p.backSpace)) + backInformation : '') + tagRows;
     var back = surface(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.innerW + '" valign="top" style="padding:0;vertical-align:top">' +
-      table(p.innerW, 0, backRows) + '</td>' + blankCol(p.pad) + '</tr>', v.backBackground,v.layout === 'stacked' ? 0 : v.width + 20,v.layout === 'stacked' ? v.height + 20 : 0);
+      table(p.innerW, 0, backRows) + '</td>' + blankCol(p.pad) + '</tr>', v.backBackground,v.layout === 'stacked' ? 0 : v.width + v.cardGap,v.layout === 'stacked' ? v.height + v.cardGap : 0);
     var cell = function (html) { return '<td valign="top" style="padding:0;vertical-align:top">' + html + '</td>'; };
-    var output = v.layout === 'stacked' ? surface(v.width, v.height * 2 + 20, '<tr>' + cell(front) + '</tr>' + spacer(20) + '<tr>' + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0) :
-      surface(v.width * 2 + 20, v.height, '<tr>' + cell(front) + blankCol(20) + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0);
+    var size = canvasSize(v);
+    var output = v.layout === 'stacked' ? surface(size.width, size.height, '<tr>' + cell(front) + '</tr>' + (v.cardGap ? spacer(v.cardGap) : '') + '<tr>' + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0) :
+      surface(size.width, size.height, '<tr>' + cell(front) + (v.cardGap ? blankCol(v.cardGap) : '') + cell(back) + '</tr>',flow ? v.frontBackground : '',0,0);
     return flow ? output.replace(/border-collapse:collapse;/g,'') : output;
   }
   function render(values, options) {
@@ -760,5 +771,5 @@
     if (v.tags) lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, validate:validate, render:render, plainText:plainText});
+  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, validate:validate, render:render, plainText:plainText});
 }));

@@ -38,6 +38,7 @@ test('artwork, canvas, orientation and photo resizing retain the existing portra
   const target = container(render({})), photo = target.images.find(i=>i.getAttribute('src')===url);
   for (const changes of [
     {motifScale:25}, {motifScale:99,motifPositionY:100}, {width:420,height:320},
+    {cardGap:0}, {cardGap:60}, {layout:'stacked',cardGap:0},
     {layout:'stacked'}, {portraitSize:96,portraitShape:'square'}, {portraitSize:40,portraitShape:'rounded'}
   ]) {
     preview.update(target,render(changes));

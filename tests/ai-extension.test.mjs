@@ -93,6 +93,44 @@ test('fields are validated without number coercion, truncation or unsupported en
   assert.throws(()=>parse('details',{title:'W'.repeat(65)}),/too long/);
 });
 
+test('layout and design proposals accept the card gap bounds and document zero correctly',()=>{
+  for(const section of ['layout','design']) {
+    for(const cardGap of [0,20,60]) {
+      const original=draft(),proposal=ai.createProposal(envelope(section,{cardGap}),{section,draft:original});
+      assert.equal(proposal.candidate.cardGap,cardGap);
+      assert.deepEqual(ai.applyProposal(proposal,original),{cardGap});
+    }
+    for(const cardGap of [-1,61,1.5,'0',null,true,[],{}]) {
+      assert.throws(()=>parse(section,{cardGap}),/cardGap must be a whole number from 0 to 60/);
+    }
+    const prompt=ai.buildPrompt(section,draft({cardGap:0}));
+    assert.match(prompt,/"cardGap":0/);
+    assert.match(prompt,/cardGap is an integer 0–60 pixels/);
+    assert.match(prompt,/width\*2\+cardGap/); assert.match(prompt,/height\*2\+cardGap/);
+    assert.match(prompt,/cardGap affects only the Original two-card composition/);
+    assert.match(prompt,/Other compositions already join their content/);
+  }
+  for(const section of ['artwork','colors','details','icons','photo']) {
+    assert.throws(()=>parse(section,{cardGap:0}),/Unsupported changes field: cardGap/);
+  }
+});
+
+test('older proposals preserve a missing gap as 20 and gap-only changes invalidate stale previews',()=>{
+  const legacy=draft(); delete legacy.cardGap;
+  const original=structuredClone(legacy);
+  const proposal=ai.createProposal(envelope('layout',{layout:'stacked'}),{section:'layout',draft:legacy});
+  assert.equal(proposal.version,1); assert.equal(proposal.candidate.cardGap,20);
+  assert.deepEqual(ai.applyProposal(proposal,{...legacy,cardGap:20}),{layout:'stacked'});
+  assert.deepEqual(legacy,original);
+  for(const cardGap of [0,60]) {
+    assert.throws(()=>ai.applyProposal(proposal,{...legacy,cardGap}),/changed since this preview/);
+    const refreshed=ai.createProposal(envelope('colors',{accent:'#123456'}),{section:'colors',draft:{...legacy,cardGap}});
+    assert.equal(refreshed.candidate.cardGap,cardGap);
+    assert.deepEqual(ai.applyProposal(refreshed,{...legacy,cardGap}),{accent:'#123456'});
+    assert.throws(()=>ai.applyProposal(refreshed,{...legacy,cardGap:20}),/changed since this preview/);
+  }
+});
+
 test('custom recipes are parsed strictly and stored in session-compatible JSON strings',()=>{
   const p=parse('design',{design:'custom',customLayout,pattern:'custom',customPattern});
   assert.equal(typeof p.changes.customPattern,'string');assert.equal(typeof p.changes.customLayout,'string');

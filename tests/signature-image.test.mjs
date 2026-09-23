@@ -12,6 +12,17 @@ test('PNG resolutions use full signature dimensions, independent of preview scal
   }
 });
 
+test('PNG dimensions include the selected Original gap at every resolution and orientation',()=>{
+  for (const cardGap of [0,20,60]) for (const layout of ['paired','stacked']) for (const scale of [2,4,6]) {
+    const v={...core.defaults,cardGap,layout,width:340,height:230};
+    const width=layout==='paired'?680+cardGap:340,height=layout==='stacked'?460+cardGap:230;
+    assert.deepEqual(image.dimensions(v,scale),{width:width*scale,height:height*scale,logicalWidth:width,logicalHeight:height});
+  }
+  for (const cardGap of [-1,61,1.5,NaN,Infinity,null,'']) assert.throws(()=>image.dimensions({...core.defaults,cardGap},4));
+  const legacy={...core.defaults};delete legacy.cardGap;
+  assert.deepEqual(image.dimensions(legacy,4),image.dimensions(core.defaults,4));
+});
+
 test('invalid or unbounded PNG requests fail before touching browser rendering APIs',async()=>{
   for (const scale of [0,-1,1,3,100,Infinity,'4']) assert.throws(()=>image.dimensions(core.defaults,scale));
   await assert.rejects(image.render({...core.defaults,height:999}),/highlighted/);

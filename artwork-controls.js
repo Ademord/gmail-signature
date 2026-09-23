@@ -93,7 +93,7 @@
     }
     function fitPreview() {
       if (!proposal || !dialog.open) return;
-      const draft = proposal.candidate, width = draft.layout === 'paired' ? draft.width * 2 + 20 : draft.width, height = draft.layout === 'paired' ? draft.height : draft.height * 2 + 20;
+      const draft = proposal.candidate, {width, height} = core.dimensions(draft);
       const scale = Math.min(1,Math.max(1,$('art-preview-stage').clientWidth) / width);
       $('art-preview').style.width = width + 'px'; $('art-preview').style.height = height + 'px'; $('art-preview').style.transform = 'scale(' + scale + ')'; $('art-preview-stage').style.height = height * scale + 'px';
     }

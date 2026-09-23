@@ -31,6 +31,21 @@ test('selected import validates the merged fit and can repair an invalid current
   const source=example({nameLine1:'MMMMMMMMMMMMMMMMMMMM',nameLine2:'MMMMMMMMMMMMMMM',width:420,height:320});
   assert.throws(()=>codec.selectParts(source,example({width:280,height:180}),{information:true,design:false}),/name|width|fit|shorter/i);
 });
+
+test('card gap belongs to Design and zero survives selective import',()=>{
+  const current=example({cardGap:44,nameLine1:'Casey'});
+  const incoming=example({cardGap:0,nameLine1:'Jordan'});
+  assert.equal(codec.selectParts(incoming,current,{information:true,design:false}).draft.cardGap,44);
+  for(const information of [false,true]) {
+    const restored=codec.selectParts(incoming,current,{information,design:true});
+    assert.equal(restored.draft.cardGap,0);
+    assert.equal(restored.draft.nameLine1,information?'Jordan':'Casey');
+  }
+  const legacy=example(); delete legacy.draft.cardGap;
+  assert.equal(codec.selectParts(legacy,current,{information:false,design:true}).draft.cardGap,20);
+  assert.equal(codec.selectParts(legacy,current,{information:true,design:false}).draft.cardGap,44);
+  assert.equal(current.draft.cardGap,44); assert.equal(incoming.draft.cardGap,0);
+});
 test('chat-pasted email escapes and identical Markdown URL wrappers are cleaned explicitly',()=>{
   const draft=example({email:'jordan@example.com',linkedin:'https://www.linkedin.com/in/example',imageBase:'https://example.com/sig'});
   let text=codec.serialize(draft).replace('jordan@example.com','jordan\\@example.com');

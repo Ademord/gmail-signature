@@ -54,6 +54,7 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   assert.deepEqual(Object.fromEntries(['motifScale','motifPositionX','motifPositionY'].map(key=>[key,restored.draft[key]])), {
     motifScale:100,motifPositionX:50,motifPositionY:0
   });
+  assert.equal(restored.draft.cardGap, 20);
   const again = session.parse(session.serialize(restored));
   assert.deepEqual(again, restored);
   assert.match(signature.render(again.draft), /href="mailto:zoe@example.com"/);
@@ -69,7 +70,7 @@ test('every named design round-trips photo bytes, independent pattern, legacy de
       portraitUrl: 'https://example.com/cropped-photo.png?v=2', portraitShape: 'rounded', portraitSize: 96 };
     const input = { draft, themes: [savedTheme], ui: { ...oldUI, editorTab: 'photo' } };
     const text = session.serialize(input), restored = session.parse(text);
-    assert.deepEqual(restored, input, design);
+    assert.deepEqual(restored, {...input, draft:{...draft, cardGap:20}}, design);
     assert.equal(Buffer.byteLength(text) < 1024 * 1024, true);
     assert.ok(signature.render(restored.draft, { preview: true }).includes(photo), design);
     const email = signature.render(restored.draft);

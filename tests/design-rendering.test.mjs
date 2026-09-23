@@ -18,7 +18,7 @@ test('design and pattern catalogs are immutable and old 23-field sessions inheri
     assert.equal(typeof d.name,'string');assert.equal(typeof d.description,'string');assert.equal(d.pattern,'auto');
     for(const k of ['accent','frontBackground','backBackground'])assert.match(d[k],/^#[a-f0-9]{6}$/);
   }
-  const old={...core.defaults};for(const key of ['design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'])delete old[key];
+  const old={...core.defaults};for(const key of ['cardGap','design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'])delete old[key];
   assert.equal(Object.keys(old).length,23);
   assert.equal(core.normalize(old).design,'original');assert.equal(core.normalize(old).pattern,'auto');
   assert.equal(core.normalize(old).portraitData,'');assert.equal(core.normalize(old).portraitSize,64);
@@ -38,16 +38,28 @@ test('legacy email markup stays byte-identical for representative pre-design ses
 });
 
 test('all seven compositions support minimum, default and maximum dimensions in both exports',()=>{
-  for(const d of core.designs)for(const [width,height] of [[280,180],[321,208],[420,320]])for(const layout of ['paired','stacked']){
-    const v=values({...d,design:d.id,width,height,layout}),html=core.render(v);
+  for(const d of core.designs)for(const [width,height] of [[280,180],[321,208],[420,320]])for(const layout of ['paired','stacked'])for(const cardGap of [0,20,60]){
+    const v=values({...d,design:d.id,width,height,layout,cardGap}),html=core.render(v);
     assert.deepEqual(core.validate(v),{},d.id);
     assert.ok(html.length<10000,`${d.id}: ${html.length}`);
-    const expectedWidth=layout==='paired'?width*2+20:width,expectedHeight=layout==='paired'?height:height*2+20;
+    const gap=d.id==='original'?cardGap:20,expectedWidth=layout==='paired'?width*2+gap:width,expectedHeight=layout==='paired'?height:height*2+gap;
     assert.match(html,new RegExp('^<table[^>]+width="'+expectedWidth+'" height="'+expectedHeight+'"'));
     assert.deepEqual(image.dimensions(v,4),{width:expectedWidth*4,height:expectedHeight*4,logicalWidth:expectedWidth,logicalHeight:expectedHeight});
     assert.match(html,/<td\b[^>]*style="[^"]*font-family:'IBM Plex Mono'[^\"]*font-weight:400[^\"]*">Software Engineer<\/td>/);
     assert.doesNotMatch(html,/<svg\b|<script\b|<style\b|background-image|display:(?:flex|grid)|position:|data:image/);
     assert.equal(core.plainText(v),core.plainText(core.defaults));
+  }
+});
+
+test('joined named and custom compositions keep their canvas and markup when a stored card gap changes',()=>{
+  for(const composition of ids.filter(id=>id!=='original'))for(const layout of ['paired','stacked'])for(const design of [composition,'custom']){
+    const v=values({design,layout,customLayout:design==='custom'?JSON.stringify({composition,font:'sans',align:'left'}):''});
+    const baseline=core.render(v),size=core.dimensions(v),png=image.dimensions(v,4);
+    for(const cardGap of [0,60]){
+      assert.equal(core.render({...v,cardGap}),baseline,design+': '+composition);
+      assert.deepEqual(core.dimensions({...v,cardGap}),size);
+      assert.deepEqual(image.dimensions({...v,cardGap},4),png);
+    }
   }
 });
 

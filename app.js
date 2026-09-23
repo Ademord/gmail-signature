@@ -280,11 +280,11 @@
   }
   function fitMiniatures() {
     if (!lastValid) return;
-    const width = lastValid.width * 2 + 20;
-    for (const { viewport, preview } of designButtons) {
+    for (const { viewport, preview, item } of designButtons) {
+      const { width, height } = core.dimensions({...lastValid, design: item.id, layout: 'paired'});
       const scale = Math.min(1, Math.max(1, viewport.clientWidth - 20) / width);
       preview.style.width = width + 'px'; preview.style.transform = 'scale(' + scale + ')';
-      viewport.style.height = Math.ceil(lastValid.height * scale + 20) + 'px';
+      viewport.style.height = Math.ceil(height * scale + 20) + 'px';
     }
     for (const {frame, preview, size} of layoutMiniatures) {
       if (!size || !frame.clientWidth || !frame.clientHeight) continue;
@@ -308,8 +308,7 @@
       try {
         const value = {...draft, layout};
         window.SignaturePreview.update(preview, layoutMiniatureMarkup(value));
-        const normalized = core.normalize(value), tall = layout === 'stacked';
-        item.size = {width: tall ? normalized.width : normalized.width * 2 + 20, height: tall ? normalized.height * 2 + 20 : normalized.height};
+        item.size = core.dimensions(value);
         if (button) button.disabled = false;
       } catch {
         item.size = null;
@@ -334,7 +333,7 @@
     $('motifPositionX').disabled = !hasMotif || motif.availableWidth - motif.width < 1;
     $('motifPositionY').disabled = !hasMotif || motif.availableHeight - motif.height < 1;
     $('motif-position-note').hidden = !hasMotif || (!$('motifPositionX').disabled && !$('motifPositionY').disabled);
-    const tallArt = draft.layout === 'stacked', canvasW = tallArt ? draft.width : draft.width * 2 + 20, canvasH = tallArt ? draft.height * 2 + 20 : draft.height;
+    const tallArt = draft.layout === 'stacked', {width: canvasW, height: canvasH} = core.dimensions(draft);
     const artW = tallArt ? 420 : 860, artH = tallArt ? 660 : 320, artScale = Math.max(canvasW / artW, canvasH / artH) * draft.artworkScale / 100;
     $('artworkPositionX').disabled = Math.abs(canvasW - artW * artScale) < 0.01;
     $('artworkPositionY').disabled = Math.abs(canvasH - artH * artScale) < 0.01;
@@ -516,7 +515,14 @@
     syncColors(); syncIcons(); renderThemeMenu(); syncStudio(); portraitControls?.sync?.();
   }
   function syncSizeControls() {
-    for (const key of ['width', 'height']) $(key + '-range').value = draft[key];
+    for (const key of ['width', 'height', 'cardGap']) $(key + '-range').value = draft[key];
+    let composition = draft.design;
+    if (composition === 'custom') { try { composition = core.parseCustomLayout(draft.customLayout).composition; } catch {} }
+    const joined = composition !== 'original';
+    const invalidGap = draft.cardGap === '' || !Number.isInteger(Number(draft.cardGap)) || Number(draft.cardGap) < 0 || Number(draft.cardGap) > 60;
+    $('cardGap').disabled = joined && !invalidGap;
+    $('cardGap-range').disabled = joined && !invalidGap;
+    $('cardGap-note').textContent = joined ? 'This template already joins the cards.' : 'Set to 0 px to join the two cards.';
     document.querySelectorAll('[data-arrangement]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.arrangement === draft.layout)));
   }
   function save() {
@@ -637,8 +643,7 @@
   }
   function fitPreview() {
     if (!lastValid) return;
-    const width = lastValid.layout === 'stacked' ? lastValid.width : lastValid.width * 2 + 20;
-    const height = lastValid.layout === 'stacked' ? lastValid.height * 2 + 20 : lastValid.height;
+    const {width, height} = core.dimensions(lastValid);
     const viewport = $('preview-viewport');
     const style = getComputedStyle(viewport);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
@@ -690,7 +695,7 @@
       if (!colorKeys.includes(key)) return;
       draft[key] = input.value.toLowerCase();
       if (hexColor.test(draft[key])) $(key).value = draft[key];
-    } else if (input.id === 'height-range' || input.id === 'width-range') {
+    } else if (['height-range', 'width-range', 'cardGap-range'].includes(input.id)) {
       const key = input.id.replace('-range', '');
       draft[key] = Number(input.value);
       form.elements.namedItem(key).value = input.value;
@@ -700,7 +705,7 @@
         draft.websiteLabel = '';
         $('websiteLabel').value = '';
       }
-      draft[input.name] = ['width', 'height', ...artworkNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
+      draft[input.name] = ['width', 'height', 'cardGap', ...artworkNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
       if (['nameLine1', 'nameLine2'].includes(input.name)) syncName();
       if (input.name === 'pattern' && !flowingPatterns.includes(draft.pattern) && draft.artworkPlacement === 'flow') draft.artworkPlacement = 'auto';
       if (colorKeys.includes(input.name)) $(input.name + '-hex').value = input.value.toUpperCase();
