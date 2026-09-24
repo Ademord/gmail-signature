@@ -1147,5 +1147,74 @@
     if (v.tags && v.footerVisible !== 'hide') lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, typographyDefaults:typographyDefaults, contactDefaults:contactDefaults, compactPreset:compactPreset, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, plainText:plainText});
+  // Email size is an output preference: whole percentages from 50 to 150,
+  // never coerced. It is applied to a fresh render every time, so repeated
+  // changes cannot compound, and 100% returns the original render bytes.
+  function emailScale(scale) {
+    if (scale === undefined) return 100;
+    if (typeof scale !== 'number' || !Number.isInteger(scale) || scale < 50 || scale > 150) {
+      var error = new TypeError('Use a whole email size from 50 to 150 percent.');
+      error.errors = {emailScale:error.message}; throw error;
+    }
+    return scale;
+  }
+  // CSS lengths keep at most three decimals; rounding is symmetric around 0.
+  function scaleLength(value, scale) {
+    var size = Math.round(Math.abs(value) * scale * 10) / 1000;
+    return value < 0 && size ? -size : size;
+  }
+  // Only px lengths outside url(...) change. Asset URLs, including file names
+  // such as 10px.png, colors, percentages, angles and unitless zeros stay exact.
+  function scaleStyle(style, scale) {
+    return style.split(/(url\([^)]*\))/i).map(function (part, i) {
+      if (i % 2) return part;
+      if (/url\(/i.test(part)) throw new Error('Unexpected email style markup.');
+      return part.replace(/(^|[^\w.#%-])(-?(?:\d+(?:\.\d+)?|\.\d+))px(?![\w%-])/g, function (_, lead, number) {
+        return lead + scaleLength(Number(number),scale) + 'px';
+      });
+    }).join('');
+  }
+  // The finished markup is rescaled tag by tag. Escaped text between tags is
+  // copied untouched; each tag is read attribute by attribute, so user text in
+  // alt, href or src can never be mistaken for a width, height or style.
+  // Legacy width/height attributes are whole pixels, within 0.5 px of exact.
+  function scaleMarkup(html, scale) {
+    return html.replace(/<[^>]*>/g, function (tag) {
+      if (/^<\/[a-z][a-z\d]*>$/i.test(tag)) return tag;
+      var head = /^<[a-z][a-z\d]*/i.exec(tag), attribute = /\s+([a-z][a-z\d-]*)="([^"]*)"/iy, match, out, position;
+      if (!head) throw new Error('Unexpected email markup.');
+      out = head[0]; position = attribute.lastIndex = out.length;
+      while ((match = attribute.exec(tag))) {
+        var key = match[1].toLowerCase(), value = match[2];
+        if (key === 'style') value = scaleStyle(value,scale);
+        else if ((key === 'width' || key === 'height') && /^\d+(?:\.\d+)?$/.test(value) && Number(value)) {
+          value = String(Math.max(1,Math.round(Number(value) * scale / 100)));
+        }
+        out += match[0].slice(0,match[0].length - match[2].length - 1) + value + '"';
+        position = attribute.lastIndex;
+      }
+      if (!/^\s*\/?>$/.test(tag.slice(position))) throw new Error('Unexpected email markup.');
+      return out + tag.slice(position);
+    });
+  }
+  // Email copies share render validation, photo export guard and source; the
+  // scaled result is checked against the same 10,000-character budget.
+  function renderEmail(values, options) {
+    if (options !== undefined && options !== null && typeof options !== 'object') throw new TypeError('Use an options object for the email copy.');
+    var scale = emailScale(options ? options.scale : undefined), output = render(values, options);
+    if (scale === 100) return output;
+    var v = normalize(values), scaledOutput = scaleMarkup(output, scale);
+    var budgetOutput = v.portraitData ? scaledOutput.replace(escape(v.portraitData), '') : scaledOutput;
+    if (budgetOutput.length >= 10000) {
+      var error = new TypeError('The signature HTML is too long. Simplify custom artwork or shorten image and website URLs.'); error.errors = {};
+      error.errors[v.pattern === 'custom' ? 'customPattern' : 'website'] = 'Simplify the artwork or shorten URLs to keep the HTML under 10,000 characters.';
+      throw error;
+    }
+    return scaledOutput;
+  }
+  function emailDimensions(values, scale) {
+    var percent = emailScale(scale), size = dimensions(values);
+    return {width:scaleLength(size.width,percent),height:scaleLength(size.height,percent)};
+  }
+  return Object.freeze({defaults:defaults, typographyDefaults:typographyDefaults, contactDefaults:contactDefaults, compactPreset:compactPreset, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, renderEmail:renderEmail, emailDimensions:emailDimensions, plainText:plainText});
 }));

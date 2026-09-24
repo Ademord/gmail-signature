@@ -51,7 +51,7 @@ test('browser global and CommonJS API operate without DOM or storage', () => {
 });
 
 test('Unicode drafts, saved themes, and UI round-trip through pretty versioned JSON', () => {
-  const input = {draft:draft({nameLine1:'Zoë', nameLine2:'Mörgán'}), themes:[theme()], ui:{editorTab:'design', previewView:'email', imageScale:6, imageBackground:'white', selectedThemeId:'theme-1', themeName:'Crème 東京'}};
+  const input = {draft:draft({nameLine1:'Zoë', nameLine2:'Mörgán'}), themes:[theme()], ui:{editorTab:'design', previewView:'email', emailScale:80, imageScale:6, imageBackground:'white', selectedThemeId:'theme-1', themeName:'Crème 東京'}};
   const text = codec.serialize(input), raw = JSON.parse(text);
   assert.match(text, /\n  "format":/);
   assert.equal(raw.format, 'signature-editor-session');
@@ -69,6 +69,12 @@ test('all four editor views survive session export and restore', () => {
     assert.equal(restored.ui.editorTab, editorTab);
     assert.equal(restored.draft.layout, 'stacked');
   }
+});
+
+test('email output size is optional in old sessions and strictly validated in new sessions', () => {
+  assert.equal(codec.parse(codec.serialize({draft:draft()})).ui.emailScale,100);
+  for(const scale of [50,70,80,100,150]) assert.equal(codec.parse(codec.serialize({draft:draft(),ui:{emailScale:scale}})).ui.emailScale,scale);
+  for(const scale of [null,'80',false,NaN,Infinity,0,49,151,80.5]) assert.throws(()=>codec.serialize({draft:draft(),ui:{emailScale:scale}}),/emailScale/);
 });
 
 test('legacy Colors sessions restore into Design without changing their content', () => {
@@ -92,7 +98,7 @@ test('bare legacy drafts gain missing core fields and default UI without importi
   assert.equal(result.draft.frontBackground, core.defaults.frontBackground);
   assert.equal(result.draft.websiteIcon, core.defaults.websiteIcon);
   assert.deepEqual(result.themes, []);
-  assert.deepEqual(result.ui, {editorTab:'details', previewView:'card', imageScale:4, imageBackground:'transparent', selectedThemeId:'', themeName:''});
+  assert.deepEqual(result.ui, {editorTab:'details', previewView:'card', emailScale:100, imageScale:4, imageBackground:'transparent', selectedThemeId:'', themeName:''});
   assert.equal(codec.parse('\uFEFF' + JSON.stringify(draft())).draft.nameLine1, core.defaults.nameLine1);
 });
 

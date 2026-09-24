@@ -52,7 +52,7 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   const restored = session.parse(JSON.stringify(envelope(legacyDraft)));
   for (const [key, value] of Object.entries(legacyDraft)) assert.equal(restored.draft[key], value, key);
   assert.deepEqual(restored.themes, [savedTheme]);
-  assert.deepEqual(restored.ui, {...oldUI, editorTab: 'design'});
+  assert.deepEqual(restored.ui, {...oldUI, editorTab: 'design', emailScale:100});
   assert.deepEqual(Object.fromEntries(['design', 'pattern', 'portraitData', 'portraitUrl', 'portraitShape', 'portraitSize'].map(key => [key, restored.draft[key]])), {
     design: 'original', pattern: 'auto', portraitData: '', portraitUrl: '', portraitShape: 'circle', portraitSize: 64
   });
@@ -81,7 +81,7 @@ test('every named design round-trips photo bytes, independent pattern, legacy de
       portraitUrl: 'https://example.com/cropped-photo.png?v=2', portraitShape: 'rounded', portraitSize: 96 };
     const input = { draft, themes: [savedTheme], ui: { ...oldUI, editorTab: 'photo' } };
     const text = session.serialize(input), restored = session.parse(text);
-    assert.deepEqual(restored, {...input, draft:{...draft, cardGap:20, cardFormat:'auto', artworkOpacity:100,artworkFade:'none',artworkFadeAngle:90,artworkFadeDirection:'normal',artworkFadeX:50,artworkFadeY:50, ...formatDefaults}}, design);
+    assert.deepEqual(restored, {...input, ui:{...input.ui,emailScale:100}, draft:{...draft, cardGap:20, cardFormat:'auto', artworkOpacity:100,artworkFade:'none',artworkFadeAngle:90,artworkFadeDirection:'normal',artworkFadeX:50,artworkFadeY:50, ...formatDefaults}}, design);
     assert.equal(Buffer.byteLength(text) < 1024 * 1024, true);
     assert.ok(signature.render(restored.draft, { preview: true }).includes(photo), design);
     const email = signature.render(restored.draft);
