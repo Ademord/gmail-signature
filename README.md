@@ -1,6 +1,6 @@
 # Signature Studio
 
-A browser-local email signature editor with seven layouts, flowing abstract and AI-inspired artwork, eighteen color palettes, private photo cropping, and HTML or high-resolution PNG export. Resize and position the artwork, or draw an editable side detail, then export the result. New drafts start with the **Avery Morgan** example in **Plum** and stay in your browser.
+A browser-local email signature editor with eight layouts, flowing abstract and AI-inspired artwork, eighteen color palettes, private photo cropping, and HTML or high-resolution PNG export. Resize and position the artwork, or draw an editable side detail, then export the result. New drafts start with the **Avery Morgan** example in **Plum** and stay in your browser.
 
 [Open the published demo](https://ademord.github.io/gmail-signature/) · [Tests and deployment](https://github.com/Ademord/gmail-signature/actions/workflows/pages.yml) · [Design roadmap](docs/DESIGN-ROADMAP.md)
 
@@ -33,6 +33,7 @@ The editor has four tabs: **Layout**, **Details**, **Photo**, and **Design**. La
 | Design | Composition |
 | --- | --- |
 | Original | Original name and contact cards with a dot field |
+| Minimal | Original’s layout and spacing without the accent mark; artwork stays independent |
 | Orbit | Three-part portrait/artwork, identity, and contact band |
 | Studio | Asymmetric geometric sidebar, bold name, contrasting contact area |
 | Contour | Centered identity above a contact grid with organic contour lines |

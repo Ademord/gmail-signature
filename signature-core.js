@@ -61,6 +61,7 @@
   var patterns = Object.freeze({auto:'Design default', cutpaper:'Cut paper', colorfield:'Color field', chromatic:'Chromatic', counterform:'Counterform', overprint:'Overprint', gesture:'Gesture', neural:'Neural bloom', latent:'Latent field', tokenweave:'Token weave', resonance:'Resonance', dots:'Dots', orbit:'Orbits', studio:'Shapes', contour:'Contours', prism:'Ribbons', editorial:'Rules', signal:'Grid', galaxy:'Galaxy', starlight:'Starlight', moonlight:'Moonlight', frost:'Frost', custom:'Custom artwork', none:'None'});
   var designs = Object.freeze([
     {id:'original', name:'Original', description:'The original two-card signature, with its quiet dot field.', frontBackground:'#f3f0ea', backBackground:'#1c1c1c', accent:'#c8362a', pattern:'auto'},
+    {id:'minimal', name:'Minimal', description:'Original’s layout and spacing, without the accent mark.', frontBackground:'#f3f0ea', backBackground:'#1c1c1c', accent:'#c8362a', pattern:'auto'},
     {id:'orbit', name:'Orbit', description:'Open space, orbital arcs and a floating typographic composition.', frontBackground:'#edf2fb', backBackground:'#152849', accent:'#496aca', pattern:'auto'},
     {id:'studio', name:'Studio', description:'Bold shapes, an asymmetric art column and a strong color bar.', frontBackground:'#f5dfcd', backBackground:'#442525', accent:'#d94a32', pattern:'auto'},
     {id:'contour', name:'Contour', description:'Topographic lines and grounded type in a natural palette.', frontBackground:'#eaf0e5', backBackground:'#213c32', accent:'#5d794b', pattern:'auto'},
@@ -110,6 +111,8 @@
     return deepFreeze({composition:recipe.composition,font:recipe.font,align:recipe.align});
   }
   function compositionValues(v) {
+    // Minimal shares Original's complete geometry; only its brand mark is omitted.
+    if (v.design === 'minimal') return Object.assign({},v,{design:'original',hideAccent:true});
     if (v.design !== 'custom') return v;
     var recipe = parseCustomLayout(v.customLayout);
     return Object.assign({},v,{design:recipe.composition,customFont:recipe.font,customAlign:recipe.align});
@@ -170,15 +173,16 @@
     }
     // Joined compositions use their original canvas dimensions; only Original
     // has two separate cards and therefore a physical inter-card gap.
-    var gap = v.cardFormat === 'front-back' || v.design === 'original' ? v.cardGap : defaults.cardGap;
+    var gap = v.cardFormat === 'front-back' || isOriginal(v) ? v.cardGap : defaults.cardGap;
     return {width:v.layout === 'stacked' ? v.width : v.width * 2 + gap,
       height:v.layout === 'stacked' ? v.height * 2 + gap : v.height};
   }
   function dimensions(values) { return canvasSize(normalize(values)); }
   function effectiveFormat(values) {
     var v = normalize(values);
-    return v.cardFormat === 'auto' ? (v.design === 'original' ? 'front-back' : 'single') : v.cardFormat;
+    return v.cardFormat === 'auto' ? (isOriginal(v) ? 'front-back' : 'single') : v.cardFormat;
   }
+  function isOriginal(v) { return v.design === 'original' || v.design === 'minimal'; }
   function webURL(value) {
     if (!value || /[\s\\<>"'\u0000-\u001f\u007f]/.test(value)) return null;
     var candidate = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : 'https://' + value;
@@ -263,7 +267,7 @@
     var url = new URL(safe), host = url.hostname.replace(/^www\./, ''), label = host + url.pathname.replace(/\/$/, '');
     return label.length <= 34 ? label : host;
   }
-  function selectedPattern(v) { return v.pattern === 'auto' ? (v.design === 'original' ? 'dots' : v.design) : v.pattern; }
+  function selectedPattern(v) { return v.pattern === 'auto' ? (isOriginal(v) ? 'dots' : v.design) : v.pattern; }
   var flowingPatterns = Object.freeze(['cutpaper','colorfield','chromatic','counterform','overprint','gesture']);
   function resolveArtworkPlacement(values) {
     var v = values || defaults, placement = v.artworkPlacement || 'auto';
@@ -696,7 +700,7 @@
       if (v.footerFontSize && wrap(v.tags,p.tagRoom,8.5,true).length <= 2) errors.footerFontSize = 'At ' + v.footerFontSize + ' px the footer needs more than two lines here. Choose a smaller footer size, hide the footer or use a wider card.';
       else errors.tags = 'Shorten the tags to fit two lines at this width.';
     }
-    var minimumSpace = v.cardFormat !== 'single' && (v.design === 'original' || v.cardFormat === 'front-back') && !isFlow(v) ? 10 : 0;
+    var minimumSpace = v.cardFormat !== 'single' && (isOriginal(v) || v.cardFormat === 'front-back') && !isFlow(v) ? 10 : 0;
     var formatted = Object.keys(typographyDefaults).some(function (key) { return v[key] !== typographyDefaults[key]; });
     if (p.frontSpace < minimumSpace || p.backSpace < minimumSpace) errors.height = formatted ?
       'Increase the card height, or reduce text sizes, spacing, padding or wrapped lines, to keep everything readable.' : 'Increase the card height or shorten the text to keep everything readable.';
@@ -820,6 +824,9 @@
   }
   function spacer(height) { return '<tr><td height="' + height + '" style="padding:0;height:' + height + 'px;font-size:0;line-height:0">&nbsp;</td></tr>'; }
   function square(size, color) { return table(size, size, '<tr><td style="padding:0;background-color:' + color + ';font-size:0;line-height:0">&nbsp;</td></tr>'); }
+  function accentRow(v, size) {
+    return v.hideAccent ? spacer(size) : '<tr><td style="padding:0">' + square(size,v.accent) + '</td></tr>';
+  }
   function backedText(text, background) {
     return background ? '<span style="background:' + background + '">' + text + '</span>' : text;
   }
@@ -1036,7 +1043,7 @@
     var mat = flow ? informationMat(p.identityW,identityRows,background,p.matPad) : '';
     if (centered && mat) mat = mat.replace('<table ','<table align="center" ');
     var identity = flow ? '<tr><td style="padding:0">' + mat + '</td></tr>' : identityRows;
-    if (p.brandH) identity = ruleRow(p.brandW,p.brandH,v.accent) + gapRow(p.brandGap) + identity;
+    if (p.brandH) identity = (v.hideAccent ? spacer(p.brandH) : ruleRow(p.brandW,p.brandH,v.accent)) + gapRow(p.brandGap) + identity;
     var text = cell(p.textW,table(p.textW,0,identity));
     var art = p.dotW ? cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options))) : '';
     var identityContent = v.design === 'orbit' || v.design === 'studio' ? art + (art ? blankCol(p.gap) : '') + text : text + (art ? blankCol(p.gap) : '') + art;
@@ -1102,7 +1109,7 @@
     if (centeredFace) identityRows = identityRows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
     var faceMat = flow ? informationMat(p.identityW,identityRows,v.frontBackground,p.matPad) : '';
     if (centeredFace && faceMat) faceMat = faceMat.replace('<table ','<table align="center" ');
-    var frontRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>' +
+    var frontRows = spacer(p.top) + accentRow(v,p.square) +
       spacer(Math.min(p.frontGap, p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + faceMat + '</td></tr>' : identityRows);
     var dots = spacer(13) + '<tr><td style="padding:0;font-size:0;line-height:0"><img src="' + escape(assetBase + '/dots.png') +
       '" width="' + p.dotW + '" height="' + p.dotH + '" alt="" style="display:block;width:' + p.dotW + 'px;height:' + p.dotH + 'px;border:0"></td></tr>';
@@ -1119,7 +1126,7 @@
         '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + p.contactFamily + ';font-size:' + p.contactFont +
         'px;line-height:' + p.contactLine + 'px;color:' + backText + ';white-space:nowrap">' + label + '</td></tr>';
     }).join('');
-    var backRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>';
+    var backRows = spacer(p.top) + accentRow(v,p.square);
     var backInformation = contacts ? '<tr><td style="padding:0">' + table(flow ? p.groupW : p.innerW,0,contacts) + '</td></tr>' : '';
     var tagRows = p.tagLines.length ? gapRow(p.footerGap) + '<tr><td height="1" style="padding:0;height:1px;background-color:' + v.accent + ';font-size:0;line-height:0">&nbsp;</td></tr>' +
       spacer(8) + textRow(p.tagLines,p.tagFont,p.tagLine,backMuted,mono) : '';

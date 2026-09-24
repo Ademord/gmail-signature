@@ -284,7 +284,7 @@
   if (core.customDesign) {
     const option = document.createElement('option'); option.value = 'custom'; option.id = 'custom-design-option'; option.textContent = 'Custom layout'; $('design').append(option);
   }
-  function patternAsset(id) { return id === 'dots' || id === 'original' ? 'sig/dots.png' : 'sig/pattern-' + id + '.png'; }
+  function patternAsset(id) { return ['dots','original','minimal'].includes(id) ? 'sig/dots.png' : 'sig/pattern-' + id + '.png'; }
   function addPatternChoice(id, label, container, prefix) {
     const button = document.createElement('button'); button.type = 'button'; button.id = prefix + id; button.className = 'pattern-choice';
     button.setAttribute('aria-label', 'Use ' + label + ' pattern'); button.setAttribute('aria-pressed', 'false');

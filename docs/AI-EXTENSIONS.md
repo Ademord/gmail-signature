@@ -77,7 +77,7 @@ Missing settings preserve the template rendering. The stored name lines survive 
 | Field | Accepted values |
 | --- | --- |
 | Surface/accent colors | Six-digit hex strings such as `#18283e` |
-| `design` | `original`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, or `custom` |
+| `design` | `original`, `minimal`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, or `custom` |
 | `pattern` | `auto`, `dots`, `orbit`, `studio`, `contour`, `prism`, `editorial`, `signal`, `cutpaper`, `colorfield`, `chromatic`, `counterform`, `overprint`, `gesture`, `galaxy`, `starlight`, `moonlight`, `frost`, `custom`, `none` |
 | `artworkPlacement` | `auto`, `motif`, `flow`, or `background` |
 | `artworkScale` | JSON integer 25–400, percent |
@@ -100,7 +100,7 @@ Missing settings preserve the template rendering. The stored name lines survive 
 
 Card format is independent of template and orientation. Explicit `single` uses one continuous `frontBackground` surface. It preserves `backBackground` and `cardGap` without displaying them. Its height is measured from the content with the requested `height` as a minimum; `SignatureCore.dimensions` supplies the actual preview and export dimensions. Explicit `front-back` creates two cards with any template: horizontal output is `(width × 2 + cardGap) × height`; vertical output is `width × (height × 2 + cardGap)`.
 
-`auto` preserves existing signatures exactly: Original uses the two-card dimensions above, while joined named/custom compositions retain `(width × 2 + 20) × height` horizontally or `width × (height × 2 + 20)` vertically. Older drafts and session files without `cardFormat` restore as `auto`; a missing `cardGap` retains the original 20 pixel gap. Stored colors and gap survive format switches. Version 1 AI responses may omit either field to preserve its current value. Numeric values must be numbers, not strings. Do not assume that every combination fits the current name and contacts: the full candidate passes the signature's existing validation before a preview can appear.
+`auto` preserves existing signatures exactly: Original and Minimal use the two-card dimensions above, while joined named/custom compositions retain `(width × 2 + 20) × height` horizontally or `width × (height × 2 + 20)` vertically. Older drafts and session files without `cardFormat` restore as `auto`; a missing `cardGap` retains the original 20 pixel gap. Stored colors and gap survive format switches. Version 1 AI responses may omit either field to preserve its current value. Numeric values must be numbers, not strings. Do not assume that every combination fits the current name and contacts: the full candidate passes the signature's existing validation before a preview can appear.
 
 Detail text is a single line, without control characters or markup. Normal URL, email, and required-field validation also applies. Maximum lengths:
 

@@ -9,7 +9,7 @@ const values=overrides=>({...core.defaults,...overrides});
 
 test('recipe schemas are public immutable contracts and the custom tile is separate from built-ins',()=>{
   assert.equal(core.customDesign.id,'custom');assert.ok(Object.isFrozen(core.customDesign));
-  assert.equal(core.designs.length,7);assert.ok(!core.designs.some(d=>d.id==='custom'));
+  assert.equal(core.designs.length,8);assert.ok(!core.designs.some(d=>d.id==='custom'));
   for(const key of ['customPattern','customLayout']){
     const schema=core.recipeSchemas[key];assert.equal(schema.type,'object');assert.equal(schema.additionalProperties,false);
     assert.ok(Object.isFrozen(schema)&&Object.isFrozen(schema.properties)&&Object.isFrozen(schema.required));
@@ -60,7 +60,7 @@ test('custom recipes are validated before preview, email or PNG export',()=>{
 });
 
 test('custom type and alignment work with every composition, size and arrangement',()=>{
-  for(const composition of core.designs.map(d=>d.id).filter(id=>id!=='original'))for(const font of ['sans','serif','mono'])for(const align of ['left','center'])
+  for(const composition of ['orbit','studio','contour','prism','editorial','signal'])for(const font of ['sans','serif','mono'])for(const align of ['left','center'])
     for(const layout of ['paired','stacked'])for(const [width,height] of [[280,180],[321,208],[420,320]]){
       const v=values({design:'custom',customLayout:JSON.stringify({composition,font,align}),layout,width,height});
       assert.deepEqual(core.validate(v),{},JSON.stringify({composition,font,align,layout,width,height}));

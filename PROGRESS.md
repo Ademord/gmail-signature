@@ -1,5 +1,10 @@
 # Progress
 
+## Minimal layout — 24 September 2026
+
+Minimal appears beside Original in the template library. It preserves Original’s layout, spacing, artwork, photo, colors and export sizing, omitting only the accent square on each face. The reserved mark space stays unchanged. Both layouts remain available, and Minimal supports undo, saved drafts, shared links, session files and scoped AI proposals.
+
+
 ## Email output size — 24 September 2026
 
 The header now provides a separate **Email size** preference from 50–150%, with an exact-size Email preview and reset to 100%. Copy signature, clipboard fallback and HTML download use the same proportionally scaled native markup; Card editing and PNG export retain the original design. Session backups include the preference under Design and legacy sessions default to 100%. Validation, browser checks, independent review and exact-revision release checks are required before publication.

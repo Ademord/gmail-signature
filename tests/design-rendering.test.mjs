@@ -19,7 +19,7 @@ const withoutFormat = v => { const old={...v}; for(const key of Object.keys(form
 const sha = html => createHash('sha256').update(html).digest('hex');
 
 test('design and pattern catalogs are immutable and old 23-field sessions inherit the original',()=>{
-  assert.deepEqual(core.designs.map(d=>d.id),ids);
+  assert.deepEqual(core.designs.map(d=>d.id),['original','minimal',...ids.slice(1)]);
   assert.deepEqual(Object.keys(core.patterns),['auto','cutpaper','colorfield','chromatic','counterform','overprint','gesture','neural','latent','tokenweave','resonance','dots','orbit','studio','contour','prism','editorial','signal','galaxy','starlight','moonlight','frost','custom','none']);
   assert.ok(Object.isFrozen(core.designs) && core.designs.every(Object.isFrozen) && Object.isFrozen(core.patterns));
   for(const d of core.designs){
@@ -147,12 +147,12 @@ test('single cards with empty optional content retain a bounded name card withou
   }
 });
 
-test('all seven compositions support minimum, default and maximum dimensions in both exports',()=>{
+test('all eight layouts support minimum, default and maximum dimensions in both exports',()=>{
   for(const d of core.designs)for(const [width,height] of [[280,180],[321,208],[420,320]])for(const layout of ['paired','stacked'])for(const cardGap of [0,20,60]){
     const v=values({...d,design:d.id,width,height,layout,cardGap}),html=core.render(v);
     assert.deepEqual(core.validate(v),{},d.id);
     assert.ok(html.length<10000,`${d.id}: ${html.length}`);
-    const gap=d.id==='original'?cardGap:20,expectedWidth=layout==='paired'?width*2+gap:width,expectedHeight=layout==='paired'?height:height*2+gap;
+    const gap=['original','minimal'].includes(d.id)?cardGap:20,expectedWidth=layout==='paired'?width*2+gap:width,expectedHeight=layout==='paired'?height:height*2+gap;
     assert.match(html,new RegExp('^<table[^>]+width="'+expectedWidth+'" height="'+expectedHeight+'"'));
     assert.deepEqual(image.dimensions(v,4),{width:expectedWidth*4,height:expectedHeight*4,logicalWidth:expectedWidth,logicalHeight:expectedHeight});
     assert.match(html,/<td\b[^>]*style="[^"]*font-family:'IBM Plex Mono'[^\"]*font-weight:400[^\"]*">Software Engineer<\/td>/);
