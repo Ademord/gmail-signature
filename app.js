@@ -56,7 +56,7 @@
   const artworkNumbers = ['artworkScale','artworkOpacity','artworkFadeAngle','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
   const fontSizes = {nameFontSize:[12,40],titleFontSize:[8,24],subtitleFontSize:[8,24],contactFontSize:[8,24],footerFontSize:[8,24]};
   const spacingPercents = ['lineSpacing','textSpacing','contactSpacing','sectionSpacing'];
-  const textNumbers = [...Object.keys(fontSizes),...spacingPercents,'contentPadding'];
+  const textNumbers = [...Object.keys(fontSizes),...spacingPercents,'contentPadding','sidePadding'];
   // Template sizes adapt to each layout, so 0 is offered as Template instead of a pixel size.
   for (const [key, [min, max]] of Object.entries(fontSizes)) {
     const sizes = [[0, 'Template']];
@@ -582,6 +582,9 @@
     syncColors(); syncIcons(); renderThemeMenu(); syncStudio(); portraitControls?.sync?.();
   }
   function syncSizeControls() {
+    const widthMin = core.minimumWidth(draft);
+    $('width').min = $('width-range').min = String(widthMin);
+    $('width-min-label').textContent = widthMin + ' px';
     for (const key of ['width', 'height', 'cardGap']) $(key + '-range').value = draft[key];
     const single = draft.cardFormat === 'single', joined = core.effectiveFormat(draft) === 'single';
     const invalidGap = draft.cardGap === '' || !Number.isInteger(Number(draft.cardGap)) || Number(draft.cardGap) < 0 || Number(draft.cardGap) > 60;

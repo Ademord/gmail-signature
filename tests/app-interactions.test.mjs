@@ -2511,9 +2511,40 @@ test('the contact separator applies only to inline contacts and survives stacked
   assert.equal(reloaded.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);
 });
 
+test('side padding and narrower Single cards survive undo, reload, copying and session export',async()=>{
+  const initial={...core.defaults,...core.compactPreset,portraitData:localPortrait,portraitUrl:'https://example.com/photo.png'};
+  const app=harness({initialDraft:initial,clipboardSucceeds:true,viewportWidth:1200,screenWidth:1280});
+  assert.equal(app.node('width').min,'220');
+  assert.equal(app.node('width-min-label').textContent,'220 px');
+  assert.equal(app.node('sidePadding').options[0].value,'-1');
+  assert.match(pageSource,/<option value="-1">Follow card padding<\/option>/);
+  await app.input('sidePadding',8);await app.finishEdit();
+  await app.input('width',264);await app.finishEdit();
+  const expected={...initial,sidePadding:8,width:264};
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),expected);
+  await app.outputSize(75);await app.click('copy-signature');
+  const copied=await app.clipboardItems.at(-1).parts['text/html'].text();
+  assert.equal(copied,core.renderEmail(expected,{scale:75}));
+  assert.match(copied,/padding:18px 6px/);
+  await app.click('undo-change');assert.equal(Number(app.node('width').value),280);
+  await app.click('undo-change');assert.equal(Number(app.node('sidePadding').value),-1);
+  await app.click('redo-change');await app.click('redo-change');
+  const reloaded=harness({sharedStorage:app.storage});
+  assert.equal(Number(reloaded.node('width').value),264);
+  assert.equal(Number(reloaded.node('sidePadding').value),8);
+  assert.equal(reloaded.node('email-scale').value,'75');
+  assert.ok(reloaded.node('signature-preview').innerHTML.includes(localPortrait));
+  assert.equal(JSON.parse(reloaded.storage.get(storageKey)).portraitUrl,initial.portraitUrl);
+  await app.click('export-data');
+  assert.equal(JSON.parse(app.node('session-json').value).draft.sidePadding,8);
+  await app.click('close-session');
+  await app.input('sidePadding',-1);await app.finishEdit();
+  assert.equal(JSON.parse(app.storage.get(storageKey)).sidePadding,-1);
+});
+
 test('malformed new formatting in draft links is rejected without replacing the current draft',()=>{
   const initial={...core.defaults,nameLine1:'Keep',nameLine2:'My draft'};
-  for(const changes of [{nameFontSize:99},{nameFontSize:5},{nameFontSize:'22'},{contentPadding:-2},{lineSpacing:201},{textSpacing:1.5},{footerVisible:null}]) {
+  for(const changes of [{nameFontSize:99},{nameFontSize:5},{nameFontSize:'22'},{contentPadding:-2},{sidePadding:-2},{sidePadding:'8'},{lineSpacing:201},{textSpacing:1.5},{footerVisible:null}]) {
     const app=harness({initialDraft:initial,initialHash:draftHash({...initial,...changes})});
     assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial,JSON.stringify(changes));
     assert.match(app.node('status').textContent,/draft link is invalid/i);

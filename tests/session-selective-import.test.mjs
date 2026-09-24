@@ -8,7 +8,7 @@ import codec from '../session-data.js';
 
 const photo = name => 'data:image/png;base64,' + readFileSync(new URL('../sig/' + name, import.meta.url)).toString('base64');
 const formatDefaults = {nameLayout:'template', nameFontSize:0, titleFontSize:0, subtitleFontSize:0, contactFontSize:0, footerFontSize:0,
-  lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:100, contentPadding:-1,
+  lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:100, contentPadding:-1, sidePadding:-1,
   singleArrangement:'auto', contactLayout:'template', contactFont:'template', footerVisible:'show',
   contactSeparator:'none', websiteVisible:'show', emailVisible:'show', phoneVisible:'show', linkedinVisible:'show', locationVisible:'show'};
 const formatKeys = Object.keys(formatDefaults);
@@ -18,11 +18,11 @@ const session = draft => ({draft:{...core.defaults, ...draft}, themes:[], ui:{ed
 // each field leaves its template default in at least one of them (two-value
 // show/hide fields are hidden in one fixture and shown in the other).
 const currentFormat = {nameLayout:'wrap', nameFontSize:30, titleFontSize:14, subtitleFontSize:9, contactFontSize:10, footerFontSize:12,
-  lineSpacing:140, textSpacing:150, contactSpacing:40, sectionSpacing:120, contentPadding:24,
+  lineSpacing:140, textSpacing:150, contactSpacing:40, sectionSpacing:120, contentPadding:24, sidePadding:12,
   singleArrangement:'columns', contactLayout:'stacked', contactFont:'mono', footerVisible:'show',
   contactSeparator:'bar', websiteVisible:'hide', emailVisible:'show', phoneVisible:'hide', linkedinVisible:'show', locationVisible:'show'};
 const incomingFormat = {nameLayout:'single', nameFontSize:22, titleFontSize:11, subtitleFontSize:11, contactFontSize:12, footerFontSize:10,
-  lineSpacing:110, textSpacing:65, contactSpacing:90, sectionSpacing:70, contentPadding:16,
+  lineSpacing:110, textSpacing:65, contactSpacing:90, sectionSpacing:70, contentPadding:16, sidePadding:8,
   singleArrangement:'rows', contactLayout:'inline', contactFont:'sans', footerVisible:'hide',
   contactSeparator:'dot', websiteVisible:'show', emailVisible:'hide', phoneVisible:'show', linkedinVisible:'hide', locationVisible:'hide'};
 const current = session({nameLine1:'Casey', nameLine2:'Rivera', title:'Illustrator', tags:'DRAW · PAINT', portraitData:photo('icon-web.png'),

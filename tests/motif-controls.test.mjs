@@ -118,8 +118,8 @@ test('fractional custom grids reach the selected edge using their actual rendere
   }
 });
 
-test('67-field sessions preserve independent side and flowing settings, importing them only with Design',()=>{
-  assert.equal(Object.keys(core.defaults).length,67);
+test('68-field sessions preserve independent side and flowing settings, importing them only with Design',()=>{
+  assert.equal(Object.keys(core.defaults).length,68);
   for(const key of keys){assert.ok(codec.designFields.includes(key));assert.ok(!codec.informationFields.includes(key));}
   const current={draft:values({nameLine1:'Current',motifScale:70,motifPositionX:12,motifPositionY:86,artworkScale:125,artworkPositionX:18,artworkPositionY:83}),themes:[],ui:{}};
   const incoming={draft:values({nameLine1:'Incoming',motifScale:35,motifPositionX:97,motifPositionY:4,artworkScale:80,artworkPositionX:70,artworkPositionY:20}),themes:[],ui:{}};
@@ -128,7 +128,7 @@ test('67-field sessions preserve independent side and flowing settings, importin
     const selected=codec.selectParts(restored,current,{information:true,design});
     for(const key of keys.concat(['artworkScale','artworkPositionX','artworkPositionY']))assert.equal(selected.draft[key],(design?incoming:current).draft[key]);
   }
-  const formatting=['nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','singleArrangement','contactLayout','contactFont','footerVisible',
+  const formatting=['nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','sidePadding','singleArrangement','contactLayout','contactFont','footerVisible',
     'contactSeparator','websiteVisible','emailVisible','phoneVisible','linkedinVisible','locationVisible'];
   const old=Object.fromEntries(Object.entries(incoming.draft).filter(([key])=>!keys.includes(key)&&!formatting.includes(key)&&!['cardGap','cardFormat','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY'].includes(key)));assert.equal(Object.keys(old).length,35);
   for(const input of [old,{format:'signature-editor-session',version:1,exportedAt:'2026-09-09T12:00:00.000Z',draft:old,themes:[],ui:{}}]) {

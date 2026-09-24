@@ -12,7 +12,7 @@ const ids = ['original','orbit','studio','contour','prism','editorial','signal']
 // Independent template defaults for the text and spacing fields (compact editor
 // contract v1) and contact presentation fields (v2). Older drafts omit all of them.
 const formatDefaults = {nameLayout:'template',nameFontSize:0,titleFontSize:0,subtitleFontSize:0,contactFontSize:0,footerFontSize:0,
-  lineSpacing:100,textSpacing:100,contactSpacing:100,sectionSpacing:100,contentPadding:-1,
+  lineSpacing:100,textSpacing:100,contactSpacing:100,sectionSpacing:100,contentPadding:-1, sidePadding:-1,
   singleArrangement:'auto',contactLayout:'template',contactFont:'template',footerVisible:'show',
   contactSeparator:'none',websiteVisible:'show',emailVisible:'show',phoneVisible:'show',linkedinVisible:'show',locationVisible:'show'};
 const withoutFormat = v => { const old={...v}; for(const key of Object.keys(formatDefaults))delete old[key]; return old; };
