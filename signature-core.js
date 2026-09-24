@@ -10,7 +10,7 @@
   // mean Auto/Template (never 0 px) and -1 padding keeps each template inset.
   var typographyDefaults = Object.freeze({
     nameLayout: 'template', nameFontSize: 0, titleFontSize: 0, subtitleFontSize: 0, contactFontSize: 0, footerFontSize: 0,
-    lineSpacing: 100, textSpacing: 100, contactSpacing: 100, sectionSpacing: 100, contentPadding: -1,
+    lineSpacing: 100, textSpacing: 100, contactSpacing: 100, sectionSpacing: 100, contentPadding: -1, sidePadding: -1,
     singleArrangement: 'auto', contactLayout: 'template', contactFont: 'template', footerVisible: 'show'
   });
   // Contact presentation: hidden contacts keep their saved values, labels,
@@ -36,7 +36,7 @@
   // A reversible compact starting point. It changes format only, never the
   // personal details, photo, colors or artwork.
   var compactPreset = Object.freeze({cardFormat:'single', layout:'paired', singleArrangement:'rows', width:280, height:180,
-    contentPadding:24, portraitSize:96, nameLayout:'single', nameFontSize:22, titleFontSize:13, subtitleFontSize:13, contactFontSize:13,
+    contentPadding:24, sidePadding:-1, portraitSize:96, nameLayout:'single', nameFontSize:22, titleFontSize:13, subtitleFontSize:13, contactFontSize:13,
     contactFont:'sans', contactLayout:'inline', contactSeparator:'bar', lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:150, footerVisible:'hide'});
   var fontSizes = Object.freeze([['nameFontSize',12,40],['titleFontSize',8,24],['subtitleFontSize',8,24],['contactFontSize',8,24],['footerFontSize',8,24]]);
   var formatChoices = Object.freeze({
@@ -127,12 +127,15 @@
       (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') ? fallback : Number(value);
     return Math.min(max, Math.max(min, Number.isFinite(number) ? Math.round(number) : fallback));
   }
+  function minimumWidth(values) {
+    return values && values.cardFormat === 'single' && (values.layout || defaults.layout) === 'paired' ? 220 : 280;
+  }
   function normalize(values) {
     var input = values && typeof values === 'object' ? values : {}, result = {};
     Object.keys(defaults).forEach(function (key) {
       result[key] = input[key] === undefined ? defaults[key] : clean(input[key]);
     });
-    result.width = dimension(input.width, defaults.width, 280, 420);
+    result.width = dimension(input.width, defaults.width, minimumWidth(result), 420);
     result.height = dimension(input.height, defaults.height, 180, 320);
     result.cardGap = dimension(input.cardGap, defaults.cardGap, 0, 60);
     result.artworkScale = dimension(input.artworkScale, defaults.artworkScale, 25, 400);
@@ -153,6 +156,7 @@
     result.lineSpacing = dimension(input.lineSpacing, defaults.lineSpacing, 80, 200);
     ['textSpacing', 'contactSpacing', 'sectionSpacing'].forEach(function (key) { result[key] = dimension(input[key], defaults[key], 0, 200); });
     result.contentPadding = dimension(input.contentPadding, defaults.contentPadding, -1, 48);
+    result.sidePadding = dimension(input.sidePadding, defaults.sidePadding, -1, 48);
     ['accent', 'frontBackground', 'backBackground'].forEach(function (key) { result[key] = result[key].toLowerCase(); });
     result.imageBase = result.imageBase.replace(/\/+$/, '');
     return result;
@@ -429,7 +433,9 @@
     var dotH = Math.min(v.height - 26, 182), dotW = Math.round(dotH * 76 / 182);
     if (selectedPattern(v) === 'none' || isCanvasArtwork(v)) dotW = 0;
     if (hasPortrait(v)) dotW = Math.max(dotW, v.portraitSize);
-    var right = padded ? v.contentPadding : 11, gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
+    var right = padded ? v.contentPadding : 11;
+    if (v.sidePadding >= 0) pad = right = v.sidePadding;
+    var gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
     var matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
     var typography = nameTypography(v), styledFace = v.cardFormat === 'front-back' && v.design !== 'original';
     var fixedName = styledFace && typography.fixed, factor = styledFace && typography.serif ? 1.12 : 1;
@@ -471,7 +477,8 @@
     // historical wide columns and tall stacking.
     var stack = v.singleArrangement === 'rows' || (v.singleArrangement !== 'columns' && tall);
     var frame = v.design === 'signal' ? 4 : 0, rail = v.design === 'studio' ? 14 : 0;
-    var pad = v.contentPadding >= 0 ? v.contentPadding : v.width < 300 ? 18 : 22, bodyW = W - frame * 2 - rail, innerW = bodyW - pad * 2;
+    var pad = v.contentPadding >= 0 ? v.contentPadding : v.width < 300 ? 18 : 22;
+    var sidePad = v.sidePadding >= 0 ? v.sidePadding : pad, bodyW = W - frame * 2 - rail, innerW = bodyW - sidePad * 2;
     var sectionGap = scaled(stack ? 18 : 24,v.sectionSpacing), idW = stack ? innerW : Math.floor((innerW - sectionGap) * .5);
     var contactPanelW = stack ? innerW : innerW - idW - sectionGap;
     var motif = selectedPattern(v) !== 'none' && !isCanvasArtwork(v);
@@ -501,7 +508,7 @@
     var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,typography.fixed,0,factor),lineWidth(titleLines,st.titleFont,true,st.titleSpacing),lineWidth(subLines,st.subFont,true)));
     var contactsW = packed ? packed.width : Math.max.apply(null,rows.map(function (row) {return 39 + Math.max(lineWidth(row.lines,st.contactFont,st.contactFixed),labelH ? lineWidth([row.label.toUpperCase()],7.5,st.contactFixed) : 0);}).concat(0));
     var groupW = Math.min(contactPanelW - matPad * 2,Math.max(lineWidth(tagLines,st.tagFont,true),contactsW));
-    return typed({single:true,tall:tall,stack:stack,W:W,H:H,frame:frame,rail:rail,pad:pad,bodyW:bodyW,bodyH:H - frame * 2,innerW:innerW,
+    return typed({single:true,tall:tall,stack:stack,W:W,H:H,frame:frame,rail:rail,pad:pad,sidePad:sidePad,bodyW:bodyW,bodyH:H - frame * 2,innerW:innerW,
       idW:idW,contactPanelW:contactPanelW,sectionGap:sectionGap,textW:textW,matPad:matPad,dotW:dotW,dotH:dotH,gap:gap,
       typography:typography,names:names,nameFont:nameFont,nameLine:nameLine,titleLines:titleLines,subLines:subLines,
       brandW:brandW,brandH:brandH,brandGap:brandGap,identityH:identityH,identityW:identityW,
@@ -519,6 +526,7 @@
     // Flowing artwork keeps its readable mat inside the chosen padding.
     if (v.contentPadding >= 0) idPad = cPad = Math.max(v.contentPadding,matPad);
     idPad -= matPad; cPad -= matPad;
+    var idSide = v.sidePadding >= 0 ? v.sidePadding : idPad, cSide = v.sidePadding >= 0 ? v.sidePadding : cPad;
     var artW = selectedPattern(v) === 'none' || isCanvasArtwork(v) ? 0 : (v.design === 'editorial' ? 46 : 76);
     if (hasPortrait(v)) artW = Math.max(artW, v.portraitSize);
     var artGap = artW ? 16 : 0, rail = v.design === 'studio' ? 14 : 0, frame = v.design === 'signal' ? 4 : 0;
@@ -529,7 +537,7 @@
     var artRail = v.design === 'prism' || (v.design === 'signal' && !tall);
     if (artRail && artW) { mainW = bodyW - artW - 16; idW = mainW; contactPanelW = mainW; }
     if (v.design === 'prism' && !tall) { contactOffset = 36; contactPanelW -= contactOffset; }
-    var textW = idW - idPad * 2 - (!artRail ? artW + artGap : 0);
+    var textW = idW - idSide * 2 - (!artRail ? artW + artGap : 0);
     var contentW = textW - matPad * 2;
     var fixedName = v.customFont ? v.customFont === 'mono' : v.design === 'signal', serif = v.customFont ? v.customFont === 'serif' : v.design === 'editorial';
     var names = [v.nameLine1, v.nameLine2].filter(Boolean);
@@ -551,7 +559,7 @@
     if (!side) topH = Math.max(topH, identityH + idPad * 2, !artRail && hasPortrait(v) ? v.portraitSize + idPad * 2 : 0);
     var contactPanelH = side ? H : bodyH - topH;
     var cols = v.contactLayout === 'stacked' || side ? 1 : tall ? (v.design === 'contour' ? 2 : 1) : 2;
-    var innerW = contactPanelW - cPad * 2, workingW = innerW - matPad * 2;
+    var innerW = contactPanelW - cSide * 2, workingW = innerW - matPad * 2;
     var cellW = Math.floor((workingW - gridGap * (cols - 1)) / cols), contactW = cellW - 22;
     var rows = contactRows(v,contactW - 2,st);
     if (tall && cols > 1 && rows.some(function (row) { return row.lines.length > 2; })) {
@@ -585,7 +593,7 @@
       contactPanelH = bodyH - topH;
     }
     var dotH = Math.min(artRail ? bodyH - idPad * 2 : topH - idPad * 2, 182);
-    return typed({tall:tall,W:W,H:H,bodyW:bodyW,bodyH:bodyH,mainW:mainW,pad:pad,idPad:idPad,cPad:cPad,rail:rail,frame:frame,
+    return typed({tall:tall,W:W,H:H,bodyW:bodyW,bodyH:bodyH,mainW:mainW,pad:pad,idPad:idPad,cPad:cPad,idSide:idSide,cSide:cSide,rail:rail,frame:frame,
       side:side,artRail:artRail,idW:idW,topH:topH,contactPanelW:contactPanelW,contactPanelH:contactPanelH,contactOffset:contactOffset,
       dotH:dotH,dotW:artW,gap:artGap,textW:textW,nameFont:nameFont,nameLine:nameLine,names:names,titleLines:titleLines,subLines:subLines,
       frontHead:frontHead,frontSpace:topH - idPad * 2 - identityH,identityH:identityH,innerW:innerW,contactW:contactW,cellW:cellW,
@@ -596,7 +604,7 @@
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkFadeAngle',0,360],['artworkFadeX',0,100],['artworkFadeY',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100],
+    [['width',minimumWidth(v),420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkFadeAngle',0,360],['artworkFadeX',0,100],['artworkFadeY',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100],
       ['lineSpacing',80,200],['textSpacing',0,200],['contactSpacing',0,200],['sectionSpacing',0,200]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
@@ -606,11 +614,12 @@
     });
     // Sizes use 0 for Auto/Template and padding uses -1 for the template inset;
     // values between those sentinels and the minimum are rejected, not clamped.
-    fontSizes.concat([['contentPadding',0,48]]).forEach(function (rule) {
-      var raw = values && typeof values === 'object' ? values[rule[0]] : undefined, auto = rule[0] === 'contentPadding' ? -1 : 0;
+    fontSizes.concat([['contentPadding',0,48],['sidePadding',0,48]]).forEach(function (rule) {
+      var padding = rule[0] === 'contentPadding' || rule[0] === 'sidePadding';
+      var raw = values && typeof values === 'object' ? values[rule[0]] : undefined, auto = padding ? -1 : 0;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') || String(raw).trim() === '' || !Number.isInteger(Number(raw)) ||
         (Number(raw) !== auto && (Number(raw) < rule[1] || Number(raw) > rule[2])))) {
-        errors[rule[0]] = rule[0] === 'contentPadding' ? 'Use -1 for the template padding or a whole number from 0 to 48.' :
+        errors[rule[0]] = padding ? 'Use -1 for the template padding or a whole number from 0 to 48.' :
           'Use 0 for ' + (rule[0] === 'nameFontSize' ? 'the automatic size' : 'the template size') + ' or a whole number from ' + rule[1] + ' to ' + rule[2] + '.';
       }
     });
@@ -953,7 +962,7 @@
       var text = cell(p.textW,identity,'','middle'), art = '';
       if (!p.artRail && p.dotW) art = cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options)),v.design === 'studio' && !isCanvasArtwork(v) ? v.backBackground : '', 'middle');
       var contents = v.design === 'orbit' || v.design === 'studio' ? art + (art ? blankCol(p.gap) : '') + text : text + (art ? blankCol(p.gap) : '') + art;
-      return surface(p.idW,height,'<tr>' + blankCol(p.idPad) + contents + blankCol(p.idPad) + '</tr>',v.frontBackground,identityX,identityY);
+      return surface(p.idW,height,'<tr>' + blankCol(p.idSide) + contents + blankCol(p.idSide) + '</tr>',v.frontBackground,identityX,identityY);
     }
     function contactPanel(width,height,x,y) {
       var background = v.design === 'editorial' ? v.frontBackground : v.backBackground;
@@ -985,7 +994,7 @@
         else rows += gapRow(p.footerGap) + textRow(p.tagLines,p.tagFont,p.tagLine,quiet,mono);
       }
       var information = flow ? informationMat(p.groupW,rows,background,p.matPad) : table(p.innerW,0,rows);
-      return surface(width,height,'<tr>' + blankCol(p.cPad) + cell(p.innerW,information,'','middle') + blankCol(p.cPad) + '</tr>',background,x,y);
+      return surface(width,height,'<tr>' + blankCol(p.cSide) + cell(p.innerW,information,'','middle') + blankCol(p.cSide) + '</tr>',background,x,y);
     }
     function artRail(height,background) {
       if (!p.dotW) return '';
@@ -1048,7 +1057,8 @@
     var contactTable = flow ? informationMat(p.groupW,contactRows,background,p.matPad) : table(p.contactPanelW,0,contactRows);
     var groupRows = p.stack ? '<tr>' + cell(p.innerW,identityTable) + '</tr>' + (p.hasContacts ? gapRow(p.sectionGap) + '<tr>' + cell(p.innerW,contactTable) + '</tr>' : '') :
       '<tr>' + cell(p.idW,identityTable) + (p.sectionGap ? blankCol(p.sectionGap) : '') + cell(p.contactPanelW,p.hasContacts ? contactTable : '') + '</tr>';
-    var body = surface(p.bodyW,p.bodyH,'<tr><td width="' + p.innerW + '" valign="top" style="padding:' + p.pad + 'px;vertical-align:top">' + table(p.innerW,0,groupRows) + '</td></tr>',background,p.frame + p.rail,p.frame);
+    var padding = p.pad + 'px' + (v.sidePadding >= 0 ? ' ' + p.sidePad + 'px' : '');
+    var body = surface(p.bodyW,p.bodyH,'<tr><td width="' + p.innerW + '" valign="top" style="padding:' + padding + ';vertical-align:top">' + table(p.innerW,0,groupRows) + '</td></tr>',background,p.frame + p.rail,p.frame);
     if (p.frame) {
       var edge = '<tr>' + blankCol(p.frame).replace('style="','height="' + p.frame + '" style="height:' + p.frame + 'px;') + blankCol(p.bodyW) + blankCol(p.frame) + '</tr>';
       return table(p.W,p.H,edge + '<tr>' + blankCol(p.frame) + cell(p.bodyW,body) + blankCol(p.frame) + '</tr>' + edge,v.accent);
@@ -1216,5 +1226,5 @@
     var percent = emailScale(scale), size = dimensions(values);
     return {width:scaleLength(size.width,percent),height:scaleLength(size.height,percent)};
   }
-  return Object.freeze({defaults:defaults, typographyDefaults:typographyDefaults, contactDefaults:contactDefaults, compactPreset:compactPreset, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, renderEmail:renderEmail, emailDimensions:emailDimensions, plainText:plainText});
+  return Object.freeze({defaults:defaults, typographyDefaults:typographyDefaults, contactDefaults:contactDefaults, compactPreset:compactPreset, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, minimumWidth:minimumWidth, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, renderEmail:renderEmail, emailDimensions:emailDimensions, plainText:plainText});
 }));

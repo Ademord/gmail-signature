@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const fieldLabels = Object.freeze({frontBackground:'Name background',backBackground:'Contact background',accent:'Accent color',design:'Design',customLayout:'Layout recipe',cardFormat:'Card format',layout:'Arrangement',width:'Panel width',height:'Panel height',cardGap:'Card gap',
-    nameLayout:'Name layout',nameFontSize:'Name size',titleFontSize:'Role size',subtitleFontSize:'Subtitle size',contactFontSize:'Contact text size',footerFontSize:'Footer text size',lineSpacing:'Line spacing',textSpacing:'Text spacing',contactSpacing:'Contact spacing',sectionSpacing:'Section spacing',contentPadding:'Padding',singleArrangement:'Single-card arrangement',contactLayout:'Contact arrangement',contactFont:'Contact font',footerVisible:'Footer',
+    nameLayout:'Name layout',nameFontSize:'Name size',titleFontSize:'Role size',subtitleFontSize:'Subtitle size',contactFontSize:'Contact text size',footerFontSize:'Footer text size',lineSpacing:'Line spacing',textSpacing:'Text spacing',contactSpacing:'Contact spacing',sectionSpacing:'Section spacing',contentPadding:'Padding',sidePadding:'Left & right padding',singleArrangement:'Single-card arrangement',contactLayout:'Contact arrangement',contactFont:'Contact font',footerVisible:'Footer',
     contactSeparator:'Contact separator',websiteVisible:'Website visibility',emailVisible:'Email visibility',phoneVisible:'Phone visibility',linkedinVisible:'LinkedIn visibility',locationVisible:'Location visibility',
     pattern:'Artwork',customPattern:'Custom artwork',artworkPlacement:'Artwork placement',artworkScale:'Artwork size',artworkOpacity:'Artwork opacity',artworkFade:'Artwork fade',artworkFadeAngle:'Fade angle',artworkFadeDirection:'Fade direction',artworkFadeX:'Fade center horizontal',artworkFadeY:'Fade center vertical',artworkPositionX:'Artwork horizontal position',artworkPositionY:'Artwork vertical position',motifScale:'Side artwork size',motifPositionX:'Side artwork horizontal position',motifPositionY:'Side artwork vertical position',websiteIcon:'Website icon',emailIcon:'Email icon',phoneIcon:'Phone icon',linkedinIcon:'LinkedIn icon',locationIcon:'Location icon',portraitShape:'Photo shape',portraitSize:'Photo size',nameLine1:'First name line',nameLine2:'Second name line',title:'Role',subtitle:'Subtitle',website:'Website',websiteLabel:'Website label',email:'Email',phone:'Phone',linkedin:'LinkedIn',location:'Location',tags:'Tags'});
   // Automatic values are described as template choices, never as 0 px or -1 px.
@@ -26,6 +26,7 @@
     if (key.endsWith('Icon')) return core.icons[value] || value;
     if (Object.hasOwn(choiceLabels,key)) return choiceLabels[key][value] || String(value);
     if (key.endsWith('FontSize')) return value === 0 ? 'Template size' : value + ' px';
+    if (key === 'sidePadding') return value === -1 ? 'Follow card padding' : value + ' px';
     if (key === 'contentPadding') return value === -1 ? 'Template padding' : value + ' px';
     if (key.endsWith('Spacing')) return value + '%';
     if (['width','height','cardGap','portraitSize'].includes(key)) return value + ' px';

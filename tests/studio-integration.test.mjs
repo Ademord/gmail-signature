@@ -42,7 +42,7 @@ const envelope = draft => ({
 // and contact presentation (v2) fields added after these sessions were written.
 const formatDefaults = {
   nameLayout: 'template', nameFontSize: 0, titleFontSize: 0, subtitleFontSize: 0, contactFontSize: 0, footerFontSize: 0,
-  lineSpacing: 100, textSpacing: 100, contactSpacing: 100, sectionSpacing: 100, contentPadding: -1,
+  lineSpacing: 100, textSpacing: 100, contactSpacing: 100, sectionSpacing: 100, contentPadding: -1, sidePadding:-1,
   singleArrangement: 'auto', contactLayout: 'template', contactFont: 'template', footerVisible: 'show',
   contactSeparator: 'none', websiteVisible: 'show', emailVisible: 'show', phoneVisible: 'show', linkedinVisible: 'show', locationVisible: 'show'
 };

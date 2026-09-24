@@ -46,11 +46,11 @@ function checkRow(row, glyph, label) {
 }
 const firstItemWidth = row => {let width = 0;for (const cell of row.cells) {width += cell.width;if (cell.kind === 'text') return width;}return width;};
 
-test('contact presentation defaults are frozen, separate and extend the saved fields to 67', () => {
+test('contact presentation defaults are frozen, separate and extend the saved fields to 68', () => {
   assert.deepEqual({...core.contactDefaults},{contactSeparator:'none',websiteVisible:'show',emailVisible:'show',phoneVisible:'show',linkedinVisible:'show',locationVisible:'show'});
   assert.ok(Object.isFrozen(core.contactDefaults));
-  assert.equal(Object.keys(core.defaults).length,67);
-  assert.equal(Object.keys(core.typographyDefaults).length,15);
+  assert.equal(Object.keys(core.defaults).length,68);
+  assert.equal(Object.keys(core.typographyDefaults).length,16);
   for (const [key,value] of Object.entries(core.contactDefaults)) {
     assert.equal(core.defaults[key],value,key);
     assert.ok(!Object.hasOwn(core.typographyDefaults,key),key + ' is not a text-size setting');

@@ -64,6 +64,7 @@ Both `layout` and `design` also accept the typography and spacing fields below. 
 | `lineSpacing` | Integer 80–200%, default 100 |
 | `textSpacing`, `contactSpacing`, `sectionSpacing` | Integer 0–200%, default 100 |
 | `contentPadding` | `-1` for template padding, or integer 0–48 px |
+| `sidePadding` | `-1` to follow card padding, or integer 0–48 px for left/right only |
 | `singleArrangement` | `auto`, `rows` (identity above contacts), `columns`; explicit Single card only |
 | `contactLayout` | `template`, `stacked`, `inline`; inline items wrap into additional rows when needed |
 | `contactFont` | `template`, `sans`, `mono` |
@@ -88,7 +89,7 @@ Missing settings preserve the template rendering. The stored name lines survive 
 | `artworkPositionX`, `artworkPositionY` | JSON integers 0–100, percent |
 | `cardFormat` | `auto` for the legacy template format; `single` for one card; `front-back` for two separate cards |
 | `layout` | `paired` for Horizontal; `stacked` for Vertical |
-| `width` | JSON integer 280–420 |
+| `width` | JSON integer 280–420; 220–420 for explicit horizontal Single cards |
 | `height` | JSON integer 180–320; minimum content height for explicit `single` format |
 | `cardGap` | JSON integer 0–60 pixels between two separate cards; default 20; zero removes the gap |
 | `contactSeparator` | `none` (default), `bar`, `dot`, `slash`, or `dash`; between visible inline contacts on the same row |

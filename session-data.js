@@ -18,7 +18,7 @@
   var own = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
   var informationFields = Object.freeze(['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl']);
   var designFields = Object.freeze(['width','height','cardGap','cardFormat','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize',
-    'nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','singleArrangement','contactLayout','contactFont','footerVisible',
+    'nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','sidePadding','singleArrangement','contactLayout','contactFont','footerVisible',
     'contactSeparator','websiteVisible','emailVisible','phoneVisible','linkedinVisible','locationVisible']);
   // Text, spacing and contact presentation controls are Design settings. Sizes
   // use 0 for the template size, so 1 up to the minimum is rejected rather than
@@ -29,7 +29,7 @@
     contactSeparator:['none','bar','dot','slash','dash'], websiteVisible:['show','hide'], emailVisible:['show','hide'],
     phoneVisible:['show','hide'], linkedinVisible:['show','hide'], locationVisible:['show','hide']});
   var formatNumbers = Object.freeze({nameFontSize:[12,40,0], titleFontSize:[8,24,0], subtitleFontSize:[8,24,0], contactFontSize:[8,24,0],
-    footerFontSize:[8,24,0], lineSpacing:[80,200], textSpacing:[0,200], contactSpacing:[0,200], sectionSpacing:[0,200], contentPadding:[-1,48]});
+    footerFontSize:[8,24,0], lineSpacing:[80,200], textSpacing:[0,200], contactSpacing:[0,200], sectionSpacing:[0,200], contentPadding:[-1,48], sidePadding:[-1,48]});
   function fail(message) { throw new TypeError(message); }
   function checkedFormat(key, value) {
     var choices = formatChoices[key], range = formatNumbers[key];
@@ -39,7 +39,7 @@
     }
     if (typeof value !== 'number' || !Number.isInteger(value) || (value !== range[2] && (value < range[0] || value > range[1]))) {
       fail('Draft ' + key + ' must be ' + (range.length > 2 ? range[2] + ' (template size) or ' : '') + 'a whole number from ' +
-        range[0] + (key === 'contentPadding' ? ' (template padding)' : '') + ' to ' + range[1] + '.');
+        range[0] + ((key === 'contentPadding' || key === 'sidePadding') ? ' (template padding)' : '') + ' to ' + range[1] + '.');
     }
   }
   function object(value, label) {

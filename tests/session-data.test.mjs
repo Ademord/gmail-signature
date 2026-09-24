@@ -16,13 +16,13 @@ const parseValue = value => codec.parse(JSON.stringify(value));
 // fail here instead of moving silently.
 const contactDefaults = {contactSeparator:'none', websiteVisible:'show', emailVisible:'show', phoneVisible:'show', linkedinVisible:'show', locationVisible:'show'};
 const formatDefaults = {nameLayout:'template', nameFontSize:0, titleFontSize:0, subtitleFontSize:0, contactFontSize:0, footerFontSize:0,
-  lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:100, contentPadding:-1,
+  lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:100, contentPadding:-1, sidePadding:-1,
   singleArrangement:'auto', contactLayout:'template', contactFont:'template', footerVisible:'show', ...contactDefaults};
 const formatKeys = Object.keys(formatDefaults);
 const visibilityKeys = ['websiteVisible','emailVisible','phoneVisible','linkedinVisible','locationVisible'];
 const formatValid = {nameLayout:['template','single','wrap'], nameFontSize:[0,12,22,40], titleFontSize:[0,8,11,24], subtitleFontSize:[0,8,11,24],
   contactFontSize:[0,8,12,24], footerFontSize:[0,8,10,24], lineSpacing:[80,100,200], textSpacing:[0,65,200], contactSpacing:[0,100,200],
-  sectionSpacing:[0,70,200], contentPadding:[-1,0,16,48], singleArrangement:['auto','rows','columns'], contactLayout:['template','stacked','inline'],
+  sectionSpacing:[0,70,200], contentPadding:[-1,0,16,48], sidePadding:[-1,0,8,48], singleArrangement:['auto','rows','columns'], contactLayout:['template','stacked','inline'],
   contactFont:['template','sans','mono'], footerVisible:['show','hide'], contactSeparator:['none','bar','dot','slash','dash'],
   ...Object.fromEntries(visibilityKeys.map(key => [key, ['show','hide']]))};
 const smallSizeInvalid = [1,7,-1,25,11.5,'11',null,false,[],{}];
@@ -30,7 +30,7 @@ const visibilityInvalid = ['','Hide','SHOW','hidden','visible',true,false,0,1,nu
 const formatInvalid = {nameLayout:['','Single','auto','inline',0,true,null,[],{}], nameFontSize:[1,11,-1,41,22.5,'22',null,true,[],{}],
   titleFontSize:smallSizeInvalid, subtitleFontSize:smallSizeInvalid, contactFontSize:smallSizeInvalid, footerFontSize:smallSizeInvalid,
   lineSpacing:[0,79,201,100.5,'100',null,true,[],{}], textSpacing:[-1,201,65.5,'65',null,true,[],{}], contactSpacing:[-1,201,99.5,'100',null,false,[],{}],
-  sectionSpacing:[-1,201,70.5,'70',null,true,[],{}], contentPadding:[-2,49,16.5,'16','-1',null,true,[],{}],
+  sectionSpacing:[-1,201,70.5,'70',null,true,[],{}], contentPadding:[-2,49,16.5,'16','-1',null,true,[],{}], sidePadding:[-2,49,8.5,'8','-1',null,true,[],{}],
   singleArrangement:['','Rows','template','stacked',1,false,null,[],{}], contactLayout:['','Inline','auto','rows',0,true,null,[],{}],
   contactFont:['','Sans','serif','Arial',0,null,[],{}], footerVisible:['','Hide','hidden',true,false,0,null,[],{}],
   contactSeparator:['','None','Bar','|','·','/','–','comma',0,true,null,[],{}], ...Object.fromEntries(visibilityKeys.map(key => [key, visibilityInvalid]))};
@@ -38,7 +38,7 @@ const formatOf = value => Object.fromEntries(formatKeys.map(key => [key, value[k
 // Every text, spacing and contact presentation field differs from its default at once.
 const compactAll = {cardFormat:'single', layout:'paired', width:400, height:180, nameLayout:'single', nameFontSize:22, titleFontSize:11,
   subtitleFontSize:11, contactFontSize:12, footerFontSize:10, lineSpacing:110, textSpacing:65, contactSpacing:90, sectionSpacing:70,
-  contentPadding:16, singleArrangement:'rows', contactLayout:'inline', contactFont:'sans', footerVisible:'hide',
+  contentPadding:16, sidePadding:8, singleArrangement:'rows', contactLayout:'inline', contactFont:'sans', footerVisible:'hide',
   contactSeparator:'dot', websiteVisible:'hide', emailVisible:'hide', phoneVisible:'hide', linkedinVisible:'hide', locationVisible:'hide'};
 
 test('browser global and CommonJS API operate without DOM or storage', () => {

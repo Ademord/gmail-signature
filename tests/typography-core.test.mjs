@@ -9,8 +9,8 @@ import image from '../signature-image.js';
 
 const values = overrides => ({...core.defaults,...overrides});
 const ids = core.designs.map(design => design.id);
-const typographyKeys = ['nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','singleArrangement','contactLayout','contactFont','footerVisible'];
-const numericKeys = ['nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding'];
+const typographyKeys = ['nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','sidePadding','singleArrangement','contactLayout','contactFont','footerVisible'];
+const numericKeys = ['nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','sidePadding'];
 const withoutTypography = v => Object.fromEntries(Object.entries(v).filter(([key]) => !typographyKeys.includes(key)));
 const attributes = tag => Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(match => [match[1],match[2]]));
 // Tables that contain no nested table: contact rows, inline contact lines and grid cells.
@@ -21,12 +21,12 @@ const customLayout = JSON.stringify({composition:'prism',font:'serif',align:'cen
 test('typography defaults and the compact preset are frozen, complete and format-only', () => {
   assert.deepEqual(Object.keys(core.typographyDefaults),typographyKeys);
   assert.deepEqual({...core.typographyDefaults},{nameLayout:'template',nameFontSize:0,titleFontSize:0,subtitleFontSize:0,contactFontSize:0,footerFontSize:0,
-    lineSpacing:100,textSpacing:100,contactSpacing:100,sectionSpacing:100,contentPadding:-1,singleArrangement:'auto',contactLayout:'template',contactFont:'template',footerVisible:'show'});
+    lineSpacing:100,textSpacing:100,contactSpacing:100,sectionSpacing:100,contentPadding:-1, sidePadding:-1,singleArrangement:'auto',contactLayout:'template',contactFont:'template',footerVisible:'show'});
   assert.ok(Object.isFrozen(core.typographyDefaults) && Object.isFrozen(core.compactPreset) && Object.isFrozen(core.defaults));
   for (const key of typographyKeys) assert.equal(core.defaults[key],core.typographyDefaults[key],key);
   // Contract v3 reference proportions: a 560 px card, 96 px photo display,
   // 13 px role/specialty/contacts and bar separators between inline contacts.
-  assert.deepEqual({...core.compactPreset},{cardFormat:'single',layout:'paired',singleArrangement:'rows',width:280,height:180,contentPadding:24,portraitSize:96,
+  assert.deepEqual({...core.compactPreset},{cardFormat:'single',layout:'paired',singleArrangement:'rows',width:280,height:180,contentPadding:24,sidePadding:-1,portraitSize:96,
     nameLayout:'single',nameFontSize:22,titleFontSize:13,subtitleFontSize:13,contactFontSize:13,contactFont:'sans',contactLayout:'inline',contactSeparator:'bar',
     lineSpacing:100,textSpacing:100,contactSpacing:100,sectionSpacing:150,footerVisible:'hide'});
   for (const key of Object.keys(core.compactPreset)) assert.ok(Object.hasOwn(core.defaults,key),key);
@@ -74,7 +74,7 @@ test('format controls normalize to bounded integers and round-trip through JSON'
   const n = core.normalize({nameFontSize:'5',titleFontSize:30,subtitleFontSize:-4,contactFontSize:'12.4',footerFontSize:7,lineSpacing:10,textSpacing:999,
     contactSpacing:'-3',sectionSpacing:'70',contentPadding:-9,nameLayout:' single ',contactLayout:'inline'});
   assert.deepEqual(Object.fromEntries(numericKeys.map(key => [key,n[key]])),{nameFontSize:12,titleFontSize:24,subtitleFontSize:0,contactFontSize:12,footerFontSize:8,
-    lineSpacing:80,textSpacing:200,contactSpacing:0,sectionSpacing:70,contentPadding:-1});
+    lineSpacing:80,textSpacing:200,contactSpacing:0,sectionSpacing:70,contentPadding:-1, sidePadding:-1});
   assert.equal(n.nameLayout,'single');assert.equal(n.contactLayout,'inline');
   assert.equal(core.normalize({contentPadding:60}).contentPadding,48);
   const legacy = core.normalize(withoutTypography(core.defaults));

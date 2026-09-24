@@ -225,3 +225,6 @@ The repository was already public before this work. Old commits contain personal
 3. Review the exact files to commit; exclude personal exports and `.private/`.
 4. Push main and inspect the workflow for that commit. Open the deployed page, refresh, and verify the changed controls.
 5. Update this handoff with actual evidence. Preserve plain UI copy, generic public defaults, the static architecture and the user's private backup.
+# Side padding and narrower single cards
+
+Layout → Size & spacing now offers Left & right padding from 0–48 px, with Follow card padding preserving existing designs. Top and bottom padding stays independent. Horizontal Single cards can reduce the width setting to 220 px (440 px overall); other formats keep their existing limits. The same geometry is used by preview, PNG and scaled email HTML, and the setting follows Design in backups, imports and AI proposals.

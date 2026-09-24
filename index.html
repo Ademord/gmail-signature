@@ -6,26 +6,26 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=f15b1fd4f6ad3cba">
-  <link rel="stylesheet" href="portrait.css?v=f15b1fd4f6ad3cba">
-  <link rel="stylesheet" href="ai-extension.css?v=f15b1fd4f6ad3cba">
-  <link rel="stylesheet" href="library.css?v=f15b1fd4f6ad3cba">
-  <link rel="stylesheet" href="artwork.css?v=f15b1fd4f6ad3cba">
-  <script src="portrait-core.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="signature-core.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="editor-history.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="signature-image.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="session-data.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="session-controls.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="portrait-controls.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="design-collections.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="ai-extension-core.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="ai-extension-controls.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="library-controls.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="artwork-core.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="artwork-controls.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="preview-dom.js?v=f15b1fd4f6ad3cba" defer></script>
-  <script src="app.js?v=f15b1fd4f6ad3cba" defer></script>
+  <link rel="stylesheet" href="editor.css?v=0b1c4df3681e1a6d">
+  <link rel="stylesheet" href="portrait.css?v=0b1c4df3681e1a6d">
+  <link rel="stylesheet" href="ai-extension.css?v=0b1c4df3681e1a6d">
+  <link rel="stylesheet" href="library.css?v=0b1c4df3681e1a6d">
+  <link rel="stylesheet" href="artwork.css?v=0b1c4df3681e1a6d">
+  <script src="portrait-core.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="signature-core.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="editor-history.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="signature-image.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="session-data.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="session-controls.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="portrait-controls.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="design-collections.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="ai-extension-core.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="ai-extension-controls.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="library-controls.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="artwork-core.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="artwork-controls.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="preview-dom.js?v=0b1c4df3681e1a6d" defer></script>
+  <script src="app.js?v=0b1c4df3681e1a6d" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -123,7 +123,7 @@
               </div>
               <div class="size-control">
                 <div class="size-control-heading"><label id="width-label" for="width-range">Panel width</label><div class="field"><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1" aria-label="Panel width in pixels"><span aria-hidden="true">px</span></div></div></div>
-                <div class="range-field"><input id="width-range" type="range" value="321" min="280" max="420" step="1" aria-describedby="width-range-labels"><div class="range-labels" id="width-range-labels"><span>280 px</span><span>420 px</span></div></div>
+                <div class="range-field"><input id="width-range" type="range" value="321" min="280" max="420" step="1" aria-describedby="width-range-labels"><div class="range-labels" id="width-range-labels"><span id="width-min-label">280 px</span><span>420 px</span></div></div>
               </div>
               <div class="size-control">
                 <div class="size-control-heading"><label id="height-label" for="height-range">Panel height</label><div class="field"><div class="input-unit"><input id="height" name="height" type="number" value="208" min="180" max="320" step="1" aria-label="Panel height in pixels"><span aria-hidden="true">px</span></div></div></div>
@@ -142,6 +142,7 @@
                 <div class="range-field"><label for="contactSpacing">Contact spacing <output id="contactSpacing-value" for="contactSpacing">100%</output></label><input id="contactSpacing" name="contactSpacing" type="range" min="0" max="200" step="1" value="100"></div>
                 <div class="range-field"><label for="sectionSpacing">Section spacing <output id="sectionSpacing-value" for="sectionSpacing">100%</output></label><input id="sectionSpacing" name="sectionSpacing" type="range" min="0" max="200" step="1" value="100" aria-describedby="spacing-note"></div>
                 <div class="range-field"><label for="contentPadding">Card padding <output id="contentPadding-value" for="contentPadding">Template</output></label><input id="contentPadding" name="contentPadding" type="range" min="-1" max="48" step="1" value="-1" aria-describedby="spacing-note"></div>
+                <div class="field"><label for="sidePadding">Left &amp; right padding</label><select id="sidePadding" name="sidePadding" aria-describedby="side-padding-note"><option value="-1">Follow card padding</option><option value="0">0 px</option><option value="1">1 px</option><option value="2">2 px</option><option value="3">3 px</option><option value="4">4 px</option><option value="5">5 px</option><option value="6">6 px</option><option value="7">7 px</option><option value="8">8 px</option><option value="9">9 px</option><option value="10">10 px</option><option value="11">11 px</option><option value="12">12 px</option><option value="13">13 px</option><option value="14">14 px</option><option value="15">15 px</option><option value="16">16 px</option><option value="17">17 px</option><option value="18">18 px</option><option value="19">19 px</option><option value="20">20 px</option><option value="21">21 px</option><option value="22">22 px</option><option value="23">23 px</option><option value="24">24 px</option><option value="25">25 px</option><option value="26">26 px</option><option value="27">27 px</option><option value="28">28 px</option><option value="29">29 px</option><option value="30">30 px</option><option value="31">31 px</option><option value="32">32 px</option><option value="33">33 px</option><option value="34">34 px</option><option value="35">35 px</option><option value="36">36 px</option><option value="37">37 px</option><option value="38">38 px</option><option value="39">39 px</option><option value="40">40 px</option><option value="41">41 px</option><option value="42">42 px</option><option value="43">43 px</option><option value="44">44 px</option><option value="45">45 px</option><option value="46">46 px</option><option value="47">47 px</option><option value="48">48 px</option></select><p id="side-padding-note" class="field-note">Reduce the space at both edges without changing top and bottom padding. Then reduce the width for a narrower card.</p></div>
                 <p id="spacing-note" class="field-note">Text spacing separates your name, role and specialty. Section spacing separates them from your contacts. Card padding follows the template at its lowest setting.</p>
               </div>
               <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="layout">Create a layout with AI ↗</button></div>
