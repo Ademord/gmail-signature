@@ -146,7 +146,9 @@ test('all four independently expected fantasy themes retain portraits and produc
 
 test('selective import uses the independently expected information/design boundary and preserves every unchecked field', () => {
   const information = ['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl'];
-  const design = ['width','height','cardGap','cardFormat','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize'];
+  const design = ['width','height','cardGap','cardFormat','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize',
+    'nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','singleArrangement','contactLayout','contactFont','footerVisible',
+    'contactSeparator','websiteVisible','emailVisible','phoneVisible','linkedinVisible','locationVisible'];
   assert.deepEqual([...session.informationFields].sort(),[...information].sort());
   assert.deepEqual([...session.designFields].sort(),[...design].sort());
   const oldTheme = {id:'theme-shared',name:'Old palette',frontBackground:'#eeeeee',backBackground:'#111111',accent:'#557755'};
@@ -157,6 +159,8 @@ test('selective import uses the independently expected information/design bounda
     portraitData:'data:image/png;base64,'+readFileSync(new URL('../sig/icon-pin.png',import.meta.url)).toString('base64'),portraitUrl:'https://example.org/incoming.png',
     width:410,height:310,cardGap:0,cardFormat:'front-back',layout:'stacked',design:'custom',customLayout:JSON.stringify(recipe),pattern:'custom',customPattern:JSON.stringify(pattern),
     artworkPlacement:'motif',artworkScale:125,artworkOpacity:37,artworkFade:'radial',artworkFadeAngle:245,artworkFadeDirection:'reverse',artworkFadeX:18,artworkFadeY:82,artworkPositionX:13,artworkPositionY:71,motifScale:72,motifPositionX:14,motifPositionY:85,
+    nameLayout:'wrap',nameFontSize:18,titleFontSize:10,subtitleFontSize:10,contactFontSize:11,footerFontSize:9,lineSpacing:90,textSpacing:80,contactSpacing:90,sectionSpacing:80,contentPadding:20,singleArrangement:'rows',contactLayout:'stacked',contactFont:'sans',footerVisible:'hide',
+    contactSeparator:'dash',websiteVisible:'hide',emailVisible:'hide',phoneVisible:'hide',linkedinVisible:'hide',locationVisible:'hide',
     accent:'#994466',frontBackground:'#eeddcc',backBackground:'#223344',websiteIcon:'mail',emailIcon:'none',phoneIcon:'pin',linkedinIcon:'web',locationIcon:'linkedin',imageBase:'https://example.org/new-assets',portraitShape:'square',portraitSize:80},
     themes:[newTheme],ui:{editorTab:'layout',previewView:'email',imageScale:6,imageBackground:'white',selectedThemeId:newTheme.id,themeName:'New colors'}}));
   const beforeCurrent = JSON.stringify(current), beforeIncoming = JSON.stringify(incoming);

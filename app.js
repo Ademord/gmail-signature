@@ -24,6 +24,7 @@
   });
   $('appearance-menu').addEventListener('keydown', event => { if (event.key === 'Escape' && $('appearance-menu').open) { event.preventDefault(); event.stopPropagation(); closeAppearance(); } });
   const iconKeys = ['websiteIcon', 'emailIcon', 'phoneIcon', 'linkedinIcon', 'locationIcon'];
+  const contactLabels = {website: 'Website', email: 'Email', phone: 'Phone', linkedin: 'LinkedIn', location: 'Location'};
   for (const key of iconKeys) {
     for (const [value, label] of Object.entries(core.icons)) {
       const option = document.createElement('option'); option.value = value; option.textContent = label;
@@ -46,6 +47,18 @@
   const newDraft = () => ({...core.defaults,...Object.fromEntries(colorKeys.map(key => [key,plumPalette[key]]))});
   const flowingPatterns = ['cutpaper','colorfield','chromatic','counterform','overprint','gesture'];
   const artworkNumbers = ['artworkScale','artworkOpacity','artworkFadeAngle','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'];
+  const fontSizes = {nameFontSize:[12,40],titleFontSize:[8,24],subtitleFontSize:[8,24],contactFontSize:[8,24],footerFontSize:[8,24]};
+  const spacingPercents = ['lineSpacing','textSpacing','contactSpacing','sectionSpacing'];
+  const textNumbers = [...Object.keys(fontSizes),...spacingPercents,'contentPadding'];
+  // Template sizes adapt to each layout, so 0 is offered as Template instead of a pixel size.
+  for (const [key, [min, max]] of Object.entries(fontSizes)) {
+    const sizes = [[0, 'Template']];
+    for (let size = min; size <= max; size++) sizes.push([size, size + ' px']);
+    for (const [value, label] of sizes) {
+      const option = document.createElement('option'); option.value = String(value); option.textContent = label;
+      $(key).append(option);
+    }
+  }
   const hexColor = /^#[0-9a-f]{6}$/i;
   const presets = [
     { id: 'preset-original', name: 'Original', frontBackground: '#f3f0ea', backBackground: '#1c1c1c', accent: '#c8362a' },
@@ -134,13 +147,24 @@
   };
   const decode = (value) => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
   const encode = (value) => btoa(Array.from(new TextEncoder().encode(JSON.stringify(value)), c => String.fromCharCode(c)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  function normalizeSavedDraft(value) {
+    const normalized = core.normalize(value);
+    // New formatting values must survive normalization exactly. Keep the legacy
+    // draft migration behavior while rejecting malformed new JSON settings.
+    for (const key of Object.keys({...core.typographyDefaults, ...core.contactDefaults})) {
+      if (Object.hasOwn(value, key) && (typeof value[key] !== typeof core.defaults[key] || value[key] !== normalized[key])) {
+        throw new TypeError('Invalid saved formatting: ' + key);
+      }
+    }
+    return normalized;
+  }
   try {
     const saved = localStorage.getItem(storageKey);
     storedDraftValue = saved;
     if (saved) {
       const parsed = JSON.parse(saved);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid draft');
-      const normalized = core.normalize(parsed);
+      const normalized = normalizeSavedDraft(parsed);
       draft = normalized;
       if (Object.keys(core.validate(normalized)).length) startupMessage = 'Your saved draft needs an adjustment. Check the highlighted field.';
     }
@@ -151,7 +175,7 @@
       if (location.hash.length > 16000) throw new Error('Link too long');
       const imported = decode(location.hash.slice(3));
       if (!imported || typeof imported !== 'object' || Array.isArray(imported)) throw new Error('Invalid draft');
-      const normalized = core.normalize(imported);
+      const normalized = normalizeSavedDraft(imported);
       if (Object.keys(core.validate(normalized)).length) throw new Error('Invalid draft');
       const before = { ...draft }; draft = normalized;
       if (remember) recordEdit(before);
@@ -399,6 +423,26 @@
   }
   $('swap-colors').addEventListener('click', () => applyStyle({ frontBackground: draft.backBackground, backBackground: draft.frontBackground }, 'Card colors swapped.'));
   $('reset-design').addEventListener('click', () => { const item = designById(draft.design); if (item) applyStyle(designPatch(item), item.name + ' colors and pattern restored. Your details are unchanged.'); });
+  // Starting points keep all content. The compact preset also balances the
+  // photo's display size and adds bars; Reset text & spacing does neither.
+  const keptKeys = new Set(['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','imageBase',
+    'design','customLayout','pattern','customPattern','artworkPlacement','artworkFade','artworkFadeDirection','portraitData','portraitUrl','portraitShape',
+    ...colorKeys,...iconKeys,...artworkNumbers,...Object.keys(core.contactDefaults).filter(key=>key!=='contactSeparator')]);
+  // Contact labels toggle presentation only; the saved text, link label and icon stay.
+  for (const [key, label] of Object.entries(contactLabels)) $(key + 'Visible-toggle').addEventListener('click', () => {
+    const hide = draft[key + 'Visible'] !== 'hide';
+    applyStyle({[key + 'Visible']: hide ? 'hide' : 'show'}, label + (hide ? ' hidden from your signature. Your details are kept.' : ' shown in your signature.'));
+  });
+  const presetPatch = preset => Object.fromEntries(Object.entries(preset).filter(([key]) => Object.hasOwn(core.defaults, key) && !keptKeys.has(key)));
+  $('apply-compact-layout').addEventListener('click', () => {
+    const patch = presetPatch(core.compactPreset), fits = value => !Object.keys(core.validate({...draft, ...value})).length;
+    let fitted = patch;
+    // A longer name or contact may use the extra width the compact layout allows.
+    for (let width = patch.width; !fits(fitted) && width < 420;) { width = Math.min(420, width + 10); fitted = {...patch, width}; }
+    if (!fits(fitted)) fitted = patch;
+    applyStyle(fitted, (fitted === patch ? 'Compact email layout applied.' : 'Compact email layout applied at ' + core.dimensions({...draft,...fitted}).width + ' px wide so everything fits.') + ' Undo restores your previous layout.');
+  });
+  $('reset-typography').addEventListener('click', () => applyStyle(presetPatch(core.typographyDefaults), 'Text and spacing now follow the template. Undo restores your settings.'));
   $('shuffle-design').addEventListener('click', () => {
     const options = designs.filter(item => item.id !== draft.design);
     const item = options[Math.floor(Math.random() * options.length)];
@@ -538,12 +582,12 @@
     $('cardGap-range').disabled = joined && !invalidGap;
     $('card-gap-control').hidden = single && !invalidGap;
     $('cardGap-note').textContent = joined ? 'This template already joins the cards.' : 'Set to 0 px to join the two cards.';
-    const widthLabel = single ? (draft.layout === 'stacked' ? 'Card width' : 'Column width') : 'Panel width';
+    const widthLabel = single ? (draft.layout === 'stacked' ? 'Card width' : 'Half card width') : 'Panel width';
     const heightLabel = single ? 'Minimum height' : 'Panel height';
     $('width-label').textContent = widthLabel; $('width').setAttribute('aria-label', widthLabel + ' in pixels');
     $('height-label').textContent = heightLabel; $('height').setAttribute('aria-label', heightLabel + ' in pixels');
     $('single-size-note').hidden = !single;
-    $('single-size-note').textContent = draft.layout === 'stacked' ? 'Height grows to fit your details.' : 'Two columns share one card. Height grows to fit your details.';
+    $('single-size-note').textContent = (draft.layout === 'stacked' ? '' : 'Wide cards use twice the width setting. ') + 'Height grows to fit your details; the minimum height can leave extra space.';
     const legacySingle = draft.cardFormat === 'auto' && joined;
     $('card-format-note').textContent = single ? 'One background, with your details arranged together.' : legacySingle ? 'Your saved template layout is preserved. Choose a format to rearrange it.' : 'Two faces, each with its own background.';
     document.querySelectorAll('[data-card-format]').forEach(button => {
@@ -556,6 +600,27 @@
     $('swap-colors').hidden = single;
     $('colors-panel').classList.toggle('is-single-card', single);
     document.querySelectorAll('[data-arrangement]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.arrangement === draft.layout)));
+    syncTextControls();
+  }
+  function syncTextControls() {
+    const outputs = Object.fromEntries(spacingPercents.map(key => [key, draft[key] + '%']));
+    outputs.contentPadding = String(draft.contentPadding) === '-1' ? 'Template' : draft.contentPadding + ' px';
+    for (const [key, text] of Object.entries(outputs)) { $(key + '-value').textContent = text; $(key).setAttribute('aria-valuetext', text); }
+    $('name-layout-note').textContent = draft.nameLayout === 'single' ? 'Your full name stays on one line. Saved line breaks are kept.'
+      : draft.nameLayout === 'wrap' ? 'Your full name wraps to fit the card.' : 'Uses your name line breaks from Footer & icons.';
+    // Arrangement applies to explicit Single cards; an unknown value stays visible for repair.
+    const knownArrangement = Array.from($('singleArrangement').options).some(option => option.value === draft.singleArrangement);
+    $('single-arrangement-field').hidden = draft.cardFormat !== 'single' && knownArrangement;
+    $('footer-visible-note').hidden = draft.footerVisible !== 'hide';
+    for (const [key, label] of Object.entries(contactLabels)) {
+      const shown = draft[key + 'Visible'] !== 'hide', toggle = $(key + 'Visible-toggle');
+      toggle.setAttribute('aria-pressed', String(shown));
+      toggle.title = shown ? 'Hide ' + label + ' from your signature' : 'Show ' + label + ' in your signature';
+    }
+    // Separators only join contacts that share a row; an unknown value stays editable for repair.
+    const knownSeparator = Array.from($('contactSeparator').options).some(option => option.value === draft.contactSeparator);
+    $('contactSeparator').disabled = draft.contactLayout !== 'inline' && knownSeparator;
+    $('contact-separator-note').textContent = draft.contactLayout === 'inline' ? 'Appears only between contacts that share a row.' : 'Choose Inline contact layout to add separators.';
   }
   function save() {
     const note = document.querySelector('.rail-footer > span');
@@ -624,7 +689,7 @@
       ? (cleanName(joinedName()) ? 'Re-enter your name here or adjust Name line breaks below.' : 'Enter your name.')
       : [draft.nameLine1, draft.nameLine2].some(line => line.length > core.limits.nameLine1)
         ? 'Use up to 36 characters per name line. Adjust the line break below or shorten the name.'
-        : 'Shorten the name or increase the card width for readable text.';
+        : 'Shorten the name' + (draft.nameLayout === 'single' ? ', choose Wrap to fit in Name layout' : '') + ' or increase the card width for readable text.';
     $('full-name').setCustomValidity(nameMessage);
     $('full-name').setAttribute('aria-invalid', String(Boolean(nameMessage)));
     $('error-full-name').textContent = nameMessage;
@@ -635,7 +700,8 @@
       const message = errors[key] || '';
       input.setCustomValidity(message);
       input.setAttribute('aria-invalid', String(Boolean(message)));
-      const hexInput = $(key + '-hex');
+      // Colors and contact visibility are edited through a separate visible control.
+      const hexInput = $(key + '-hex') || $(key + '-toggle');
       if (hexInput) {
         hexInput.setCustomValidity(message);
         hexInput.setAttribute('aria-invalid', String(Boolean(message)));
@@ -663,7 +729,7 @@
         const visibleId = { portraitUrl: 'portrait-public-url', portraitSize: 'portrait-size-control', portraitShape: 'portrait-shape-circle' }[keys[0]] || 'portrait-file';
         ($(visibleId) || $('photo-tab')).focus();
       } else if (input) {
-        const focusTarget = ['nameLine1', 'nameLine2'].includes(keys[0]) ? $('full-name') : $(keys[0] + '-hex') || input;
+        const focusTarget = ['nameLine1', 'nameLine2'].includes(keys[0]) ? $('full-name') : $(keys[0] + '-hex') || $(keys[0] + '-toggle') || input;
         const panel = focusTarget.closest('[data-editor-panel]');
         if (panel) setTab(panel.dataset.editorPanel);
         for (let ancestor = focusTarget.parentElement; ancestor && ancestor !== form; ancestor = ancestor.parentElement) {
@@ -740,7 +806,7 @@
         draft.websiteLabel = '';
         $('websiteLabel').value = '';
       }
-      draft[input.name] = ['width', 'height', 'cardGap', ...artworkNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
+      draft[input.name] = ['width', 'height', 'cardGap', ...artworkNumbers, ...textNumbers].includes(input.name) ? (input.value === '' ? '' : Number(input.value)) : input.value;
       if (['nameLine1', 'nameLine2'].includes(input.name)) syncName();
       if (input.name === 'pattern' && !flowingPatterns.includes(draft.pattern) && draft.artworkPlacement === 'flow') draft.artworkPlacement = 'auto';
       if (colorKeys.includes(input.name)) $(input.name + '-hex').value = input.value.toUpperCase();

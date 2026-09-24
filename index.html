@@ -6,26 +6,26 @@
   <meta name="theme-color" content="#f0eee9">
   <meta name="description" content="A personal signature design studio. Explore seven compositions, mix colors and patterns, and export your own email signature.">
   <title>Signature Studio</title>
-  <link rel="stylesheet" href="editor.css?v=43d4fb1a3202ba5a">
-  <link rel="stylesheet" href="portrait.css?v=43d4fb1a3202ba5a">
-  <link rel="stylesheet" href="ai-extension.css?v=43d4fb1a3202ba5a">
-  <link rel="stylesheet" href="library.css?v=43d4fb1a3202ba5a">
-  <link rel="stylesheet" href="artwork.css?v=43d4fb1a3202ba5a">
-  <script src="portrait-core.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="signature-core.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="editor-history.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="signature-image.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="session-data.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="session-controls.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="portrait-controls.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="design-collections.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="ai-extension-core.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="ai-extension-controls.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="library-controls.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="artwork-core.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="artwork-controls.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="preview-dom.js?v=43d4fb1a3202ba5a" defer></script>
-  <script src="app.js?v=43d4fb1a3202ba5a" defer></script>
+  <link rel="stylesheet" href="editor.css?v=8da44c10369a3b7f">
+  <link rel="stylesheet" href="portrait.css?v=8da44c10369a3b7f">
+  <link rel="stylesheet" href="ai-extension.css?v=8da44c10369a3b7f">
+  <link rel="stylesheet" href="library.css?v=8da44c10369a3b7f">
+  <link rel="stylesheet" href="artwork.css?v=8da44c10369a3b7f">
+  <script src="portrait-core.js?v=8da44c10369a3b7f" defer></script>
+  <script src="signature-core.js?v=8da44c10369a3b7f" defer></script>
+  <script src="editor-history.js?v=8da44c10369a3b7f" defer></script>
+  <script src="signature-image.js?v=8da44c10369a3b7f" defer></script>
+  <script src="session-data.js?v=8da44c10369a3b7f" defer></script>
+  <script src="session-controls.js?v=8da44c10369a3b7f" defer></script>
+  <script src="portrait-controls.js?v=8da44c10369a3b7f" defer></script>
+  <script src="design-collections.js?v=8da44c10369a3b7f" defer></script>
+  <script src="ai-extension-core.js?v=8da44c10369a3b7f" defer></script>
+  <script src="ai-extension-controls.js?v=8da44c10369a3b7f" defer></script>
+  <script src="library-controls.js?v=8da44c10369a3b7f" defer></script>
+  <script src="artwork-core.js?v=8da44c10369a3b7f" defer></script>
+  <script src="artwork-controls.js?v=8da44c10369a3b7f" defer></script>
+  <script src="preview-dom.js?v=8da44c10369a3b7f" defer></script>
+  <script src="app.js?v=8da44c10369a3b7f" defer></script>
 </head>
 <body class="studio-shell">
   <a class="skip-link" href="#editor-form">Skip to editor</a>
@@ -111,6 +111,11 @@
           <details id="size-disclosure" class="editor-disclosure">
             <summary>Size &amp; spacing</summary>
             <div class="disclosure-content">
+              <div class="compact-start">
+                <button id="apply-compact-layout" class="button button-secondary" type="button" aria-describedby="compact-layout-note">Use compact email layout</button>
+                <p id="compact-layout-note" class="field-note">Balanced spacing, a larger photo and separated contacts. Your details, photo crop, colors and artwork stay.</p>
+                <button id="reset-typography" class="text-button" type="button">Reset text &amp; spacing</button>
+              </div>
               <div class="size-control">
                 <div class="size-control-heading"><label id="width-label" for="width-range">Panel width</label><div class="field"><div class="input-unit"><input id="width" name="width" type="number" value="321" min="280" max="420" step="1" aria-label="Panel width in pixels"><span aria-hidden="true">px</span></div></div></div>
                 <div class="range-field"><input id="width-range" type="range" value="321" min="280" max="420" step="1" aria-describedby="width-range-labels"><div class="range-labels" id="width-range-labels"><span>280 px</span><span>420 px</span></div></div>
@@ -125,6 +130,15 @@
                 <div class="range-field"><input id="cardGap-range" type="range" value="20" min="0" max="60" step="1" aria-describedby="cardGap-range-labels cardGap-note"><div class="range-labels" id="cardGap-range-labels"><span>0 px</span><span>60 px</span></div></div>
                 <p class="field-note" id="cardGap-note">Set to 0 px to join the two cards.</p>
               </div>
+              <div class="spacing-controls">
+                <div id="single-arrangement-field" class="field" hidden><label for="singleArrangement">Content arrangement</label><select id="singleArrangement" name="singleArrangement" aria-describedby="single-arrangement-note"><option value="auto">Automatic</option><option value="rows">Details above contacts</option><option value="columns">Details beside contacts</option></select><p id="single-arrangement-note" class="field-note">Applies to Single card.</p></div>
+                <div class="range-field"><label for="lineSpacing">Line spacing <output id="lineSpacing-value" for="lineSpacing">100%</output></label><input id="lineSpacing" name="lineSpacing" type="range" min="80" max="200" step="1" value="100"></div>
+                <div class="range-field"><label for="textSpacing">Text spacing <output id="textSpacing-value" for="textSpacing">100%</output></label><input id="textSpacing" name="textSpacing" type="range" min="0" max="200" step="1" value="100" aria-describedby="spacing-note"></div>
+                <div class="range-field"><label for="contactSpacing">Contact spacing <output id="contactSpacing-value" for="contactSpacing">100%</output></label><input id="contactSpacing" name="contactSpacing" type="range" min="0" max="200" step="1" value="100"></div>
+                <div class="range-field"><label for="sectionSpacing">Section spacing <output id="sectionSpacing-value" for="sectionSpacing">100%</output></label><input id="sectionSpacing" name="sectionSpacing" type="range" min="0" max="200" step="1" value="100" aria-describedby="spacing-note"></div>
+                <div class="range-field"><label for="contentPadding">Card padding <output id="contentPadding-value" for="contentPadding">Template</output></label><input id="contentPadding" name="contentPadding" type="range" min="-1" max="48" step="1" value="-1" aria-describedby="spacing-note"></div>
+                <p id="spacing-note" class="field-note">Text spacing separates your name, role and specialty. Section spacing separates them from your contacts. Card padding follows the template at its lowest setting.</p>
+              </div>
               <div class="section-ai-action"><button type="button" class="text-button ai-inline" data-ai-section="layout">Create a layout with AI ↗</button></div>
               <details class="advanced-settings"><summary>Advanced settings<svg viewBox="0 0 16 16" width="15" height="15" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="field"><label for="design">Template</label><div class="cycle-control"><button id="previous-design" class="cycle-button" type="button" data-cycle-field="design" data-cycle-step="-1" aria-label="Previous layout"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><select id="design" name="design" aria-describedby="design-description"></select><button id="next-design" class="cycle-button" type="button" data-cycle-field="design" data-cycle-step="1" aria-label="Next layout"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div><div class="field"><label for="imageBase">Image base URL</label><input id="imageBase" name="imageBase" type="url" value="https://raw.githubusercontent.com/Ademord/gmail-signature/main/sig" spellcheck="false" aria-describedby="image-base-note"><p class="field-note" id="image-base-note">Hosted images used in the signature.</p></div></details>
             </div>
@@ -136,21 +150,36 @@
           <fieldset class="field-section">
             <legend>About you</legend>
             <div class="field"><label for="full-name">Name</label><input id="full-name" name="fullName" type="text" value="Avery Morgan" maxlength="73" autocomplete="name" placeholder="Avery Morgan" aria-describedby="error-full-name"><small id="error-full-name" class="field-error" hidden></small></div>
-            <div class="field"><label for="title">Role</label><input id="title" name="title" type="text" value="Software Engineer" maxlength="64" autocomplete="organization-title" placeholder="Software Engineer"></div>
-            <div class="field"><label for="subtitle">Specialty <span>Optional</span></label><input id="subtitle" name="subtitle" type="text" value="AI &amp; AUTOMATION" maxlength="76" placeholder="AI &amp; AUTOMATION"></div>
+            <div class="field"><label for="nameLayout">Name layout</label><select id="nameLayout" name="nameLayout" aria-describedby="name-layout-note"><option value="template">Template</option><option value="single">One line</option><option value="wrap">Wrap to fit</option></select><p id="name-layout-note" class="field-note">Uses your name line breaks from Footer &amp; icons.</p></div>
+            <div class="field contact-field"><label for="title">Role</label><input id="title" name="title" type="text" value="Software Engineer" maxlength="64" autocomplete="organization-title" placeholder="Software Engineer"></div>
+            <div class="field contact-field"><label for="subtitle">Specialty <span>Optional</span></label><input id="subtitle" name="subtitle" type="text" value="AI &amp; AUTOMATION" maxlength="76" placeholder="AI &amp; AUTOMATION"></div>
           </fieldset>
 
           <fieldset class="field-section">
             <legend>Contact</legend>
-            <p class="section-note">Only filled fields appear.</p>
-            <div class="field contact-field"><label for="website"><img src="sig/icon-web-dark.png" width="18" height="18" alt="">Website</label><input id="website" name="website" type="text" value="example.com" inputmode="url" autocomplete="url" spellcheck="false" placeholder="example.com"></div>
-            <div class="field contact-field"><label for="email"><img src="sig/icon-mail-dark.png" width="18" height="18" alt="">Email</label><input id="email" name="email" type="email" value="avery@example.com" autocomplete="email" spellcheck="false" placeholder="avery@example.com"></div>
-            <div class="field contact-field"><label for="phone"><img src="sig/icon-phone-dark.png" width="18" height="18" alt="">Phone</label><input id="phone" name="phone" type="tel" value="+1 415 555 0128" autocomplete="tel" placeholder="+1 415 555 0128"></div>
-            <div class="field contact-field"><label for="linkedin"><img src="sig/icon-linkedin-dark.png" width="18" height="18" alt="">LinkedIn</label><input id="linkedin" name="linkedin" type="text" value="linkedin.com/in/averymorgan" inputmode="url" spellcheck="false" placeholder="linkedin.com/in/yourname"></div>
-            <div class="field contact-field"><label for="location"><img src="sig/icon-pin-dark.png" width="18" height="18" alt="">Location</label><input id="location" name="location" type="text" value="San Francisco, CA" maxlength="48" autocomplete="address-level2" placeholder="San Francisco, CA"></div>
+            <p class="section-note">Only filled fields appear. Select a label to hide or show it without clearing it.</p>
+            <div class="field contact-field"><button id="websiteVisible-toggle" class="contact-toggle" type="button" aria-label="Show Website in signature" aria-pressed="true"><span class="contact-toggle-icon" aria-hidden="true"><img src="sig/icon-web-dark.png" width="18" height="18" alt=""><svg class="contact-hidden-icon" viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M2.5 9S4.8 4.8 9 4.8 15.5 9 15.5 9 13.2 13.2 9 13.2 2.5 9 2.5 9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.9" stroke="currentColor" stroke-width="1.3"/><path d="m3.5 14.5 11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>Website</button><label class="sr-only" for="website">Website</label><input id="websiteVisible" name="websiteVisible" type="hidden" value="show"><input id="website" name="website" type="text" value="example.com" inputmode="url" autocomplete="url" spellcheck="false" placeholder="example.com"></div>
+            <div class="field contact-field"><button id="emailVisible-toggle" class="contact-toggle" type="button" aria-label="Show Email in signature" aria-pressed="true"><span class="contact-toggle-icon" aria-hidden="true"><img src="sig/icon-mail-dark.png" width="18" height="18" alt=""><svg class="contact-hidden-icon" viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M2.5 9S4.8 4.8 9 4.8 15.5 9 15.5 9 13.2 13.2 9 13.2 2.5 9 2.5 9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.9" stroke="currentColor" stroke-width="1.3"/><path d="m3.5 14.5 11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>Email</button><label class="sr-only" for="email">Email</label><input id="emailVisible" name="emailVisible" type="hidden" value="show"><input id="email" name="email" type="email" value="avery@example.com" autocomplete="email" spellcheck="false" placeholder="avery@example.com"></div>
+            <div class="field contact-field"><button id="phoneVisible-toggle" class="contact-toggle" type="button" aria-label="Show Phone in signature" aria-pressed="true"><span class="contact-toggle-icon" aria-hidden="true"><img src="sig/icon-phone-dark.png" width="18" height="18" alt=""><svg class="contact-hidden-icon" viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M2.5 9S4.8 4.8 9 4.8 15.5 9 15.5 9 13.2 13.2 9 13.2 2.5 9 2.5 9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.9" stroke="currentColor" stroke-width="1.3"/><path d="m3.5 14.5 11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>Phone</button><label class="sr-only" for="phone">Phone</label><input id="phoneVisible" name="phoneVisible" type="hidden" value="show"><input id="phone" name="phone" type="tel" value="+1 415 555 0128" autocomplete="tel" placeholder="+1 415 555 0128"></div>
+            <div class="field contact-field"><button id="linkedinVisible-toggle" class="contact-toggle" type="button" aria-label="Show LinkedIn in signature" aria-pressed="true"><span class="contact-toggle-icon" aria-hidden="true"><img src="sig/icon-linkedin-dark.png" width="18" height="18" alt=""><svg class="contact-hidden-icon" viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M2.5 9S4.8 4.8 9 4.8 15.5 9 15.5 9 13.2 13.2 9 13.2 2.5 9 2.5 9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.9" stroke="currentColor" stroke-width="1.3"/><path d="m3.5 14.5 11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>LinkedIn</button><label class="sr-only" for="linkedin">LinkedIn</label><input id="linkedinVisible" name="linkedinVisible" type="hidden" value="show"><input id="linkedin" name="linkedin" type="text" value="linkedin.com/in/averymorgan" inputmode="url" spellcheck="false" placeholder="linkedin.com/in/yourname"></div>
+            <div class="field contact-field"><button id="locationVisible-toggle" class="contact-toggle" type="button" aria-label="Show Location in signature" aria-pressed="true"><span class="contact-toggle-icon" aria-hidden="true"><img src="sig/icon-pin-dark.png" width="18" height="18" alt=""><svg class="contact-hidden-icon" viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M2.5 9S4.8 4.8 9 4.8 15.5 9 15.5 9 13.2 13.2 9 13.2 2.5 9 2.5 9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.9" stroke="currentColor" stroke-width="1.3"/><path d="m3.5 14.5 11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>Location</button><label class="sr-only" for="location">Location</label><input id="locationVisible" name="locationVisible" type="hidden" value="show"><input id="location" name="location" type="text" value="San Francisco, CA" maxlength="48" autocomplete="address-level2" placeholder="San Francisco, CA"></div>
+            <div class="field"><label for="contactLayout">Contact layout</label><select id="contactLayout" name="contactLayout" aria-describedby="contact-layout-note"><option value="template">Template</option><option value="stacked">Stacked</option><option value="inline">Inline</option></select><p id="contact-layout-note" class="field-note">Inline places contacts side by side and wraps them when space runs out.</p></div>
+            <div class="field"><label for="contactSeparator">Separator</label><select id="contactSeparator" name="contactSeparator" aria-describedby="contact-separator-note"><option value="none">None</option><option value="bar">Bar |</option><option value="dot">Dot ·</option><option value="slash">Slash /</option><option value="dash">Dash –</option></select><p id="contact-separator-note" class="field-note">Choose Inline contact layout to add separators.</p></div>
           </fieldset>
+          <details id="typography-disclosure" class="editor-disclosure"><summary>Typography</summary><div class="disclosure-content">
+            <p class="section-note">Template sizes adapt to each layout and card width.</p>
+            <div class="field-grid">
+              <div class="field"><label for="nameFontSize">Name size</label><select id="nameFontSize" name="nameFontSize"></select></div>
+              <div class="field"><label for="titleFontSize">Role size</label><select id="titleFontSize" name="titleFontSize"></select></div>
+              <div class="field"><label for="subtitleFontSize">Specialty size</label><select id="subtitleFontSize" name="subtitleFontSize"></select></div>
+              <div class="field"><label for="contactFontSize">Contact size</label><select id="contactFontSize" name="contactFontSize"></select></div>
+              <div class="field"><label for="footerFontSize">Footer size</label><select id="footerFontSize" name="footerFontSize"></select></div>
+              <div class="field"><label for="contactFont">Contact font</label><select id="contactFont" name="contactFont"><option value="template">Template</option><option value="sans">Sans serif</option><option value="mono">Monospace</option></select></div>
+            </div>
+          </div></details>
           <details id="icons-disclosure" class="editor-disclosure"><summary>Footer &amp; icons</summary><div class="disclosure-content">
             <div class="field"><label for="tags">Footer text <span>Optional</span></label><input id="tags" name="tags" type="text" value="SOFTWARE · AI · AUTOMATION" maxlength="76" placeholder="SOFTWARE · AI · AUTOMATION"></div>
+            <div class="field"><label for="footerVisible">Footer</label><select id="footerVisible" name="footerVisible" aria-describedby="footer-visible-note"><option value="show">Show footer text</option><option value="hide">Hide footer text</option></select><p id="footer-visible-note" class="field-note" hidden>Your footer text is kept. Choose Show to add it back.</p></div>
             <div class="field"><label for="websiteLabel">Website link text <span>Optional</span></label><input id="websiteLabel" name="websiteLabel" type="text" value="example.com" maxlength="40" spellcheck="false" placeholder="Automatic from website" aria-describedby="website-label-note"><p id="website-label-note" class="field-note">Leave empty to use your website address.</p></div>
             <details id="name-lines-disclosure" class="nested-disclosure"><summary>Name line breaks</summary>
               <p class="section-note">Fine-tune where your name breaks on the card.</p>

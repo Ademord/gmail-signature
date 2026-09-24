@@ -11,6 +11,35 @@ const draft = changes => ({ ...core.defaults, ...changes });
 const theme = (id = 'theme-1', name = 'Océan', accent = '#a64435') => ({ id, name, frontBackground:'#edf2ea', backBackground:'#1d392f', accent });
 const envelope = changes => ({format:'signature-editor-session', version:1, exportedAt:'2026-09-05T12:00:00.000Z', draft:draft(), themes:[], ...changes});
 const parseValue = value => codec.parse(JSON.stringify(value));
+// Independent copy of the frozen compact-editor contract (v1 text and spacing,
+// v2 contact presentation). A changed implementation default or range must
+// fail here instead of moving silently.
+const contactDefaults = {contactSeparator:'none', websiteVisible:'show', emailVisible:'show', phoneVisible:'show', linkedinVisible:'show', locationVisible:'show'};
+const formatDefaults = {nameLayout:'template', nameFontSize:0, titleFontSize:0, subtitleFontSize:0, contactFontSize:0, footerFontSize:0,
+  lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:100, contentPadding:-1,
+  singleArrangement:'auto', contactLayout:'template', contactFont:'template', footerVisible:'show', ...contactDefaults};
+const formatKeys = Object.keys(formatDefaults);
+const visibilityKeys = ['websiteVisible','emailVisible','phoneVisible','linkedinVisible','locationVisible'];
+const formatValid = {nameLayout:['template','single','wrap'], nameFontSize:[0,12,22,40], titleFontSize:[0,8,11,24], subtitleFontSize:[0,8,11,24],
+  contactFontSize:[0,8,12,24], footerFontSize:[0,8,10,24], lineSpacing:[80,100,200], textSpacing:[0,65,200], contactSpacing:[0,100,200],
+  sectionSpacing:[0,70,200], contentPadding:[-1,0,16,48], singleArrangement:['auto','rows','columns'], contactLayout:['template','stacked','inline'],
+  contactFont:['template','sans','mono'], footerVisible:['show','hide'], contactSeparator:['none','bar','dot','slash','dash'],
+  ...Object.fromEntries(visibilityKeys.map(key => [key, ['show','hide']]))};
+const smallSizeInvalid = [1,7,-1,25,11.5,'11',null,false,[],{}];
+const visibilityInvalid = ['','Hide','SHOW','hidden','visible',true,false,0,1,null,[],{}];
+const formatInvalid = {nameLayout:['','Single','auto','inline',0,true,null,[],{}], nameFontSize:[1,11,-1,41,22.5,'22',null,true,[],{}],
+  titleFontSize:smallSizeInvalid, subtitleFontSize:smallSizeInvalid, contactFontSize:smallSizeInvalid, footerFontSize:smallSizeInvalid,
+  lineSpacing:[0,79,201,100.5,'100',null,true,[],{}], textSpacing:[-1,201,65.5,'65',null,true,[],{}], contactSpacing:[-1,201,99.5,'100',null,false,[],{}],
+  sectionSpacing:[-1,201,70.5,'70',null,true,[],{}], contentPadding:[-2,49,16.5,'16','-1',null,true,[],{}],
+  singleArrangement:['','Rows','template','stacked',1,false,null,[],{}], contactLayout:['','Inline','auto','rows',0,true,null,[],{}],
+  contactFont:['','Sans','serif','Arial',0,null,[],{}], footerVisible:['','Hide','hidden',true,false,0,null,[],{}],
+  contactSeparator:['','None','Bar','|','·','/','–','comma',0,true,null,[],{}], ...Object.fromEntries(visibilityKeys.map(key => [key, visibilityInvalid]))};
+const formatOf = value => Object.fromEntries(formatKeys.map(key => [key, value[key]]));
+// Every text, spacing and contact presentation field differs from its default at once.
+const compactAll = {cardFormat:'single', layout:'paired', width:400, height:180, nameLayout:'single', nameFontSize:22, titleFontSize:11,
+  subtitleFontSize:11, contactFontSize:12, footerFontSize:10, lineSpacing:110, textSpacing:65, contactSpacing:90, sectionSpacing:70,
+  contentPadding:16, singleArrangement:'rows', contactLayout:'inline', contactFont:'sans', footerVisible:'hide',
+  contactSeparator:'dot', websiteVisible:'hide', emailVisible:'hide', phoneVisible:'hide', linkedinVisible:'hide', locationVisible:'hide'};
 
 test('browser global and CommonJS API operate without DOM or storage', () => {
   const window = {SignatureCore:core};
@@ -163,6 +192,95 @@ test('selective design import owns background settings while information import 
     assert.equal(result.draft.nameLine1,(selection.information?incoming:current).draft.nameLine1);
   }
   assert.ok(codec.designFields.includes('artworkOpacity'));assert.ok(!codec.informationFields.includes('artworkOpacity'));
+});
+
+test('text and spacing controls are Design fields while names, contacts and photos stay Information', () => {
+  assert.deepEqual([...codec.informationFields], ['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl']);
+  for (const key of formatKeys) {
+    assert.ok(codec.designFields.includes(key), key + ' belongs to Design');
+    assert.ok(!codec.informationFields.includes(key), key + ' is not Information');
+  }
+  assert.equal(new Set(codec.designFields).size, codec.designFields.length);
+  assert.ok(Object.isFrozen(codec.designFields) && Object.isFrozen(codec.informationFields));
+});
+
+test('drafts and version 1 sessions without text and spacing fields gain template defaults and keep their exact output', () => {
+  const customLayout = JSON.stringify({composition:'editorial',font:'serif',align:'center'});
+  for (const design of ['original','orbit','custom']) for (const layout of ['paired','stacked']) for (const cardFormat of ['auto','single','front-back']) {
+    const legacy = draft({design,layout,cardFormat,customLayout:design === 'custom' ? customLayout : '',portraitUrl:'https://example.com/portrait.jpg'});
+    for (const key of formatKeys) delete legacy[key];
+    const before = structuredClone(legacy), label = [design,layout,cardFormat].join(':');
+    for (const input of [legacy, envelope({draft:legacy})]) {
+      const restored = parseValue(input);
+      assert.deepEqual(formatOf(restored.draft), formatDefaults, label);
+      assert.equal(core.render(restored.draft), core.render(legacy), label);
+      assert.equal(core.render({...legacy, ...formatDefaults}), core.render(legacy), label + ' explicit template values');
+      assert.deepEqual(core.dimensions(restored.draft), core.dimensions(legacy), label);
+      assert.deepEqual(codec.parse(codec.serialize(restored)), restored, label);
+    }
+    assert.deepEqual(legacy, before);
+  }
+  const bare = parseValue({nameLine1:'Avery', title:'Engineer'});
+  assert.deepEqual(formatOf(bare.draft), formatDefaults);
+});
+
+test('every text and spacing value round-trips exactly, including template zero and -1 padding', () => {
+  const base = draft({cardFormat:'single', width:420, height:320});
+  for (const [key, values] of Object.entries(formatValid)) for (const value of values) {
+    const input = {draft:{...base, [key]:value}}, text = codec.serialize(input);
+    assert.ok(Object.is(JSON.parse(text).draft[key], value), key + '=' + value + ' is written as is');
+    assert.deepEqual(codec.parse(text).draft, input.draft, key + '=' + value);
+  }
+  const all = draft(compactAll), text = codec.serialize({draft:all}), restored = codec.parse(text);
+  assert.deepEqual(restored.draft, all);
+  for (const key of formatKeys) assert.notEqual(restored.draft[key], formatDefaults[key], key + ' is exercised with a non-default value');
+  assert.deepEqual(codec.parse(codec.serialize(restored)), restored);
+  assert.deepEqual(codec.parsePasted('```json\n' + text + '\n```').session.draft, all);
+});
+
+test('malformed text and spacing values are rejected in backups, bare drafts, pasted text and exports', () => {
+  for (const [key, values] of Object.entries(formatInvalid)) for (const value of values) {
+    const label = key + '=' + JSON.stringify(value), pattern = new RegExp('Draft ' + key);
+    assert.throws(() => parseValue(envelope({draft:draft({[key]:value})})), pattern, label);
+    assert.throws(() => parseValue({...draft(), [key]:value}), pattern, label);
+    assert.throws(() => codec.parsePasted(JSON.stringify(envelope({draft:draft({[key]:value})}))), pattern, label);
+    assert.throws(() => codec.serialize({draft:draft({[key]:value})}), pattern, label);
+  }
+  for (const key of formatKeys.filter(key => typeof formatDefaults[key] === 'number')) for (const value of [NaN, Infinity, -Infinity]) {
+    assert.throws(() => codec.serialize({draft:draft({[key]:value})}), new RegExp(key));
+  }
+  assert.throws(() => parseValue(envelope({draft:draft({nameFontSize:11})})), /0 \(template size\) or a whole number from 12 to 40/);
+  assert.throws(() => parseValue(envelope({draft:draft({titleFontSize:7})})), /0 \(template size\) or a whole number from 8 to 24/);
+  assert.throws(() => parseValue(envelope({draft:draft({contentPadding:-2})})), /from -1 \(template padding\) to 48/);
+  assert.throws(() => parseValue(envelope({draft:draft({contactLayout:'grid'})})), /template, stacked, inline/);
+  assert.throws(() => parseValue(envelope({draft:draft({contactSeparator:'|'})})), /Draft contactSeparator must be one of: none, bar, dot, slash, dash/);
+  assert.throws(() => parseValue(envelope({draft:draft({phoneVisible:false})})), /Draft phoneVisible must be one of: show, hide/);
+});
+
+test('hidden contacts keep every stored detail through export, restore and selective import', () => {
+  const details = {website:'https://example.com/work', websiteLabel:'Selected work', email:'avery@example.com', phone:'+41 22 123 45 67',
+    linkedin:'https://www.linkedin.com/in/example', location:'Geneva', websiteIcon:'mail', phoneIcon:'pin'};
+  const hidden = draft({...details, contactLayout:'inline', contactSeparator:'bar', websiteVisible:'hide', phoneVisible:'hide'});
+  const restored = codec.parse(codec.serialize({draft:hidden})).draft;
+  assert.deepEqual(restored, hidden);
+  for (const [key, value] of Object.entries(details)) assert.equal(restored[key], value, key + ' is kept while hidden');
+  assert.doesNotMatch(core.plainText(restored), /123 45 67/, 'hidden phone leaves the plain text');
+  assert.match(core.plainText({...restored, phoneVisible:'show'}), /123 45 67/, 'showing it again needs no re-entry');
+  const other = {draft:draft({website:'https://example.org/new', phone:'+44 20 0000 0000'}), themes:[], ui:{}};
+  const information = codec.selectParts(other, {draft:restored, themes:[], ui:{}}, {information:true, design:false}).draft;
+  assert.equal(information.website, 'https://example.org/new'); assert.equal(information.websiteVisible, 'hide'); assert.equal(information.contactSeparator, 'bar');
+  const design = codec.selectParts({draft:restored, themes:[], ui:{}}, other, {information:false, design:true}).draft;
+  assert.equal(design.phone, '+44 20 0000 0000'); assert.equal(design.phoneVisible, 'hide'); assert.equal(design.websiteIcon, 'mail');
+});
+
+test('selective import moves text and spacing only with Design', () => {
+  const current = {draft:draft({nameLine1:'Existing', ...formatDefaults}), themes:[], ui:{}};
+  const incoming = {draft:draft({nameLine1:'Incoming', ...compactAll}), themes:[], ui:{}};
+  for (const selection of [{information:false,design:true},{information:true,design:false},{information:true,design:true}]) {
+    const result = codec.selectParts(incoming, current, selection);
+    for (const key of formatKeys) assert.equal(result.draft[key], (selection.design ? incoming : current).draft[key], key + ' belongs to Design');
+    assert.equal(result.draft.nameLine1, (selection.information ? incoming : current).draft.nameLine1);
+  }
 });
 
 test('only known fields are returned and outputs do not alias inputs or one another', () => {

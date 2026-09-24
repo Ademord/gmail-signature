@@ -1248,8 +1248,8 @@ test('explicit Single uses one compact background and adapts its controls and di
   assert.equal(app.node('single-size-note').hidden,false);
   await app.arrange('paired');
   assert.equal(app.node('dimension-label').textContent,'642 × 180 px');
-  assert.equal(app.node('width-label').textContent,'Column width');
-  assert.equal(app.node('width').getAttribute('aria-label'),'Column width in pixels');
+  assert.equal(app.node('width-label').textContent,'Half card width');
+  assert.equal(app.node('width').getAttribute('aria-label'),'Half card width in pixels');
   assert.equal(app.node('cardGap').value,37);
   assert.equal(app.node('backBackground').value,initial.backBackground);
   await app.click('format-front-back');
@@ -2106,4 +2106,340 @@ test('reapplying an untouched imported artwork preserves its exact recipe withou
   app.artworkSettings.applyChanges({customPattern:app.artworkSettings.getDraft().customPattern});
   assert.equal(app.storage.get(storageKey),before);
   assert.equal(app.node('undo-change').disabled,true);
+});
+
+// Typography and spacing controls. Ranges mirror the frozen compact-editor field schema.
+const fontSizeRanges={nameFontSize:[12,40],titleFontSize:[8,24],subtitleFontSize:[8,24],contactFontSize:[8,24],footerFontSize:[8,24]};
+const spacingRanges={lineSpacing:[80,200],textSpacing:[0,200],contactSpacing:[0,200],sectionSpacing:[0,200],contentPadding:[-1,48]};
+const shownOption=select=>select.options.find(option=>option.value===String(select.value))?.textContent;
+// What a person sees for a field: the selected size label, the slider output or the chosen option.
+const shownValue=(app,key)=>Object.hasOwn(fontSizeRanges,key)?shownOption(app.node(key)):Object.hasOwn(spacingRanges,key)?app.node(key+'-value').textContent:String(app.node(key).value);
+const expectedText=(key,value)=>Object.hasOwn(fontSizeRanges,key)?(value===0?'Template':value+' px'):key==='contentPadding'?(value===-1?'Template':value+' px'):Object.hasOwn(spacingRanges,key)?value+'%':value;
+
+test('text and spacing controls sit beside the content they change, with labelled Template choices instead of 0 px',()=>{
+  const app=harness();
+  assert.equal(readFileSync(resolve(projectRoot,'signature.html'),'utf8'),pageSource,'both entry pages stay identical');
+  const panel=key=>app.node(key).closest('[data-editor-panel]')?.id,disclosure=key=>app.node(key).closest('details')?.id||null;
+  for(const key of [...Object.keys(fontSizeRanges),...Object.keys(spacingRanges),'nameLayout','contactLayout','contactFont','footerVisible','singleArrangement'])
+    assert.match(pageSource,new RegExp('<label\\b[^>]*for="'+key+'"'),key+' has a visible label');
+  assert.equal(disclosure('nameLayout'),null,'Name layout is a primary choice');
+  assert.equal(app.node('nameLayout').parentElement.parentElement,app.node('full-name').parentElement.parentElement,'Name layout sits with Name');
+  assert.equal(disclosure('contactLayout'),null,'contact arrangement is a primary choice');
+  assert.equal(app.node('contactLayout').parentElement.parentElement,app.node('website').parentElement.parentElement,'contact arrangement sits in Contact');
+  assert.deepEqual(app.node('nameLayout').options.map(option=>option.value),['template','single','wrap']);
+  assert.deepEqual(app.node('contactLayout').options.map(option=>option.value),['template','stacked','inline']);
+  assert.match(pageSource,/<details\b[^>]*id="typography-disclosure"[^>]*>\s*<summary>Typography<\/summary>/);
+  assert.equal(Boolean(app.node('typography-disclosure').open),false,'detailed sizes start collapsed');
+  for(const key of [...Object.keys(fontSizeRanges),'contactFont']) { assert.equal(disclosure(key),'typography-disclosure',key);assert.equal(panel(key),'details-panel',key); }
+  assert.deepEqual(app.node('contactFont').options.map(option=>option.value),['template','sans','mono']);
+  assert.equal(disclosure('footerVisible'),'icons-disclosure');
+  assert.deepEqual(app.node('footerVisible').options.map(option=>option.value),['show','hide']);
+  for(const key of [...Object.keys(spacingRanges),'singleArrangement','apply-compact-layout','reset-typography']) { assert.equal(disclosure(key),'size-disclosure',key);assert.equal(panel(key),'layout-panel',key); }
+  assert.deepEqual(app.node('singleArrangement').options.map(option=>option.value),['auto','rows','columns']);
+  for(const [key,[min,max]] of Object.entries(spacingRanges)) {
+    const field=app.node(key);
+    assert.equal(field.type,'range');assert.equal(field.getAttribute('min'),String(min));assert.equal(field.getAttribute('max'),String(max));assert.equal(field.getAttribute('step'),'1');
+  }
+  for(const [key,[min,max]] of Object.entries(fontSizeRanges)) {
+    const options=app.node(key).options;
+    assert.deepEqual(options.map(option=>option.value),['0',...Array.from({length:max-min+1},(_,index)=>String(min+index))],key+' offers Template and the valid sizes');
+    assert.equal(options[0].textContent,'Template');
+    assert.ok(options.slice(1).every(option=>option.textContent===option.value+' px'));
+    assert.ok(options.every(option=>!/^0\s*px$/i.test(option.textContent)),key+' never presents automatic as 0 px');
+    assert.equal(shownOption(app.node(key)),'Template',key+' starts on its template size');
+  }
+  for(const key of ['lineSpacing','textSpacing','contactSpacing','sectionSpacing']) {
+    assert.equal(app.node(key+'-value').textContent,'100%');assert.equal(app.node(key).getAttribute('aria-valuetext'),'100%');
+  }
+  assert.equal(app.node('contentPadding-value').textContent,'Template');assert.equal(app.node('contentPadding').getAttribute('aria-valuetext'),'Template');
+  assert.equal(app.node('single-arrangement-field').hidden,true,'arrangement belongs to explicit Single cards');
+  assert.equal(app.node('footer-visible-note').hidden,true);
+  assert.equal(app.node('undo-change').disabled,true,'showing the controls does not edit the draft');
+});
+
+test('every text and spacing control stores a typed value, updates preview and output, and survives undo, reload and import with the photo',async()=>{
+  const initial={...core.defaults,cardFormat:'single',width:400,email:'avery@example.com',tags:'FOOTER · KEPT',portraitData:localPortrait,portraitShape:'rounded',portraitSize:80,
+    pattern:'dots',artworkPlacement:'background',artworkOpacity:55,frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341'};
+  // Values differ from every template size so each step must visibly change the signature.
+  const steps=[['nameLayout','single'],['nameFontSize',20],['titleFontSize',12],['subtitleFontSize',11],['contactFontSize',12],['footerFontSize',10],
+    ['contactFont','sans'],['contactLayout','inline'],['singleArrangement','rows'],['lineSpacing',120],['textSpacing',60],['contactSpacing',50],
+    ['sectionSpacing',70],['contentPadding',16],['footerVisible','hide']];
+  const app=harness({initialDraft:initial,viewportWidth:1200,screenWidth:1280});
+  const snapshots=[initial],previews=[app.node('signature-preview').innerHTML];
+  const assertPhoto=()=>{
+    const saved=JSON.parse(app.storage.get(storageKey));
+    for(const key of ['portraitData','portraitShape','portraitSize','pattern','artworkOpacity','accent','tags'])assert.equal(saved[key],initial[key],key+' is unchanged');
+    assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait),'the preview keeps the uploaded photo');
+  };
+  assert.ok(previews[0].includes('FOOTER · KEPT'));
+  for(const [key,value] of steps) {
+    await app.input(key,value);await app.finishEdit();
+    snapshots.push({...snapshots.at(-1),[key]:value});
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),snapshots.at(-1),key+' stores only its own '+typeof value+' value');
+    const html=app.node('signature-preview').innerHTML;
+    assert.notEqual(html,previews.at(-1),key+' changes the live preview');previews.push(html);
+    assert.equal(shownValue(app,key),expectedText(key,value),key+' shows its current value');
+    assertPhoto();
+  }
+  assert.ok(!previews.at(-1).includes('FOOTER · KEPT'),'a hidden footer leaves the signature');
+  assert.equal(app.node('tags').value,'FOOTER · KEPT','hidden footer text stays editable');
+  assert.equal(app.node('footer-visible-note').hidden,false);
+  const reloaded=harness({sharedStorage:app.storage,viewportWidth:1200,screenWidth:1280});
+  assert.equal(reloaded.node('signature-preview').innerHTML,previews.at(-1),'reload renders the same signature');
+  for(const [key,value] of steps)assert.equal(shownValue(reloaded,key),expectedText(key,value),key+' is shown after reload');
+  for(let index=steps.length;index>0;index--) {
+    const [key]=steps[index-1];
+    await app.click('undo-change');
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),snapshots[index-1],'Undo reverts only '+key);
+    assert.equal(app.node('signature-preview').innerHTML,previews[index-1]);
+    assert.equal(shownValue(app,key),expectedText(key,core.defaults[key]),key+' shows its template value again');
+  }
+  assert.equal(app.node('undo-change').disabled,true,'each control made exactly one undo step');
+  assert.equal(app.node('signature-preview').innerHTML,previews[0],'default values restore the original signature exactly');
+  for(let index=0;index<steps.length;index++)await app.click('redo-change');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),snapshots.at(-1));assert.equal(app.node('signature-preview').innerHTML,previews.at(-1));
+  for(const value of [140,160,180])await app.input('lineSpacing',value);
+  await app.finishEdit();assert.equal(app.node('lineSpacing-value').textContent,'180%');
+  await app.click('undo-change');assert.equal(app.node('lineSpacing-value').textContent,'120%','one slider gesture is one undo step');
+  await app.click('export-data');const backup=app.node('session-json').value;
+  await app.click('close-session');await app.click('reset-draft');
+  for(const [key] of steps)assert.equal(shownValue(app,key),expectedText(key,core.defaults[key]),'Load example uses the template '+key);
+  await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),snapshots.at(-1));assertPhoto();
+  assert.equal(app.node('signature-preview').innerHTML,previews.at(-1));
+});
+
+test('compact email layout is one reversible step that keeps details, photo, colors, artwork and hidden footer text',async()=>{
+  const initial={...core.defaults,layout:'stacked',nameLine1:'Jordan',nameLine2:'Rivera',title:'Product Designer',subtitle:'Design systems',email:'jordan@example.com',
+    tags:'FOOTER · KEPT',portraitData:localPortrait,portraitShape:'rounded',portraitSize:64,pattern:'dots',artworkPlacement:'background',artworkOpacity:55,
+    artworkScale:140,frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341',websiteIcon:'mail'};
+  const app=harness({initialDraft:initial,viewportWidth:1200,screenWidth:1280}),preset=core.compactPreset;
+  const baseline=app.node('signature-preview').innerHTML,height=()=>Number(app.node('dimension-label').textContent.match(/× (\d+)/)[1]),baselineHeight=height();
+  assert.ok(baseline.includes('FOOTER · KEPT'));
+  await app.click('apply-compact-layout');
+  const compact=JSON.parse(app.storage.get(storageKey));
+  assert.ok(compact.width>=preset.width&&compact.width<=420,'only the allowed compact width may grow');
+  assert.deepEqual({...compact,width:preset.width},{...initial,...preset},'the preset changes layout, typography, photo display size and separators without changing content');
+  assert.match(app.node('status').textContent,compact.width===preset.width?/Compact email layout applied\./:new RegExp('applied at '+core.dimensions(compact).width+' px'));
+  const html=app.node('signature-preview').innerHTML;
+  assert.ok(html.includes(localPortrait),'the uploaded photo stays');assert.ok(!html.includes('FOOTER · KEPT'),'the optional footer is hidden');
+  for(const link of ['href="mailto:jordan@example.com"','href="tel:','href="https://example.com'])assert.ok(html.includes(link),link+' stays a real link');
+  assert.equal(app.node('tags').value,'FOOTER · KEPT','hidden footer text is kept for later');
+  assert.ok(height()<baselineHeight,'the compact signature is shorter than the two-card starting layout');
+  assert.equal(app.node('format-single').getAttribute('aria-pressed'),'true');
+  for(const key of Object.keys(preset).filter(key=>key!=='width'&&(Object.hasOwn(fontSizeRanges,key)||Object.hasOwn(spacingRanges,key)||['nameLayout','contactLayout','contactFont','footerVisible','singleArrangement'].includes(key))))
+    assert.equal(shownValue(app,key),expectedText(key,preset[key]),key+' shows the compact value');
+  assert.equal(app.node('single-arrangement-field').hidden,false);assert.equal(app.node('footer-visible-note').hidden,false);
+  await app.click('undo-change');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);assert.equal(app.node('undo-change').disabled,true,'the preset is one undo step');
+  assert.equal(app.node('signature-preview').innerHTML,baseline,'Undo restores the exact previous signature');
+  assert.equal(shownOption(app.node('nameFontSize')),'Template');assert.equal(app.node('contentPadding-value').textContent,'Template');
+  assert.equal(app.node('single-arrangement-field').hidden,true);
+  await app.click('redo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),compact);
+  await app.click('reset-typography');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...compact,...core.typographyDefaults},'reset returns text and spacing to the template, keeping format and size');
+  for(const key of Object.keys(fontSizeRanges))assert.equal(shownOption(app.node(key)),'Template',key);
+  assert.ok(app.node('signature-preview').innerHTML.includes('FOOTER · KEPT'),'the kept footer text returns');
+  await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),compact);
+  const reloaded=harness({sharedStorage:app.storage,viewportWidth:1200,screenWidth:1280});
+  assert.equal(reloaded.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);
+  assert.equal(reloaded.node('nameLayout').value,'single');assert.equal(reloaded.node('portraitData').value,localPortrait);
+  await app.click('export-data');const backup=app.node('session-json').value;
+  await app.click('close-session');await app.click('reset-draft');
+  await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),compact);
+});
+
+test('invalid text and spacing values keep the last preview and reveal the responsible control for repair',async()=>{
+  for(const [key,invalid,tab,disclosure] of [
+    ['nameLayout','sideways','details',null],['nameFontSize','11','details','typography-disclosure'],['footerFontSize','25','details','typography-disclosure'],
+    ['contactFont','serif','details','typography-disclosure'],['contactLayout','grid','details',null],['footerVisible','maybe','details','icons-disclosure'],
+    ['lineSpacing','79','layout','size-disclosure'],['textSpacing','1.5','layout','size-disclosure'],['sectionSpacing','201','layout','size-disclosure'],
+    ['contentPadding','-2','layout','size-disclosure'],['singleArrangement','diagonal','layout','size-disclosure']]) {
+    const initial={...core.defaults,portraitData:localPortrait},app=harness({initialDraft:initial});
+    const preview=app.node('signature-preview').innerHTML,saved=app.storage.get(storageKey),field=app.node(key);
+    await app.input(key,invalid);await app.finishEdit();
+    assert.equal(field.getAttribute('aria-invalid'),'true',key+' rejects '+invalid);
+    assert.equal(app.node('error-'+key).hidden,false);assert.ok(app.node('error-'+key).textContent.length>0,key+' explains the problem');
+    assert.equal(app.node('signature-preview').innerHTML,preview,'an invalid '+key+' never replaces the last valid preview');
+    assert.equal(app.storage.get(storageKey),saved);
+    await app.click('photo-tab');
+    for(let parent=field.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.removeAttribute('open');
+    await app.click('copy-signature');
+    assert.equal(app.node(tab+'-tab').getAttribute('aria-selected'),'true');
+    assert.equal(app.activeElement,field,key+' receives focus');
+    assert.equal(field.closest('details')?.id||null,disclosure);
+    for(let parent=field.parentElement;parent;parent=parent.parentElement) {
+      assert.equal(Boolean(parent.hidden),false,key+' has no hidden ancestor');
+      if(parent.tagName==='DETAILS')assert.equal(parent.open,true,key+' has no closed disclosure');
+    }
+    assert.equal(app.attempts.modern,0);
+    await app.input(key,core.defaults[key]);await app.finishEdit();
+    assert.equal(field.getAttribute('aria-invalid'),'false');
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial,key+' repair saves the complete draft');
+    if(key==='singleArrangement')assert.equal(app.node('single-arrangement-field').hidden,true,'a repaired arrangement hides again for two-card formats');
+  }
+});
+
+test('text and spacing settings apply across every template and format, and arrangement appears only for explicit Single cards',async()=>{
+  const settings={nameLayout:'single',titleFontSize:12,contactFontSize:12,contactLayout:'inline',lineSpacing:120,sectionSpacing:70,contentPadding:18,footerVisible:'hide',singleArrangement:'rows'};
+  const initial={...core.defaults,...settings,width:400,height:300,tags:'FOOTER · KEPT',portraitData:localPortrait,pattern:'contour'};
+  const app=harness({initialDraft:initial,viewportWidth:1200,screenWidth:1280});
+  for(const format of ['auto','front-back','single']) {
+    if(format!=='auto')await app.click('format-'+format);
+    assert.equal(app.node('single-arrangement-field').hidden,format!=='single',format+' arrangement visibility');
+    for(const design of ['orbit','studio','contour','prism','editorial','signal','original']) {
+      await app.click('choose-design-'+design);
+      const saved=JSON.parse(app.storage.get(storageKey)),html=app.node('signature-preview').innerHTML;
+      assert.deepEqual(saved,{...initial,design,cardFormat:format},design+' '+format+' keeps every text and spacing setting');
+      assert.notEqual(html,core.render({...saved,...core.typographyDefaults},{preview:true,assetBase:'./sig'}),design+' '+format+' applies the settings');
+      assert.ok(html.includes(localPortrait));assert.ok(!html.includes('FOOTER · KEPT'));
+    }
+  }
+  await app.click('format-front-back');
+  assert.equal(app.node('single-arrangement-field').hidden,true);
+  assert.equal(JSON.parse(app.storage.get(storageKey)).singleArrangement,'rows','the Single arrangement is kept for later');
+});
+
+test('Name layout changes only the displayed name and keeps saved line breaks for Template',async()=>{
+  const initial={...core.defaults,width:420,height:300,nameLine1:'Zoë María',nameLine2:'de la Cruz',portraitData:localPortrait};
+  const app=harness({initialDraft:initial}),baseline=app.node('signature-preview').innerHTML,notes=[app.node('name-layout-note').textContent];
+  for(const layout of ['single','wrap']) {
+    await app.input('nameLayout',layout);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,nameLayout:layout});
+    assert.equal(app.node('full-name').value,'Zoë María de la Cruz');
+    assert.equal(app.node('nameLine1').value,'Zoë María');assert.equal(app.node('nameLine2').value,'de la Cruz');
+    notes.push(app.node('name-layout-note').textContent);
+  }
+  assert.equal(new Set(notes).size,3,'each layout explains what it does');
+  await app.input('nameLayout','single');
+  assert.notEqual(app.node('signature-preview').innerHTML,baseline,'One line joins the saved lines');
+  await app.input('full-name','Zoë María de la Cruz Ortega');
+  const edited=JSON.parse(app.storage.get(storageKey));
+  assert.equal(edited.nameLayout,'single','editing the name keeps its layout');
+  assert.equal([edited.nameLine1,edited.nameLine2].filter(Boolean).join(' '),'Zoë María de la Cruz Ortega');
+  await app.click('undo-change');await app.input('nameLayout','template');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(app.node('signature-preview').innerHTML,baseline,'Template restores the saved line breaks exactly');
+});
+
+test('Role and Specialty share the contact row alignment while Name keeps its primary stacked field',()=>{
+  const app=harness(),rowClass=key=>app.node(key).parentElement.getAttribute('class');
+  for(const key of ['title','subtitle','website','location'])assert.match(rowClass(key),/\bcontact-field\b/,key+' uses the contact row');
+  assert.doesNotMatch(rowClass('full-name'),/\bcontact-field\b/,'Name stays a primary stacked field');
+  for(const key of ['title','subtitle'])assert.match(pageSource,new RegExp('<label for="'+key+'">'),key+' keeps a visible label');
+});
+
+test('contact labels hide and show each contact without clearing its value, link text or icon, through undo, reload, links and import',async()=>{
+  const initial={...core.defaults,website:'https://rivera.example/work',websiteLabel:'Portfolio',email:'jordan@example.com',phone:'+41 44 555 01 28',
+    linkedin:'https://www.linkedin.com/in/jordanrivera',location:'Basel, Switzerland',websiteIcon:'mail',portraitUrl:'https://example.com/portrait.jpg',
+    frontBackground:'#f7eee4',backBackground:'#132d35',accent:'#a45341'};
+  const markers={website:'href="https://rivera.example/work"',email:'jordan@example.com',phone:'href="tel:',linkedin:'linkedin.com/in/jordanrivera',location:'Basel, Switzerland'};
+  const app=harness({initialDraft:initial,clipboardSucceeds:true}),baseline=app.node('signature-preview').innerHTML,preview=()=>app.node('signature-preview').innerHTML;
+  for(const marker of Object.values(markers))assert.ok(baseline.includes(marker),marker+' starts visible');
+  let expected={...initial};
+  for(const key of Object.keys(markers)) {
+    const toggle=app.node(key+'Visible-toggle');
+    assert.equal(toggle.tagName,'BUTTON');assert.equal(toggle.type,'button');
+    assert.match(toggle.getAttribute('aria-label'),/^Show \S+ in signature$/);
+    for(let parent=toggle.parentElement;parent;parent=parent.parentElement)assert.notEqual(parent.tagName,'LABEL','the toggle is never nested in a label');
+    assert.match(pageSource,new RegExp('<label\\b[^>]*for="'+key+'"'),key+' input keeps its own label');
+    assert.equal(toggle.parentElement,app.node(key).parentElement,'the toggle is the visible label of its contact row');
+    assert.equal(toggle.getAttribute('aria-pressed'),'true');assert.match(toggle.title,/^Hide /);
+    await toggle.click();
+    expected={...expected,[key+'Visible']:'hide'};
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),expected,key+' hides without changing any saved detail');
+    assert.equal(toggle.getAttribute('aria-pressed'),'false');assert.match(toggle.title,/^Show /);
+    assert.equal(app.node(key).value,initial[key],key+' input keeps its value');
+    assert.ok(!preview().includes(markers[key]),key+' leaves the preview');
+    assert.match(app.node('status').textContent,/hidden from your signature/);
+  }
+  assert.equal(app.node('websiteLabel').value,'Portfolio');assert.equal(app.node('websiteIcon').value,'mail');
+  assert.ok(preview().includes(initial.portraitUrl),'the photo stays');
+  await app.input('phone','+41 44 555 09 99');
+  assert.equal(JSON.parse(app.storage.get(storageKey)).phoneVisible,'hide','editing a hidden contact keeps it hidden');
+  assert.ok(!preview().includes('href="tel:'));
+  await app.click('undo-change');assert.equal(app.node('phone').value,initial.phone);
+  await app.click('undo-change');
+  assert.equal(app.node('locationVisible-toggle').getAttribute('aria-pressed'),'true','Undo shows the last hidden contact again');
+  assert.ok(preview().includes(markers.location));
+  await app.click('redo-change');
+  assert.equal(app.node('locationVisible-toggle').getAttribute('aria-pressed'),'false');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),expected);
+  const reloaded=harness({sharedStorage:app.storage});
+  assert.equal(reloaded.node('signature-preview').innerHTML,preview());
+  for(const key of Object.keys(markers))assert.equal(reloaded.node(key+'Visible-toggle').getAttribute('aria-pressed'),'false',key+' stays hidden after reload');
+  await app.click('copy-signature');
+  const parts=app.clipboardItems.at(-1).parts,html=await parts['text/html'].text(),plain=await parts['text/plain'].text();
+  for(const key of Object.keys(markers))assert.ok(!html.includes(markers[key]),key+' is hidden in email HTML');
+  for(const text of ['jordan@example.com','Basel','rivera.example','555'])assert.ok(!plain.includes(text),text+' is hidden in plain text');
+  await app.click('share-link');
+  const linked=harness({initialHash:new URL(app.clipboardTexts.at(-1)).hash});
+  assert.deepEqual(JSON.parse(linked.storage.get(storageKey)),expected,'draft links keep hidden contacts and their values');
+  await app.click('export-data');const backup=app.node('session-json').value;
+  await app.click('close-session');await app.click('reset-draft');
+  for(const key of Object.keys(markers))assert.equal(app.node(key+'Visible-toggle').getAttribute('aria-pressed'),'true','Load example shows '+key);
+  await app.click('import-data');await app.pasteSession(backup);await app.click('session-restore');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),expected);
+  for(const key of Object.keys(markers))await app.click(key+'Visible-toggle');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
+  assert.equal(preview(),baseline,'showing every contact restores the original signature exactly');
+});
+
+test('an invalid contact visibility focuses its label toggle, and malformed saved visibility is left in storage',async()=>{
+  const app=harness(),toggle=app.node('emailVisible-toggle'),saved=app.storage.get(storageKey);
+  await app.input('emailVisible','maybe');
+  assert.equal(toggle.getAttribute('aria-invalid'),'true');assert.equal(app.storage.get(storageKey),saved);
+  await app.click('photo-tab');await app.click('copy-signature');
+  assert.equal(app.node('details-tab').getAttribute('aria-selected'),'true');
+  assert.equal(app.activeElement,toggle,'the visible toggle receives focus instead of the hidden value');
+  assert.equal(app.attempts.modern,0);
+  await app.click('emailVisible-toggle');
+  assert.equal(toggle.getAttribute('aria-invalid'),'false');assert.equal(JSON.parse(app.storage.get(storageKey)).emailVisible,'hide');
+  const malformed={...core.defaults,websiteVisible:false},stored=harness({initialDraft:malformed});
+  assert.equal(stored.storage.get(storageKey),JSON.stringify(malformed),'the strict loader never overwrites a malformed visibility');
+  assert.match(stored.footer.textContent,/left in storage/);
+});
+
+test('the contact separator applies only to inline contacts and survives stacked, compact, reset, undo and reload',async()=>{
+  const initial={...core.defaults,cardFormat:'single',width:400,email:'jordan@example.com',tags:'FOOTER KEPT',portraitData:localPortrait,phoneVisible:'hide'};
+  const app=harness({initialDraft:initial,viewportWidth:1200,screenWidth:1280}),field=app.node('contactSeparator');
+  assert.equal(field.closest('details'),null);
+  assert.equal(field.parentElement.parentElement,app.node('website').parentElement.parentElement,'the separator sits in Contact');
+  assert.deepEqual(field.options.map(option=>option.value),['none','bar','dot','slash','dash']);
+  assert.equal(app.node('phoneVisible-toggle').getAttribute('aria-pressed'),'false','saved hidden state is shown at startup');
+  assert.equal(field.disabled,true,'separators need inline contacts');assert.match(app.node('contact-separator-note').textContent,/Inline/);
+  await app.input('contactLayout','inline');
+  assert.equal(field.disabled,false);
+  const previews=new Set([app.node('signature-preview').innerHTML]);
+  for(const separator of ['bar','dot','slash','dash']) {
+    await app.input('contactSeparator',separator);
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,contactLayout:'inline',contactSeparator:separator});
+    previews.add(app.node('signature-preview').innerHTML);
+    assert.ok(app.node('signature-preview').innerHTML.includes(localPortrait));
+  }
+  assert.equal(previews.size,5,'each separator visibly changes the inline contacts');
+  await app.input('contactLayout','stacked');
+  assert.equal(field.disabled,true);assert.equal(field.value,'dash','the chosen separator is kept');
+  const stacked=JSON.parse(app.storage.get(storageKey));
+  assert.equal(app.node('signature-preview').innerHTML,core.render({...stacked,contactSeparator:'none'},{preview:true,assetBase:'./sig'}),'stacked contacts never show separators');
+  await app.click('undo-change');assert.equal(app.node('contactLayout').value,'inline');assert.equal(field.disabled,false);
+  const before=JSON.parse(app.storage.get(storageKey));
+  await app.click('apply-compact-layout');
+  for(const key of Object.keys(core.contactDefaults).filter(key=>key!=='contactSeparator'))assert.equal(JSON.parse(app.storage.get(storageKey))[key],before[key],'compact keeps '+key);
+  assert.equal(JSON.parse(app.storage.get(storageKey)).contactSeparator,'bar','compact reference uses bars');
+  await app.click('reset-typography');
+  for(const key of Object.keys(core.contactDefaults))assert.equal(JSON.parse(app.storage.get(storageKey))[key],key==='contactSeparator'?'bar':before[key],'reset keeps '+key);
+  const reloaded=harness({sharedStorage:app.storage,viewportWidth:1200,screenWidth:1280});
+  assert.equal(reloaded.node('contactSeparator').value,'bar');assert.equal(reloaded.node('phoneVisible-toggle').getAttribute('aria-pressed'),'false');
+  assert.equal(reloaded.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);
+});
+
+test('malformed new formatting in draft links is rejected without replacing the current draft',()=>{
+  const initial={...core.defaults,nameLine1:'Keep',nameLine2:'My draft'};
+  for(const changes of [{nameFontSize:99},{nameFontSize:5},{nameFontSize:'22'},{contentPadding:-2},{lineSpacing:201},{textSpacing:1.5},{footerVisible:null}]) {
+    const app=harness({initialDraft:initial,initialHash:draftHash({...initial,...changes})});
+    assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial,JSON.stringify(changes));
+    assert.match(app.node('status').textContent,/draft link is invalid/i);
+    assert.equal(app.node('full-name').value,'Keep My draft');
+  }
 });

@@ -9,6 +9,14 @@ const values = overrides => ({...core.defaults,...overrides});
 const photo = 'data:image/png;base64,' + readFileSync(new URL('../sig/icon-web.png',import.meta.url)).toString('base64');
 const customPattern = JSON.stringify({palette:['#336699'],rows:['....','.00.','.00.','....']});
 const ids = ['original','orbit','studio','contour','prism','editorial','signal'];
+// Independent template defaults for the text and spacing fields (compact editor
+// contract v1) and contact presentation fields (v2). Older drafts omit all of them.
+const formatDefaults = {nameLayout:'template',nameFontSize:0,titleFontSize:0,subtitleFontSize:0,contactFontSize:0,footerFontSize:0,
+  lineSpacing:100,textSpacing:100,contactSpacing:100,sectionSpacing:100,contentPadding:-1,
+  singleArrangement:'auto',contactLayout:'template',contactFont:'template',footerVisible:'show',
+  contactSeparator:'none',websiteVisible:'show',emailVisible:'show',phoneVisible:'show',linkedinVisible:'show',locationVisible:'show'};
+const withoutFormat = v => { const old={...v}; for(const key of Object.keys(formatDefaults))delete old[key]; return old; };
+const sha = html => createHash('sha256').update(html).digest('hex');
 
 test('design and pattern catalogs are immutable and old 23-field sessions inherit the original',()=>{
   assert.deepEqual(core.designs.map(d=>d.id),ids);
@@ -18,7 +26,7 @@ test('design and pattern catalogs are immutable and old 23-field sessions inheri
     assert.equal(typeof d.name,'string');assert.equal(typeof d.description,'string');assert.equal(d.pattern,'auto');
     for(const k of ['accent','frontBackground','backBackground'])assert.match(d[k],/^#[a-f0-9]{6}$/);
   }
-  const old={...core.defaults};for(const key of ['cardFormat','cardGap','design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'])delete old[key];
+  const old={...core.defaults};for(const key of ['cardFormat','cardGap','design','pattern','customPattern','customLayout','portraitData','portraitUrl','portraitShape','portraitSize','artworkPlacement','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkScale','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY',...Object.keys(formatDefaults)])delete old[key];
   assert.equal(Object.keys(old).length,23);
   assert.equal(core.normalize(old).design,'original');assert.equal(core.normalize(old).pattern,'auto');
   assert.equal(core.normalize(old).portraitData,'');assert.equal(core.normalize(old).portraitSize,64);
@@ -34,6 +42,8 @@ test('legacy email markup stays byte-identical for representative pre-design ses
   for(const [fields,hash] of fixtures){
     const v=values(fields);delete v.design;delete v.pattern;
     assert.equal(createHash('sha256').update(core.render(v)).digest('hex'),hash);
+    const old=withoutFormat(v);
+    for(const input of [old,{...old,...formatDefaults}])assert.equal(sha(core.render(input)),hash,'text and spacing fields omitted or at template values');
   }
 });
 
@@ -50,6 +60,24 @@ test('omitted and automatic card formats preserve all fourteen published templat
   for(const design of ids)for(const [index,layout] of ['paired','stacked'].entries()){
     const legacy=values({design,layout});delete legacy.cardFormat;
     for(const v of [legacy,{...legacy,cardFormat:'auto'}])assert.equal(createHash('sha256').update(core.render(v)).digest('hex'),hashes[design][index],design+': '+layout);
+    const old=withoutFormat(legacy);
+    for(const v of [old,{...old,...formatDefaults}])assert.equal(sha(core.render(v)),hashes[design][index],design+': '+layout+' without or at template text, spacing and contacts');
+    // Inline-only separators never reach the template's stacked contact list.
+    for(const contactSeparator of ['bar','dot','slash','dash'])assert.equal(sha(core.render({...old,contactSeparator})),hashes[design][index],design+': '+layout+' '+contactSeparator);
+  }
+});
+
+test('omitted text, spacing and contact presentation fields equal explicit template values in every design, format and export size',()=>{
+  const customLayout=JSON.stringify({composition:'signal',font:'serif',align:'center'});
+  for(const design of [...ids,'custom'])for(const layout of ['paired','stacked'])for(const cardFormat of ['auto','single','front-back'])for(const pattern of ['auto','none','counterform']){
+    const old=withoutFormat(values({design,layout,cardFormat,pattern,customLayout:design==='custom'?customLayout:'',portraitUrl:'https://example.com/portrait.jpg'}));
+    const explicit={...old,...formatDefaults},label=[design,layout,cardFormat,pattern].join(':');
+    assert.deepEqual(core.validate(explicit),{},label);
+    assert.equal(core.render(explicit),core.render(old),label);
+    assert.equal(core.render(explicit,{preview:true}),core.render(old,{preview:true}),label+' preview');
+    assert.equal(core.plainText(explicit),core.plainText(old),label+' plain text');
+    assert.deepEqual(core.dimensions(explicit),core.dimensions(old),label);
+    assert.deepEqual(image.dimensions(explicit,4),image.dimensions(old,4),label+' PNG');
   }
 });
 

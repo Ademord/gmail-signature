@@ -1,5 +1,13 @@
 # Progress
 
+## Compact typography and contact arrangements — 24 September 2026
+
+The editor can reproduce the supplied compact signature reference without changing its established styling. **Layout → Size & spacing → Use compact email layout** provides a reversible starting point with balanced insets, a larger photo and bar separators. **Details** exposes one-line/wrapped/template names, stacked/inline contacts, independent text sizes, contact font, footer visibility, five separator choices, and contact-label hide/show buttons that keep saved values. Role and Specialty align with the contact rows. Layout adds line, text, contact and section spacing, content padding, and single-card row/column arrangement. Twenty-one optional fields retain neutral defaults for older drafts and travel with Design in session imports and AI proposals.
+
+Local verification: **415 tests, 414 passed, no failures, one expected Windows symlink skip**; the immutable baseline renderer was included in the run. Published legacy golden hashes remain unchanged. The corrected reference fixture becomes 560 × 201 instead of 345 × 274, with 24 px insets, a 96 px portrait and one contact row. The real browser verified the preset, Undo/Redo, helpful name-fit errors and wrapping recovery, contact toggles and reload, clickable HTML and a downloaded 2240 × 804 PNG matching the final layout. Wrapped contacts keep separators only within each row. At a measured 390 px viewport, labels and controls stay within the page and keyboard toggling works. Private reference fixtures, observations and rendered images are excluded from source publication and hosting.
+
+Gauntlet 5.1.1 uses three disjoint Claude Opus 5.5 xhigh builders and five specialist workers in waves, with the lead owning integration and browser checks. Independent compatibility checks confirm saved drafts, selective imports, AI scope/staleness and photo preservation. Final reviews and exact-revision CI/Pages verification are pending; local checks alone do not certify a published release. No new sent/received Gmail or Outlook test is claimed.
+
 ## Hosted photo crop recovery — 23 September 2026
 
 Portrait and landscape HTTPS photo URLs now open the local crop editor when their host permits cross-origin reads. Previously, the editor rejected them with a square-image message and showed upload-ready instructions even when no crop existed. Square hosted images still work directly in email without a CORS fetch. Cropping an original never pretends to change its hosted URL: apply, download, and host the square crop before using it in email.

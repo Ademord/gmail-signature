@@ -54,6 +54,23 @@ Omit unchanged fields. A response never accepts raw HTML, CSS, JavaScript, SVG, 
 
 The broad Design section changes visual settings only. It cannot change personal details, the uploaded photo, its public URL, the image base, saved palettes, or application settings. Artwork can change its placement and card colors; custom recipes also carry their own ink palette. Icons selects from bundled icons.
 
+Both `layout` and `design` also accept the typography and spacing fields below. These are Design settings in session imports; the `details` scope continues to change wording only.
+
+| Formatting field | Accepted values |
+| --- | --- |
+| `nameLayout` | `template` (stored name lines), `single` (join them), `wrap` (wrap the full name) |
+| `nameFontSize` | `0` for automatic template size, or integer 12–40 px |
+| `titleFontSize`, `subtitleFontSize`, `contactFontSize`, `footerFontSize` | `0` for template size, or integer 8–24 px |
+| `lineSpacing` | Integer 80–200%, default 100 |
+| `textSpacing`, `contactSpacing`, `sectionSpacing` | Integer 0–200%, default 100 |
+| `contentPadding` | `-1` for template padding, or integer 0–48 px |
+| `singleArrangement` | `auto`, `rows` (identity above contacts), `columns`; explicit Single card only |
+| `contactLayout` | `template`, `stacked`, `inline`; inline items wrap into additional rows when needed |
+| `contactFont` | `template`, `sans`, `mono` |
+| `footerVisible` | `show` or `hide`; hiding keeps the stored footer text |
+
+Missing settings preserve the template rendering. The stored name lines survive joining or wrapping, and hiding the footer does not erase its text. Text sizes are validated together with the actual available space; an allowed number can still require a wider card or wrapping for long text.
+
 ## Values and limits
 
 | Field | Accepted values |
@@ -74,6 +91,8 @@ The broad Design section changes visual settings only. It cannot change personal
 | `width` | JSON integer 280–420 |
 | `height` | JSON integer 180–320; minimum content height for explicit `single` format |
 | `cardGap` | JSON integer 0–60 pixels between two separate cards; default 20; zero removes the gap |
+| `contactSeparator` | `none` (default), `bar`, `dot`, `slash`, or `dash`; between visible inline contacts on the same row |
+| `websiteVisible`, `emailVisible`, `phoneVisible`, `linkedinVisible`, `locationVisible` | `show` (default) or `hide`; hiding preserves the saved value, label and icon |
 | Icon fields | `web`, `mail`, `phone`, `linkedin`, `pin`, or `none` |
 | `portraitShape` | `circle`, `rounded`, or `square` |
 | `portraitSize` | JSON integer 40–96 |
