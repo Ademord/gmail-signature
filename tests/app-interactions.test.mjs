@@ -461,11 +461,11 @@ test('six independent abstract pattern controls preserve the chosen layout, pale
   await app.click('undo-change');assertThumbnails('tall');
 });
 
-test('all seven layout choices preserve the complete artwork, palette and information state', async () => {
+test('all eight layout choices preserve the complete artwork, palette and information state', async () => {
   const initial={...core.defaults,nameLine1:'Jordan',website:'https://example.org/work',pattern:'overprint',
     frontBackground:'#edf1f7',backBackground:'#181c29',accent:'#a63542',artworkPlacement:'flow',artworkScale:130,artworkPositionX:40,artworkPositionY:63};
   const app = harness({initialDraft:initial});
-  for (const id of ['orbit','studio','contour','prism','editorial','signal','original']) {
+  for (const id of ['minimal','orbit','studio','contour','prism','editorial','signal','original']) {
     await app.click('choose-design-' + id);
     const saved = JSON.parse(app.storage.get(storageKey));
     assert.deepEqual(saved,{...initial,design:id},id+' changes only the composition');
@@ -651,11 +651,11 @@ test('layout arrows wrap, preserve the complete draft and create one undo entry 
     frontBackground:'#edf1f7',backBackground:'#181c29',accent:'#a63542',artworkPlacement:'flow',artworkScale:130,artworkPositionX:40,artworkPositionY:63};
   const app=harness({initialDraft:initial});
   const next=app.node('next-design');next.focus();await app.click('next-design');
-  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'orbit'});
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'minimal'});
   assert.equal(app.activeElement,next,'the update handler does not displace an already focused cycle button');
   await app.click('undo-change');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
   assert.equal(app.node('undo-change').disabled,true,'one click requires exactly one undo');
-  await app.click('redo-change');assert.equal(app.node('design').value,'orbit');
+  await app.click('redo-change');assert.equal(app.node('design').value,'minimal');
   await app.click('previous-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial);
   await app.click('previous-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),{...initial,design:'signal'});
   await app.click('next-design');assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial,'last built-in wraps to first while Custom is disabled');
@@ -2549,5 +2549,28 @@ test('malformed new formatting in draft links is rejected without replacing the 
     assert.deepEqual(JSON.parse(app.storage.get(storageKey)),initial,JSON.stringify(changes));
     assert.match(app.node('status').textContent,/draft link is invalid/i);
     assert.equal(app.node('full-name').value,'Keep My draft');
+  }
+});
+
+
+test('Minimal selects only the layout, retains automatic dots and survives undo, reload and sharing',async()=>{
+  const initial={...core.defaults,...core.compactPreset,portraitData:localPortrait,portraitUrl:'https://example.com/photo.png'};
+  const app=harness({initialDraft:initial}),before=app.node('signature-preview').innerHTML;
+  await app.click('choose-design-minimal');
+  const saved=JSON.parse(app.storage.get(storageKey));
+  assert.deepEqual(saved,{...initial,design:'minimal'});
+  assert.equal(app.node('current-template-name').textContent,'Minimal');
+  assert.equal(app.node('choose-pattern-auto').children[0].children[0].src,'sig/dots.png');
+  assert.match(app.node('signature-preview').innerHTML,/dots\.png/);
+  assert.doesNotMatch(app.node('signature-preview').innerHTML,/width="17" height="17"/);
+  assert.equal(app.node('signature-preview').innerHTML,core.render(saved,{preview:true,assetBase:'./sig'}));
+  await app.click('undo-change');assert.equal(app.node('signature-preview').innerHTML,before);
+  await app.click('redo-change');assert.equal(app.node('design').value,'minimal');
+  const restored=harness({sharedStorage:app.storage});
+  const shared=harness({initialHash:draftHash(saved)});
+  for(const other of [restored,shared]){
+    assert.equal(other.node('design').value,'minimal');
+    assert.equal(other.node('signature-preview').innerHTML,app.node('signature-preview').innerHTML);
+    assert.deepEqual(JSON.parse(other.storage.get(storageKey)),saved);
   }
 });

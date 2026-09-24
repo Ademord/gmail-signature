@@ -58,7 +58,8 @@ test('template defaults stay byte-identical to the baseline core', {skip:!baseli
   const variants = [{},{portraitUrl:'https://example.com/portrait.jpg',portraitSize:96},{pattern:'gesture'},{pattern:'none'},{artworkPlacement:'background',pattern:'galaxy'},
     {width:280,height:180},{width:420,height:320},{email:'hello@example.com',websiteIcon:'none',phoneIcon:'none'},{title:'',subtitle:'',tags:''},{nameLine2:''},
     {nameLine1:'Jean Alexander',nameLine2:'Morgan Winterbourne',location:'Example City, Switzerland'},{cardGap:0,artworkFade:'radial',artworkOpacity:60}];
-  for (const design of [...ids,'custom']) for (const layout of ['paired','stacked']) for (const cardFormat of ['auto','single','front-back']) for (const variant of variants) {
+  // Compare every published baseline layout; Minimal is new and is checked against Original separately.
+  for (const design of [...baseline.designs.map(d => d.id),'custom']) for (const layout of ['paired','stacked']) for (const cardFormat of ['auto','single','front-back']) for (const variant of variants) {
     const v = {...baseline.defaults,design,layout,cardFormat,customLayout:design === 'custom' ? customLayout : '',...variant};
     const label = JSON.stringify({design,layout,cardFormat,...variant});
     // The baseline runs in a separate VM; compare plain data, not realm prototypes.
