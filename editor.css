@@ -361,10 +361,13 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 #icons-disclosure .contact-icons-note{margin:16px 0 11px}
 
 /* Header action menus reuse the existing appearance-menu treatment. */
-.export-menu,.editor-options{position:relative}
-.export-menu>summary,.editor-options>summary{list-style:none;cursor:pointer}
-.export-menu>summary::-webkit-details-marker,.editor-options>summary::-webkit-details-marker{display:none}
-.export-options,.editor-options-content{position:absolute;top:calc(100% + 8px);right:0;z-index:20;width:280px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 100px);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 10px 30px #1c19171a}
+.export-menu,.editor-options,.email-size-menu{position:relative}
+.export-menu>summary,.editor-options>summary,.email-size-menu>summary{list-style:none;cursor:pointer}
+.export-menu>summary::-webkit-details-marker,.editor-options>summary::-webkit-details-marker,.email-size-menu>summary::-webkit-details-marker{display:none}
+.export-options,.editor-options-content,.email-size-options{position:absolute;top:calc(100% + 8px);right:0;z-index:20;width:280px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 100px);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 10px 30px #1c19171a}
+.email-size-options .range-field>label{display:flex;justify-content:space-between;gap:10px}
+.email-size-options input[type=range]{min-height:28px}
+.email-size-options .text-button{min-height:36px}
 .export-options>.button,.editor-options-content>.button{width:100%;justify-content:flex-start;white-space:normal}
 .export-options>.button+.button{margin-top:6px}
 .editor-options-content>.text-button{white-space:normal;text-align:left}
@@ -375,12 +378,13 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 .editor-options-content .help-button span{display:inline}
 @media(max-width:740px){
   .studio-shell .app-header{height:auto;min-height:64px;flex-wrap:wrap;padding-block:12px;gap:12px}
-  .studio-shell .header-actions{margin-left:auto}
+  .studio-shell .header-actions{margin-left:auto;position:relative}
+  .email-size-menu{position:static}
 }
 @media(max-width:480px){
   .studio-shell .header-actions{position:relative;flex-wrap:wrap}
-  .export-menu,.editor-options{position:static}
-  .export-options,.editor-options-content{max-height:60dvh}
+  .export-menu,.editor-options,.email-size-menu{position:static}
+  .export-options,.editor-options-content,.email-size-options{max-height:60dvh}
 }
 
 /* Text and spacing controls reuse the existing field, disclosure and artwork slider styles. */

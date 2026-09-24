@@ -13,7 +13,7 @@
   var colors = ['frontBackground', 'backBackground', 'accent'];
   var presetIds = ['preset-original', 'preset-midnight', 'preset-spruce'];
   var presetNames = ['original', 'midnight', 'spruce'];
-  var uiDefaults = Object.freeze({editorTab:'details', previewView:'card', imageScale:4,
+  var uiDefaults = Object.freeze({editorTab:'details', previewView:'card', emailScale:100, imageScale:4,
     imageBackground:'transparent', selectedThemeId:'', themeName:''});
   var own = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
   var informationFields = Object.freeze(['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl']);
@@ -121,6 +121,7 @@
     var enums = {editorTab:['layout','details','photo','design','icons'], previewView:['card','email'],
       imageScale:[2,4,6], imageBackground:['transparent','white']};
     Object.keys(enums).forEach(function (key) { if (!enums[key].includes(result[key])) fail('UI ' + key + ' must be one of: ' + enums[key].join(', ') + '.'); });
+    if (typeof result.emailScale !== 'number' || !Number.isInteger(result.emailScale) || result.emailScale < 50 || result.emailScale > 150) fail('UI emailScale must be a whole number from 50 to 150.');
     result.selectedThemeId = selectedId(result.selectedThemeId, themes);
     result.themeName = themeName(result.themeName, 'Theme name field', true);
     return result;

@@ -41,6 +41,13 @@
   }
   const storageKey = 'signature-studio:draft:v1';
   const themeStorageKey = 'signature-studio:themes:v1';
+  const emailScaleKey = 'signature-studio:email-scale:v1';
+  const validEmailScale = value => typeof value === 'number' && Number.isInteger(value) && value >= 50 && value <= 150;
+  let emailScale = 100;
+  try {
+    const saved = JSON.parse(localStorage.getItem(emailScaleKey));
+    if (validEmailScale(saved)) emailScale = saved;
+  } catch {}
   const colorKeys = ['frontBackground', 'backBackground', 'accent'];
   const plumPalette = Object.freeze({name:'Plum',frontBackground:'#ffffff',backBackground:'#faf8f4',accent:'#583da6'});
   // Fresh drafts use the new palette; legacy normalization keeps its original defaults.
@@ -97,7 +104,7 @@
   imageButton.id = 'export-image'; imageButton.type = 'button'; imageButton.className = 'button button-secondary image-export-button';
   imageButton.innerHTML = '<svg viewBox="0 0 18 18" width="17" height="17" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6.5" r="1.2" stroke="currentColor" stroke-width="1.2"/><path d="m3 14 4-4 2.5 2 3-4 2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Export image</span><span class="format-badge">HD</span>';
   $('export-options').prepend(imageButton);
-  for (const id of ['export-menu', 'editor-options']) {
+  for (const id of ['export-menu', 'editor-options', 'email-size-menu']) {
     const menu = $(id);
     menu.addEventListener('keydown', event => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
@@ -106,7 +113,7 @@
     menu.addEventListener('click', event => {
       // Keep nested preferences/disclosures open, but dismiss after an action.
       const button = event.target.closest('button');
-      if (button && !button.closest('#appearance-menu')) {
+      if (button && !button.closest('#appearance-menu') && id !== 'email-size-menu') {
         menu.open = false;
         // Delegated AI launchers run later in this event. Restore focus to a
         // visible menu trigger when any launched dialog closes.
@@ -648,7 +655,10 @@
         note.setAttribute('role', 'status');
         return;
       }
-      if (pendingSessionPersistence) localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes }));
+      if (pendingSessionPersistence) {
+        localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes }));
+        localStorage.setItem(emailScaleKey, JSON.stringify(emailScale));
+      }
       localStorage.setItem(storageKey, serialized);
       storedDraftValue = serialized;
       pendingSessionPersistence = false;
@@ -743,7 +753,7 @@
   }
   function fitPreview() {
     if (!lastValid) return;
-    const {width, height} = core.dimensions(lastValid);
+    const {width, height} = view === 'email' ? core.emailDimensions(lastValid, emailScale) : core.dimensions(lastValid);
     const viewport = $('preview-viewport');
     const style = getComputedStyle(viewport);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
@@ -757,13 +767,33 @@
     $('preview-sizer').style.width = (view === 'email' ? available : width * scale) + 'px';
     $('preview-sizer').style.height = (height * scale) + 'px';
     $('dimension-label').textContent = `${width} × ${height} px`;
-    $('scale-label').textContent = scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%';
-    $('preview-size-note').textContent = emailDevice === 'mobile'
+    $('scale-label').textContent = view === 'email'
+      ? (scale < 0.995 ? `Fit to screen · Email size ${emailScale}%` : `Actual email size · ${emailScale}%`)
+      : (scale < 0.995 ? `Fit · ${Math.round(scale * 100)}%` : 'Actual size · 100%');
+    $('preview-size-note').textContent = emailScale === 100 ? (emailDevice === 'mobile'
       ? 'Width preview only; export size is unchanged.' + (draft.layout === 'stacked' ? ' Email apps may display it differently.' : ' Choose Vertical in Layout for larger text.')
-      : 'Preview your signature in a message. Export dimensions stay the same.';
+      : 'Preview your signature in a message. Export dimensions stay the same.')
+      : `Email size: ${emailScale}%. Copies and HTML downloads use this size; the preview fits smaller screens.`;
+    syncEmailSize();
     const column = document.querySelector('.preview-column');
     column.classList.toggle('is-tall', column.scrollHeight > innerHeight - 56);
     fitMiniatures();
+  }
+  function syncEmailSize() {
+    $('email-scale').value = String(emailScale);
+    $('email-scale').setAttribute('aria-valuetext', emailScale + '%');
+    $('email-scale-value').textContent = emailScale + '%';
+    $('email-scale-summary').textContent = emailScale + '%';
+    if (lastValid) {
+      const size = core.emailDimensions(lastValid, emailScale);
+      $('email-size-dimensions').textContent = `${size.width} × ${size.height} px in email`;
+    }
+  }
+  function renderPreview(values, previewView = view) {
+    const options = {preview: true, ...(values.imageBase === core.defaults.imageBase ? {assetBase: './sig'} : {})};
+    const html = previewView === 'email' ? core.renderEmail(values, {...options, scale: emailScale}) : core.render(values, options);
+    window.SignaturePreview.update($('signature-preview'), html);
+    $('signature-preview').querySelectorAll('a').forEach(link => { link.target = '_blank'; link.rel = 'noopener noreferrer'; });
   }
   function render() {
     syncSizeControls();
@@ -773,10 +803,9 @@
       return;
     }
     try {
-      lastValid = core.normalize(draft);
-      const defaultAssets = lastValid.imageBase === core.defaults.imageBase;
-      window.SignaturePreview.update($('signature-preview'), core.render(lastValid, { preview: true, ...(defaultAssets ? { assetBase: './sig' } : {}) }));
-      $('signature-preview').querySelectorAll('a').forEach(link => { link.target = '_blank'; link.rel = 'noopener noreferrer'; });
+      const candidate = core.normalize(draft);
+      renderPreview(candidate);
+      lastValid = candidate;
       const emailName = $('email-sender');
       if (emailName) emailName.textContent = [lastValid.nameLine1, lastValid.nameLine2].filter(Boolean).join(' ');
       fitPreview(); syncStudio();
@@ -832,6 +861,8 @@
     });
   });
   function setView(name) {
+    try { if (lastValid) renderPreview(lastValid, name); }
+    catch (error) { announce(error.message || 'The email preview could not be updated.', true); return; }
     view = name;
     document.querySelectorAll('[data-view]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.view === view)); b.classList.toggle('is-active', b.dataset.view === view); });
     document.querySelector('[data-preview-view]').dataset.previewView = view;
@@ -839,6 +870,17 @@
     $('email-context').hidden = view !== 'email';
     fitPreview();
   }
+  function changeEmailScale(value) {
+    if (!validEmailScale(value)) { syncEmailSize(); announce('Choose an email size from 50% to 150%.', true); return; }
+    try { if (lastValid) core.renderEmail(lastValid, {preview: true, scale: value}); }
+    catch (error) { syncEmailSize(); announce(error.message || 'This email size could not be applied.', true); return; }
+    emailScale = value;
+    syncEmailSize(); setView('email');
+    try { localStorage.setItem(emailScaleKey, JSON.stringify(emailScale)); announce('Email size set to ' + emailScale + '%. Copy signature and Download HTML use this size.'); }
+    catch { announce('Email size applied for this visit. Export data to keep it; browser storage is unavailable.', true); }
+  }
+  $('email-scale').addEventListener('input', () => changeEmailScale(Number($('email-scale').value)));
+  $('reset-email-scale').addEventListener('click', () => changeEmailScale(100));
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
   document.querySelectorAll('button[data-email-device]').forEach(button => button.addEventListener('click', () => {
     emailDevice = button.dataset.emailDevice === 'mobile' ? 'mobile' : 'desktop';
@@ -884,12 +926,13 @@
   async function copySignature() {
     if (!validate(true)) return;
     let html;
-    try { html = core.render(draft); }
+    try { html = core.renderEmail(draft, {scale: emailScale}); }
     catch (error) { if (draft.portraitData && !draft.portraitUrl) { setTab('photo'); portraitControls?.revealLink?.(); } announce(error.message || 'This signature could not be copied.', true); return; }
     const text = core.plainText(draft);
-    if (await copyContent(html, text)) announce('Signature copied. Paste it into Gmail’s signature settings.');
+    if (await copyContent(html, text)) announce('Signature copied' + (emailScale === 100 ? '' : ' at ' + emailScale + '%') + '. Paste it into Gmail’s signature settings.');
     else {
       // Manual selection must copy the same public URLs as the normal export.
+      setView('email');
       $('signature-preview').innerHTML = html;
       const selection = getSelection(), range = document.createRange(); range.selectNodeContents($('signature-preview')); selection.removeAllRanges(); selection.addRange(range);
       announce('Clipboard access was blocked. The signature is selected: press Ctrl+C (⌘C on Mac), or download HTML.', true);
@@ -899,7 +942,7 @@
   $('download-html').addEventListener('click', () => {
     if (!validate(true)) return;
     let rendered;
-    try { rendered = core.render(draft); }
+    try { rendered = core.renderEmail(draft, {scale: emailScale}); }
     catch (error) { if (draft.portraitData && !draft.portraitUrl) { setTab('photo'); portraitControls?.revealLink?.(); } announce(error.message || 'This signature could not be exported.', true); return; }
     const html = '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Email signature</title><body>' + rendered + '</body></html>';
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
@@ -934,7 +977,7 @@
   window.SignatureImage.attach({ getDraft: () => ({ ...draft }), validate: () => validate(true) });
   function getSession() {
     return { draft: { ...draft }, themes: themes.map(theme => ({ ...theme })), ui: {
-      editorTab: activeTab, previewView: view, imageScale: Number($('image-scale').value), imageBackground: $('image-background').value,
+      editorTab: activeTab, previewView: view, emailScale, imageScale: Number($('image-scale').value), imageBackground: $('image-background').value,
       selectedThemeId, themeName: $('theme-name').value
     } };
   }
@@ -943,13 +986,14 @@
     const before = { ...draft }, previousStorage = new Map();
     let stored = false;
     try {
-      for (const key of [themeStorageKey, storageKey]) previousStorage.set(key, localStorage.getItem(key));
+      for (const key of [themeStorageKey, storageKey, emailScaleKey]) previousStorage.set(key, localStorage.getItem(key));
       // Restoring a reviewed session is an explicit replacement. If a write
       // fails, retries may still save against the value restored by rollback.
       storedDraftValue = previousStorage.get(storageKey);
       localStorage.setItem(themeStorageKey, JSON.stringify({ version: 1, themes: merged.themes }));
       const serialized = JSON.stringify(session.draft);
       localStorage.setItem(storageKey, serialized);
+      localStorage.setItem(emailScaleKey, JSON.stringify(session.ui.emailScale));
       storedDraftValue = serialized;
       stored = true;
     } catch {
@@ -958,6 +1002,7 @@
       }
     }
     draft = { ...session.draft }; themes = merged.themes; pendingSessionPersistence = !stored;
+    emailScale = session.ui.emailScale;
     preserveUnreadableDraft = false; recordEdit(before);
     fill(); renderThemeMenu(merged.selectedThemeId);
     $('theme-name').value = session.ui.themeName;

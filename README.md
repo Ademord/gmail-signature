@@ -24,6 +24,8 @@ The server serves only the app, artwork, and detector files listed in `scripts/p
 
 ## Choose a design
 
+**Email size**, beside **Copy signature**, scales the whole email signature from 50–150%. Set 80% to copy a 560 px design at 448 px wide. Text, photos, artwork and spacing scale together; the Email preview and **Download HTML** use the same size. **Reset to 100%** restores the original output. Card editing and PNG resolution stay independent. This output preference is saved in the browser and in session backups (Design imports), while draft links keep the original design. Older backups start at 100%. Email clients can still apply their own display rules.
+
 The editor has four tabs: **Layout**, **Details**, **Photo**, and **Design**. Layout holds the format, orientation, template, and spacing controls. Design places Colors and Artwork beside one another. The header's **Appearance** menu selects **Classic red** or **Plum** for the editor. Classic red is the default, with red controls and a dark canvas; Plum uses violet controls and a light stone canvas. This browser preference is saved separately from signature drafts and does not change your palette, exported HTML, draft links, or session backups. New signatures still start with the **Plum signature palette**. Previous/next controls and native dropdowns remain available under the advanced layout and artwork options; each selection creates one Undo step.
 
 **Change template** opens the **Layouts** and **Artwork** library with larger previews and descriptions. Choosing a card returns to the preview. **Browse all artwork** opens the artwork tab directly. Colors live in **Design → Colors → Palettes**.

@@ -264,6 +264,7 @@ function harness({ storageFails = false, sharedStorage = null, initialHash = '',
     async bubbleWorkspaceClick(id) { await emit(workspace.events,'click',{target:node(id)}); },
     get previewTransformWrites() { return previewTransformWrites; },
     async input(key, value) { const field = inputs[key] || node(key); field.value = String(value); await emit(node('editor-form').events, 'input', { target: field }); },
+    async outputSize(value) { node('email-scale').value = String(value); await dispatch(node('email-scale'),'input'); },
     async finishEdit() { await emit(node('editor-form').events, 'change'); },
     async selectTheme(id) { node('theme-select').value = id; await emit(node('theme-select').events, 'change'); },
     async pasteSession(text) { node('session-json').value = text; await emit(node('session-json').events, 'input'); },
@@ -1694,6 +1695,82 @@ test('normal rich clipboard writes both clickable public HTML and meaningful pla
   assert.match(html,/Jordan/); assert.match(html,/https:\/\/example\.org\/portrait\.jpg/); assert.match(html,/href="https:\/\/example.com/);
   assert.doesNotMatch(html,/src="(?:data:|blob:|\.\/)/); assert.match(plain,/Jordan/); assert.match(plain,/example.com/);
   assert.match(app.node('status').textContent,/Signature copied/);
+});
+
+test('Email size scales preview, rich clipboard and HTML download together without editing the card or PNG draft', async () => {
+  const initial={...core.defaults,...core.compactPreset,portraitUrl:'https://example.org/portrait.jpg'};
+  const app=harness({initialDraft:initial,clipboardSucceeds:true,viewportWidth:1200,screenWidth:1280});
+  const card=app.node('signature-preview').innerHTML, saved=app.storage.get(storageKey);
+  await app.outputSize(80);
+  assert.equal(app.previewWorkspace.dataset.previewView,'email');
+  assert.equal(app.node('email-scale-summary').textContent,'80%');
+  const {width,height}=core.dimensions(initial);
+  assert.equal(app.node('signature-preview').style.width,(width*.8)+'px');
+  assert.equal(app.node('preview-sizer').style.height,(Math.round(height*.8*1000)/1000)+'px');
+  assert.equal(app.storage.get(storageKey),saved,'output size never edits the draft');
+  assert.deepEqual(JSON.parse(JSON.stringify(app.imageSettings.getDraft())),initial,'PNG receives the original draft');
+  await app.click('copy-signature');
+  const parts=app.clipboardItems.at(-1).parts;
+  const html=await parts['text/html'].text();
+  assert.equal(html,core.renderEmail(initial,{scale:80}));
+  assert.equal(await parts['text/plain'].text(),core.plainText(initial));
+  assert.doesNotMatch(html,/transform:|zoom:|src="(?:data:|blob:|\.\/)/);
+  await app.click('download-html');
+  const downloaded=await app.objectURLs.get(app.downloads.at(-1).href).text();
+  assert.ok(downloaded.includes('<body>'+html+'</body>'),'download contains exactly the copied HTML');
+  await app.previewView('card'); assert.equal(app.node('signature-preview').innerHTML,card);
+  await app.outputSize(70); await app.outputSize(80);
+  assert.equal(app.node('signature-preview').innerHTML,core.renderEmail(initial,{scale:80,preview:true,assetBase:'./sig'}),'scale never compounds');
+  await app.click('reset-email-scale');
+  assert.equal(app.node('email-scale').value,'100');
+  await app.click('copy-signature');
+  assert.equal(await app.clipboardItems.at(-1).parts['text/html'].text(),core.render(initial),'reset is byte-identical to the original');
+});
+
+test('Email size survives reload and session restore, and information-only import keeps the current size', async () => {
+  const app=harness(); await app.outputSize(80);
+  const restored=harness({sharedStorage:app.storage});
+  assert.equal(restored.node('email-scale').value,'80');
+  await restored.click('export-data'); const backup=restored.node('session-json').value;
+  assert.equal(JSON.parse(backup).ui.emailScale,80);
+  await restored.click('close-session'); await restored.outputSize(65);
+  await restored.click('import-data'); await restored.pasteSession(backup); await restored.importParts(true,false); await restored.click('session-restore');
+  assert.equal(restored.node('email-scale').value,'65');
+  await restored.click('import-data'); await restored.pasteSession(backup); await restored.importParts(false,true); await restored.click('session-restore');
+  assert.equal(restored.node('email-scale').value,'80');
+  assert.equal(restored.storage.get('signature-studio:email-scale:v1'),'80');
+});
+
+test('Email size handles invalid preferences, unavailable storage, local photo guards and manual copy fallback', async () => {
+  for(const value of ['null','"80"','49','151','80.5','broken']) {
+    const app=harness({sharedStorage:new Map([['signature-studio:email-scale:v1',value]])});
+    assert.equal(app.node('email-scale').value,'100');
+  }
+  const unavailable=harness({storageFails:true}); await unavailable.outputSize(80);
+  assert.equal(unavailable.node('email-scale').value,'80');
+  assert.match(unavailable.node('status').textContent,/for this visit/);
+  const local=harness({initialDraft:{...core.defaults,portraitData:localPortrait},clipboardSucceeds:true});
+  await local.outputSize(80); await local.click('copy-signature');
+  assert.equal(local.clipboardItems.length,0);assert.match(local.node('status').textContent,/HTTPS URL/);
+  const fallback=harness(); await fallback.outputSize(80); await fallback.previewView('card'); await fallback.click('copy-signature');
+  assert.equal(fallback.previewWorkspace.dataset.previewView,'email');
+  assert.equal(fallback.selected.innerHTML,core.renderEmail(freshDraft,{scale:80}));
+  assert.equal(fallback.node('signature-preview').style.width,core.emailDimensions(freshDraft,80).width+'px');
+  await fallback.outputSize(200);assert.equal(fallback.node('email-scale').value,'80');
+});
+
+test('failed email-size persistence rolls session storage back and later saves all pending settings', async () => {
+  const source=harness();await source.outputSize(80);await source.input('nameLine1','Incoming');await source.click('export-data');
+  const app=harness();await app.outputSize(65);const original=app.storage.get(storageKey);
+  app.failNextWrite('signature-studio:email-scale:v1');
+  await app.click('import-data');await app.pasteSession(source.node('session-json').value);await app.click('session-restore');
+  assert.equal(app.node('email-scale').value,'80','failed import remains usable in this tab');
+  assert.equal(app.storage.get(storageKey),original,'draft storage rolls back with preference storage');
+  assert.equal(app.storage.get('signature-studio:email-scale:v1'),'65');
+  assert.match(app.node('status').textContent,/for this tab/);
+  await app.input('nameLine1','Recovered');
+  assert.equal(app.storage.get('signature-studio:email-scale:v1'),'80');
+  assert.equal(JSON.parse(app.storage.get(storageKey)).nameLine1,'Recovered');
 });
 
 test('manual clipboard fallback selects the current export with public image URLs', async () => {

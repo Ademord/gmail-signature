@@ -113,7 +113,7 @@ test('abstract artwork and photos round-trip without changing the selected desig
     const input = {draft:draft({pattern,design,layout,artworkPlacement:'motif',portraitData:photo,portraitUrl:photoUrl,portraitShape:'rounded',portraitSize:96}),
       themes:[theme],ui:{editorTab:'design',previewView:'card',imageScale:4,imageBackground:'transparent',selectedThemeId:theme.id,themeName:theme.name}};
     const restored = session.parse(session.serialize(input));
-    assert.deepEqual(restored, input, pattern + ':' + design + ':' + layout);
+    assert.deepEqual(restored, {...input,ui:{...input.ui,emailScale:100}}, pattern + ':' + design + ':' + layout);
     assert.equal(core.render(restored.draft), core.render(input.draft));
     if (photoOccupiedSlots.has([design,layout,321,208,96].join(':'))) {
       assert.ok(!core.render(restored.draft).includes('/pattern-'+pattern+'.png'));
