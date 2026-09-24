@@ -6,7 +6,20 @@
 }(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var defaults = Object.freeze({
+  // Format controls default to the historical template rendering. Zero sizes
+  // mean Auto/Template (never 0 px) and -1 padding keeps each template inset.
+  var typographyDefaults = Object.freeze({
+    nameLayout: 'template', nameFontSize: 0, titleFontSize: 0, subtitleFontSize: 0, contactFontSize: 0, footerFontSize: 0,
+    lineSpacing: 100, textSpacing: 100, contactSpacing: 100, sectionSpacing: 100, contentPadding: -1,
+    singleArrangement: 'auto', contactLayout: 'template', contactFont: 'template', footerVisible: 'show'
+  });
+  // Contact presentation: hidden contacts keep their saved values, labels,
+  // icons and URLs. Separators decorate inline rows only; none keeps markup.
+  var contactDefaults = Object.freeze({
+    contactSeparator: 'none', websiteVisible: 'show', emailVisible: 'show', phoneVisible: 'show', linkedinVisible: 'show', locationVisible: 'show'
+  });
+  var contactSeparators = Object.freeze({none:'', bar:'|', dot:'·', slash:'/', dash:'–'});
+  var defaults = Object.freeze(Object.assign({
     nameLine1: 'Avery', nameLine2: 'Morgan', title: 'Software Engineer',
     subtitle: 'AI & AUTOMATION', website: 'example.com', websiteLabel: 'example.com',
     email: '', phone: '+41 00 000 00 00', linkedin: 'https://www.linkedin.com/',
@@ -19,7 +32,25 @@
     frontBackground: '#f3f0ea', backBackground: '#1c1c1c',
     websiteIcon: 'web', emailIcon: 'mail', phoneIcon: 'phone', linkedinIcon: 'linkedin', locationIcon: 'pin',
     imageBase: 'https://raw.githubusercontent.com/Ademord/gmail-signature/main/sig'
-  });
+  }, typographyDefaults, contactDefaults));
+  // A reversible compact starting point. It changes format only, never the
+  // personal details, photo, colors or artwork.
+  var compactPreset = Object.freeze({cardFormat:'single', layout:'paired', singleArrangement:'rows', width:280, height:180,
+    contentPadding:24, portraitSize:96, nameLayout:'single', nameFontSize:22, titleFontSize:13, subtitleFontSize:13, contactFontSize:13,
+    contactFont:'sans', contactLayout:'inline', contactSeparator:'bar', lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:150, footerVisible:'hide'});
+  var fontSizes = Object.freeze([['nameFontSize',12,40],['titleFontSize',8,24],['subtitleFontSize',8,24],['contactFontSize',8,24],['footerFontSize',8,24]]);
+  var formatChoices = Object.freeze({
+    nameLayout:[['template','single','wrap'],'Choose Template, Single line or Wrap for the name layout.'],
+    singleArrangement:[['auto','rows','columns'],'Choose Automatic, Rows or Columns for the single-card arrangement.'],
+    contactLayout:[['template','stacked','inline'],'Choose Template, Stacked or Inline contacts.'],
+    contactFont:[['template','sans','mono'],'Choose Template, Sans or Mono for the contact font.'],
+    footerVisible:[['show','hide'],'Choose to show or hide the footer.'],
+    contactSeparator:[Object.keys(contactSeparators),'Choose None, Bar, Dot, Slash or Dash for the contact separator.'],
+    websiteVisible:[['show','hide'],'Choose to show or hide the website.'],
+    emailVisible:[['show','hide'],'Choose to show or hide the email address.'],
+    phoneVisible:[['show','hide'],'Choose to show or hide the phone number.'],
+    linkedinVisible:[['show','hide'],'Choose to show or hide LinkedIn.'],
+    locationVisible:[['show','hide'],'Choose to show or hide the location.']});
   var limits = Object.freeze({nameLine1: 36, nameLine2: 36, title: 64, subtitle: 64,
     website: 1024, websiteLabel: 40, email: 80, phone: 32, linkedin: 512,
     location: 48, tags: 60, imageBase: 512, portraitUrl: 1024, customPattern: 2048, customLayout: 512});
@@ -115,6 +146,13 @@
     result.motifPositionX = dimension(input.motifPositionX, defaults.motifPositionX, 0, 100);
     result.motifPositionY = dimension(input.motifPositionY, defaults.motifPositionY, 0, 100);
     result.portraitSize = dimension(input.portraitSize, defaults.portraitSize, 40, 96);
+    fontSizes.forEach(function (rule) {
+      var size = dimension(input[rule[0]], 0, 0, rule[2]);
+      result[rule[0]] = size && size < rule[1] ? rule[1] : size;
+    });
+    result.lineSpacing = dimension(input.lineSpacing, defaults.lineSpacing, 80, 200);
+    ['textSpacing', 'contactSpacing', 'sectionSpacing'].forEach(function (key) { result[key] = dimension(input[key], defaults[key], 0, 200); });
+    result.contentPadding = dimension(input.contentPadding, defaults.contentPadding, -1, 48);
     ['accent', 'frontBackground', 'backBackground'].forEach(function (key) { result[key] = result[key].toLowerCase(); });
     result.imageBase = result.imageBase.replace(/\/+$/, '');
     return result;
@@ -239,6 +277,74 @@
   function lineWidth(lines,font,fixed,spacing,factor) {
     return Math.ceil(Math.max.apply(null,lines.map(function (text) { return units(text,fixed) * font * (factor || 1) + Array.from(text).length * (spacing || 0); }).concat(0)));
   }
+  // Format controls resolve once into the sizes shared by measurement and
+  // markup. Zero sizes keep the template; percentages scale template gaps.
+  function scaled(base, percent) { return percent === 100 ? base : Math.round(base * percent / 100); }
+  function leading(base, v) { return v.lineSpacing === 100 ? base : Math.max(1, Math.round(base * v.lineSpacing / 100)); }
+  function gapRow(height) { return height > 0 ? spacer(height) : ''; }
+  function typeStyle(v) {
+    var title = v.titleFontSize, subtitle = v.subtitleFontSize, contact = v.contactFontSize, footer = v.footerFontSize, fixed = v.contactFont !== 'sans';
+    return {titleFont:title || 9, titleLine:leading(title ? Math.ceil(title * 11 / 9) : 11,v), titleSpacing:title ? Math.round(title * 73 / 9) / 100 : .73,
+      subFont:subtitle || 9, subLine:leading(subtitle ? Math.ceil(subtitle * 4 / 3) : 12,v),
+      contactFont:contact || 10.5, contactLine:leading(contact ? Math.ceil(contact * 4 / 3) : 14,v), contactFixed:fixed, contactFamily:fixed ? mono : sans,
+      tagFont:footer || 8.5, tagLine:leading(footer ? Math.ceil(footer * 22 / 17) : 11,v), separator:Object.prototype.hasOwnProperty.call(contactSeparators,v.contactSeparator) ? contactSeparators[v.contactSeparator] : ''};
+  }
+  // Name layouts change only the displayed lines; stored manual breaks remain.
+  // Automatic sizes shrink into the measured room. An explicit size is kept
+  // and validation reports the overflow instead of silently reducing it.
+  function nameFit(v, lines, room, size, fixed, factor) {
+    var joined = [v.nameLine1, v.nameLine2].filter(Boolean).join(' ');
+    if (v.nameLayout === 'wrap') {
+      var word = Math.max.apply(null,joined.split(' ').map(function (part) { return units(part,fixed); }).concat(1)) * factor;
+      size = v.nameFontSize || Math.floor(Math.min(size,room / word) * 10) / 10;
+      // The tiny allowance stops float rounding from splitting a word that fits exactly.
+      return {lines:wrap(joined,room + 1e-9,size * factor,fixed),size:size,need:word * size,room:room};
+    }
+    if (v.nameLayout === 'single') lines = joined ? [joined] : [];
+    var longest = Math.max.apply(null,lines.map(function (name) { return units(name,fixed); }).concat(1)) * factor;
+    size = v.nameFontSize || Math.min(size,room / longest);
+    return {lines:lines,size:size,need:longest * size,room:room};
+  }
+  function contactRows(v, room, st) {
+    var rows = [];
+    // Hidden contacts are left out of every layout; their stored values remain.
+    function add(key, label, text, href) {
+      if (text && v[key + 'Visible'] !== 'hide') rows.push({key:key,label:label,icon:v[key + 'Icon'],text:text,room:room,lines:wrap(text,room,st.contactFont,st.contactFixed),href:href});
+    }
+    add('website','Website',v.website && (v.websiteLabel || linkLabel(v.website)),webURL(v.website));
+    add('email','Email',v.email,'mailto:' + encodeURIComponent(v.email).replace(/%40/g,'@'));
+    add('phone','Phone',v.phone,phoneHref(v.phone));
+    add('linkedin','LinkedIn',v.linkedin && linkLabel(v.linkedin),webURL(v.linkedin));
+    add('location','Location',v.location,'');
+    return rows;
+  }
+  // Stacked rows are as tall as their text or their 14 px icon, whichever is taller.
+  function contactHeight(row, st, labelH) { return (labelH || 0) + Math.max(row.lines.length * st.contactLine,row.icon === 'none' ? 0 : 14); }
+  // Inline contacts keep every item whole and start another measured row only
+  // when the next item would cross the available width. An item wider than a
+  // whole row wraps inside its own cell rather than being clipped.
+  // A separator cell replaces the gap between two items in the same row, so
+  // it is measured with the packing and can never lead, trail or stand alone.
+  function packContacts(rows, room, st, itemGap, rowGap, labelH) {
+    var iconTop = st.contactLine > 14 ? Math.floor((st.contactLine - 14) / 2) : 0, lines = [];
+    var joint = st.separator ? itemGap + lineWidth([st.separator],st.contactFont,st.contactFixed) + 2 : itemGap;
+    rows.forEach(function (row) {
+      var iconW = row.icon === 'none' ? 0 : 20, labelW = labelH ? lineWidth([row.label.toUpperCase()],7.5,st.contactFixed) : 0;
+      row.room = room - iconW - 2;
+      row.lines = iconW + lineWidth([row.text],st.contactFont,st.contactFixed) + 2 > room ? wrap(row.text,row.room,st.contactFont,st.contactFixed) : [row.text];
+      var textW = Math.max(lineWidth(row.lines,st.contactFont,st.contactFixed),labelW) + 2, width = iconW + textW, line = lines[lines.length - 1];
+      var height = labelH + Math.max(row.lines.length * st.contactLine,iconW ? iconTop + 14 : 0);
+      if (line && line.width + joint + width <= room) line.width += joint + width;
+      else lines.push(line = {items:[],width:width,height:0});
+      line.items.push({row:row,iconW:iconW,textW:textW});
+      line.height = Math.max(line.height,height);
+    });
+    return {lines:lines,iconTop:iconTop,joint:joint,width:Math.max.apply(null,lines.map(function (line) { return line.width; }).concat(0)),
+      height:lines.reduce(function (sum,line) { return sum + line.height; },0) + Math.max(0,lines.length - 1) * rowGap};
+  }
+  function typed(p, st, name, packed) {
+    return Object.assign(p,st,{nameNeed:name.need,nameRoom:name.room,inline:packed ? packed.lines : null,iconTop:packed ? packed.iconTop : 0,separatorW:packed ? packed.joint : 0});
+  }
   var crcTable = Array.from({length:256}, function (_, n) {
     for (var k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
     return n >>> 0;
@@ -318,43 +424,38 @@
     v = compositionValues(v);
     if (v.cardFormat === 'single') return singlePlan(v);
     if (v.design !== 'original' && v.cardFormat !== 'front-back') return designPlan(v);
-    var pad = Math.round(18 + (v.width - 280) * 0.1), top = v.height < 200 ? 18 : 22;
+    var st = typeStyle(v), padded = v.contentPadding >= 0;
+    var pad = padded ? v.contentPadding : Math.round(18 + (v.width - 280) * 0.1), top = padded ? v.contentPadding : v.height < 200 ? 18 : 22;
     var dotH = Math.min(v.height - 26, 182), dotW = Math.round(dotH * 76 / 182);
     if (selectedPattern(v) === 'none' || isCanvasArtwork(v)) dotW = 0;
     if (hasPortrait(v)) dotW = Math.max(dotW, v.portraitSize);
-    var right = 11, gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
+    var right = padded ? v.contentPadding : 11, gap = dotW ? 10 : 0, textW = v.width - pad - right - gap - dotW;
     var matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
     var typography = nameTypography(v), styledFace = v.cardFormat === 'front-back' && v.design !== 'original';
-    var nameFont = styledFace ? typography.size : Math.min(24, 22 * v.width / 321);
-    var longest = Math.max(units(v.nameLine1,styledFace && typography.fixed), units(v.nameLine2,styledFace && typography.fixed), 1) * (styledFace && typography.serif ? 1.12 : 1);
-    nameFont = Math.min(nameFont, (contentW - 2) / longest);
-    var nameLine = Math.ceil(nameFont * 1.12), titleFont = 9, subFont = 9;
-    var titleLines = wrap(v.title, contentW, titleFont, true, 0.73);
-    var subLines = wrap(v.subtitle, contentW, subFont, true);
-    var names = [v.nameLine1, v.nameLine2].filter(Boolean), square = v.height < 200 ? 15 : 17;
-    var titleH = titleLines.length ? 7 + titleLines.length * 11 : 0;
-    var subH = subLines.length ? 11 + subLines.length * 12 : 0;
+    var fixedName = styledFace && typography.fixed, factor = styledFace && typography.serif ? 1.12 : 1;
+    var name = nameFit(v, [v.nameLine1, v.nameLine2].filter(Boolean), contentW - 2, styledFace ? typography.size : Math.min(24, 22 * v.width / 321), fixedName, factor);
+    var names = name.lines, nameFont = name.size, nameLine = leading(Math.ceil(nameFont * 1.12), v);
+    var titleLines = wrap(v.title, contentW, st.titleFont, true, st.titleSpacing);
+    var subLines = wrap(v.subtitle, contentW, st.subFont, true);
+    var square = v.height < 200 ? 15 : 17, titleGap = scaled(7, v.textSpacing), subGap = scaled(11, v.textSpacing);
+    var titleH = titleLines.length ? titleGap + titleLines.length * st.titleLine : 0;
+    var subH = subLines.length ? subGap + subLines.length * st.subLine : 0;
     var frontSpace = v.height - 2 * top - square - names.length * nameLine - titleH - subH - matPad * 2;
-    var innerW = v.width - pad * 2, contactW = innerW - 39 - matPad * 2, contactFont = 10.5;
-    var rows = [];
-    function add(key, label, text, href) {
-      if (text) rows.push({key:key, label:label, icon:v[key + 'Icon'], lines:wrap(text, contactW - 2, contactFont, true), href:href});
-    }
-    add('website', 'Website', v.website && (v.websiteLabel || linkLabel(v.website)), webURL(v.website));
-    add('email', 'Email', v.email, 'mailto:' + encodeURIComponent(v.email).replace(/%40/g, '@'));
-    add('phone', 'Phone', v.phone, phoneHref(v.phone));
-    add('linkedin', 'LinkedIn', v.linkedin && linkLabel(v.linkedin), webURL(v.linkedin));
-    add('location', 'Location', v.location, '');
-    var tagLines = wrap(v.tags, innerW - matPad * 2, 8.5, true);
-    var rowGap = v.height < 200 ? 4 : 6;
-    var contactH = rows.reduce(function (sum, row) { return sum + row.lines.length * 14; }, 0) + Math.max(0, rows.length - 1) * rowGap;
-    var tagH = tagLines.length ? 12 + 1 + 8 + tagLines.length * 11 : 0;
+    var innerW = v.width - pad * 2, contactW = innerW - 39 - matPad * 2;
+    var rows = contactRows(v, contactW - 2, st), rowGap = scaled(v.height < 200 ? 4 : 6, v.contactSpacing), itemGap = scaled(18, v.contactSpacing);
+    var packed = v.contactLayout === 'inline' ? packContacts(rows, innerW - matPad * 2, st, itemGap, rowGap, 0) : null;
+    var tagLines = v.footerVisible === 'hide' ? [] : wrap(v.tags, innerW - matPad * 2, st.tagFont, true);
+    var contactH = packed ? packed.height : rows.reduce(function (sum, row) { return sum + contactHeight(row, st); }, 0) + Math.max(0, rows.length - 1) * rowGap;
+    var footerGap = scaled(12, v.sectionSpacing), tagH = tagLines.length ? footerGap + 1 + 8 + tagLines.length * st.tagLine : 0;
     var backSpace = v.height - top * 2 - square - contactH - tagH - matPad * 2;
-    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,styledFace && typography.fixed,0,styledFace && typography.serif ? 1.12 : 1),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true)));
-    var groupW = Math.min(innerW - matPad * 2,Math.max(lineWidth(tagLines,8.5,true),Math.max.apply(null,rows.map(function (row) { return 39 + lineWidth(row.lines,contactFont,true); }).concat(0))));
-    return {pad:pad,top:top,dotH:dotH,dotW:dotW,right:right,gap:gap,textW:textW,nameFont:nameFont,
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,fixedName,0,factor),lineWidth(titleLines,st.titleFont,true,st.titleSpacing),lineWidth(subLines,st.subFont,true)));
+    var contactsW = packed ? packed.width : Math.max.apply(null,rows.map(function (row) { return 39 + lineWidth(row.lines,st.contactFont,st.contactFixed); }).concat(0));
+    var groupW = Math.min(innerW - matPad * 2,Math.max(lineWidth(tagLines,st.tagFont,true),contactsW));
+    return typed({pad:pad,top:top,dotH:dotH,dotW:dotW,right:right,gap:gap,textW:textW,nameFont:nameFont,
       nameLine:nameLine,names:names,square:square,titleLines:titleLines,subLines:subLines,frontSpace:frontSpace,
-      innerW:innerW,contactW:contactW,contactFont:contactFont,rows:rows,rowGap:rowGap,tagLines:tagLines,backSpace:backSpace,matPad:matPad,identityW:identityW,groupW:groupW};
+      innerW:innerW,contactW:contactW,rows:rows,rowGap:rowGap,tagLines:tagLines,backSpace:backSpace,matPad:matPad,identityW:identityW,groupW:groupW,
+      labelH:0,itemGap:itemGap,titleGap:titleGap,subGap:subGap,footerGap:footerGap,frontGap:scaled(Math.round(v.height * 0.19), v.sectionSpacing),
+      backGap:scaled(21, v.sectionSpacing),titleRoom:contentW,tagRoom:innerW - matPad * 2},st,name,packed);
   }
   function nameTypography(v) {
     var font = v.customFont || (v.design === 'editorial' ? 'serif' : v.design === 'signal' ? 'mono' : 'sans');
@@ -365,57 +466,58 @@
   // Single cards measure complete content groups instead of joining two fixed
   // faces. This plan never calls canvasSize, so dimensions can share it safely.
   function singlePlan(v) {
-    var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2;
+    var tall = v.layout === 'stacked', W = tall ? v.width : v.width * 2, st = typeStyle(v);
+    // Rows keeps identity above contacts on either canvas; Automatic keeps the
+    // historical wide columns and tall stacking.
+    var stack = v.singleArrangement === 'rows' || (v.singleArrangement !== 'columns' && tall);
     var frame = v.design === 'signal' ? 4 : 0, rail = v.design === 'studio' ? 14 : 0;
-    var pad = v.width < 300 ? 18 : 22, bodyW = W - frame * 2 - rail, innerW = bodyW - pad * 2;
-    var sectionGap = tall ? 18 : 24, idW = tall ? innerW : Math.floor((innerW - sectionGap) * .5);
-    var contactPanelW = tall ? innerW : innerW - idW - sectionGap;
+    var pad = v.contentPadding >= 0 ? v.contentPadding : v.width < 300 ? 18 : 22, bodyW = W - frame * 2 - rail, innerW = bodyW - pad * 2;
+    var sectionGap = scaled(stack ? 18 : 24,v.sectionSpacing), idW = stack ? innerW : Math.floor((innerW - sectionGap) * .5);
+    var contactPanelW = stack ? innerW : innerW - idW - sectionGap;
     var motif = selectedPattern(v) !== 'none' && !isCanvasArtwork(v);
     var dotW = motif ? 76 : 0, dotH = motif ? Math.min(160,v.height - 26) : 0;
     if (hasPortrait(v)) { dotW = Math.max(dotW,v.portraitSize); dotH = Math.max(dotH,v.portraitSize); }
     var gap = dotW ? 14 : 0, textW = idW - dotW - gap, matPad = isFlow(v) ? 7 : 0, contentW = textW - matPad * 2;
-    var typography = nameTypography(v), names = [v.nameLine1,v.nameLine2].filter(Boolean);
-    var longest = Math.max.apply(null,names.map(function (name) { return units(name,typography.fixed); }).concat(1)) * (typography.serif ? 1.12 : 1);
-    var nameFont = Math.min(typography.size,(contentW - 2) / longest), nameLine = Math.ceil(nameFont * 1.12);
-    var titleLines = wrap(v.title,contentW - 2,9,true,.73), subLines = wrap(v.subtitle,contentW - 2,9,true);
-    var textH = names.length * nameLine + (titleLines.length ? 7 + titleLines.length * 11 : 0) + (subLines.length ? 11 + subLines.length * 12 : 0) + matPad * 2;
+    var typography = nameTypography(v), factor = typography.serif ? 1.12 : 1;
+    var name = nameFit(v,[v.nameLine1,v.nameLine2].filter(Boolean),contentW - 2,typography.size,typography.fixed,factor);
+    var names = name.lines, nameFont = name.size, nameLine = leading(Math.ceil(nameFont * 1.12),v);
+    var titleLines = wrap(v.title,contentW - 2,st.titleFont,true,st.titleSpacing), subLines = wrap(v.subtitle,contentW - 2,st.subFont,true);
+    var titleGap = scaled(7,v.textSpacing), subGap = scaled(11,v.textSpacing);
+    var textH = names.length * nameLine + (titleLines.length ? titleGap + titleLines.length * st.titleLine : 0) + (subLines.length ? subGap + subLines.length * st.subLine : 0) + matPad * 2;
     var brandH = frame || rail ? 0 : v.design === 'original' ? 17 : v.design === 'orbit' ? 3 : 2;
-    var brandW = v.design === 'original' ? 17 : v.design === 'editorial' ? 42 : 28, brandGap = brandH ? 14 : 0;
+    var brandW = v.design === 'original' ? 17 : v.design === 'editorial' ? 42 : 28, brandGap = brandH ? scaled(14,v.textSpacing) : 0;
     dotH = Math.min(dotH,Math.max(hasPortrait(v) ? v.portraitSize : 0,brandH + brandGap + textH));
     var identityH = Math.max(brandH + brandGap + textH,dotH);
-    var contactW = contactPanelW - 39 - matPad * 2, contactFont = 10.5, rowGap = 6, labelH = v.design === 'signal' ? 10 : 0;
-    var rows = [];
-    function add(key,label,text,href) {
-      if (text) rows.push({key:key,label:label,icon:v[key + 'Icon'],lines:wrap(text,contactW - 2,contactFont,true),href:href});
-    }
-    add('website','Website',v.website && (v.websiteLabel || linkLabel(v.website)),webURL(v.website));
-    add('email','Email',v.email,'mailto:' + encodeURIComponent(v.email).replace(/%40/g,'@'));
-    add('phone','Phone',v.phone,phoneHref(v.phone));
-    add('linkedin','LinkedIn',v.linkedin && linkLabel(v.linkedin),webURL(v.linkedin));
-    add('location','Location',v.location,'');
-    var tagLines = wrap(v.tags,contactPanelW - matPad * 2,8.5,true);
-    var contactH = rows.reduce(function (sum,row) { return sum + row.lines.length * 14 + labelH; },0) + Math.max(0,rows.length - 1) * rowGap;
-    var tagSpace = v.design === 'original' ? (rows.length ? 12 : 0) + 1 + 8 : (rows.length ? 14 : 0);
-    contactH += tagLines.length ? tagSpace + tagLines.length * 11 : 0;
+    var contactW = contactPanelW - 39 - matPad * 2, rowGap = scaled(6,v.contactSpacing), itemGap = scaled(18,v.contactSpacing), labelH = v.design === 'signal' ? 10 : 0;
+    var rows = contactRows(v,contactW - 2,st), packed = v.contactLayout === 'inline' ? packContacts(rows,contactPanelW - matPad * 2,st,itemGap,rowGap,labelH) : null;
+    var tagLines = v.footerVisible === 'hide' ? [] : wrap(v.tags,contactPanelW - matPad * 2,st.tagFont,true);
+    var contactH = packed ? packed.height : rows.reduce(function (sum,row) { return sum + contactHeight(row,st,labelH); },0) + Math.max(0,rows.length - 1) * rowGap;
+    var footerGap = scaled(v.design === 'original' ? 12 : 14,v.sectionSpacing);
+    var tagSpace = v.design === 'original' ? (rows.length ? footerGap : 0) + 1 + 8 : (rows.length ? footerGap : 0);
+    contactH += tagLines.length ? tagSpace + tagLines.length * st.tagLine : 0;
     if (rows.length || tagLines.length) contactH += matPad * 2;
-    var hasContacts = contactH > 0, groupH = tall ? identityH + (hasContacts ? sectionGap + contactH : 0) : Math.max(identityH,contactH);
+    var hasContacts = contactH > 0, groupH = stack ? identityH + (hasContacts ? sectionGap + contactH : 0) : Math.max(identityH,contactH);
     var H = Math.max(v.height,Math.ceil(groupH + pad * 2 + frame * 2));
-    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,typography.fixed,0,typography.serif ? 1.12 : 1),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true)));
-    var groupW = Math.min(contactPanelW - matPad * 2,Math.max(lineWidth(tagLines,8.5,true),Math.max.apply(null,rows.map(function (row) {return 39 + Math.max(lineWidth(row.lines,contactFont,true),labelH ? lineWidth([row.label.toUpperCase()],7.5,true) : 0);}).concat(0))));
-    return {single:true,tall:tall,W:W,H:H,frame:frame,rail:rail,pad:pad,bodyW:bodyW,bodyH:H - frame * 2,innerW:innerW,
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,typography.fixed,0,factor),lineWidth(titleLines,st.titleFont,true,st.titleSpacing),lineWidth(subLines,st.subFont,true)));
+    var contactsW = packed ? packed.width : Math.max.apply(null,rows.map(function (row) {return 39 + Math.max(lineWidth(row.lines,st.contactFont,st.contactFixed),labelH ? lineWidth([row.label.toUpperCase()],7.5,st.contactFixed) : 0);}).concat(0));
+    var groupW = Math.min(contactPanelW - matPad * 2,Math.max(lineWidth(tagLines,st.tagFont,true),contactsW));
+    return typed({single:true,tall:tall,stack:stack,W:W,H:H,frame:frame,rail:rail,pad:pad,bodyW:bodyW,bodyH:H - frame * 2,innerW:innerW,
       idW:idW,contactPanelW:contactPanelW,sectionGap:sectionGap,textW:textW,matPad:matPad,dotW:dotW,dotH:dotH,gap:gap,
       typography:typography,names:names,nameFont:nameFont,nameLine:nameLine,titleLines:titleLines,subLines:subLines,
       brandW:brandW,brandH:brandH,brandGap:brandGap,identityH:identityH,identityW:identityW,
-      rows:rows,contactW:contactW,contactFont:contactFont,rowGap:rowGap,labelH:labelH,tagLines:tagLines,contactH:contactH,groupW:groupW,
-      hasContacts:hasContacts,frontSpace:0,backSpace:0};
+      rows:rows,contactW:contactW,rowGap:rowGap,labelH:labelH,tagLines:tagLines,contactH:contactH,groupW:groupW,
+      hasContacts:hasContacts,frontSpace:0,backSpace:0,itemGap:itemGap,titleGap:titleGap,subGap:subGap,footerGap:footerGap,
+      titleRoom:contentW - 2,tagRoom:contactPanelW - matPad * 2},st,name,packed);
   }
   // Every design uses this measured plan for both validation and rendering.
   // Fixed line breaks keep email clients from stretching the declared cards.
   function designPlan(v) {
-    var tall = v.layout === 'stacked', size = canvasSize(v), W = size.width, H = size.height;
+    var tall = v.layout === 'stacked', size = canvasSize(v), W = size.width, H = size.height, st = typeStyle(v);
     var pad = H < 220 ? 16 : 22, compact = !tall && H < 220, idPad = tall ? pad : compact ? 8 : 12;
-    var cPad = tall ? pad : compact ? (v.design === 'signal' ? 7 : 8) : 12, rowGap = compact ? 4 : 10, gridGap = 18;
+    var cPad = tall ? pad : compact ? (v.design === 'signal' ? 7 : 8) : 12, rowGap = scaled(compact ? 4 : 10,v.contactSpacing), gridGap = scaled(18,v.contactSpacing);
     var matPad = isFlow(v) ? 7 : 0;
+    // Flowing artwork keeps its readable mat inside the chosen padding.
+    if (v.contentPadding >= 0) idPad = cPad = Math.max(v.contentPadding,matPad);
     idPad -= matPad; cPad -= matPad;
     var artW = selectedPattern(v) === 'none' || isCanvasArtwork(v) ? 0 : (v.design === 'editorial' ? 46 : 76);
     if (hasPortrait(v)) artW = Math.max(artW, v.portraitSize);
@@ -433,73 +535,87 @@
     var names = [v.nameLine1, v.nameLine2].filter(Boolean);
     var nameFont = v.design === 'editorial' ? 34 : v.design === 'studio' ? 32 : 30;
     if (compact && ['contour','prism','signal'].includes(v.design)) nameFont = 26;
-    var joined = !tall && !side, longest;
+    var joined = !tall && !side;
     if (joined) {
       var joint = names.join(' '), jointWidth = units(joint, fixedName) * (serif ? 1.12 : 1);
-      if ((contentW - 3) / Math.max(1,jointWidth) >= 20) names = [joint];
+      if ((contentW - 3) / Math.max(1,jointWidth) >= (v.nameFontSize || 20)) names = [joint];
     }
-    longest = Math.max.apply(null, names.map(function (name) { return units(name, fixedName); }).concat(1)) * (serif ? 1.12 : 1);
-    nameFont = Math.min(nameFont, (contentW - 3) / longest);
-    var nameLine = Math.ceil(nameFont * 1.12), titleLines = wrap(v.title,contentW - 2,9,true,.73), subLines = wrap(v.subtitle,contentW - 2,9,true);
-    var titleH = titleLines.length ? 7 + titleLines.length * 11 : 0, subH = subLines.length ? 10 + subLines.length * 12 : 0;
-    var frontHead = v.design === 'studio' ? 20 : v.design === 'orbit' ? 12 : 0;
+    var name = nameFit(v,names,contentW - 3,nameFont,fixedName,serif ? 1.12 : 1);
+    names = name.lines; nameFont = name.size;
+    var nameLine = leading(Math.ceil(nameFont * 1.12),v), titleLines = wrap(v.title,contentW - 2,st.titleFont,true,st.titleSpacing), subLines = wrap(v.subtitle,contentW - 2,st.subFont,true);
+    var titleGap = scaled(7,v.textSpacing), subGap = scaled(10,v.textSpacing), headGap = scaled(v.design === 'studio' ? 12 : 9,v.textSpacing);
+    var titleH = titleLines.length ? titleGap + titleLines.length * st.titleLine : 0, subH = subLines.length ? subGap + subLines.length * st.subLine : 0;
+    var frontHead = v.design === 'studio' ? 8 + headGap : v.design === 'orbit' ? 3 + headGap : 0;
     var identityH = names.length * nameLine + titleH + subH + frontHead + matPad * 2;
     var topH = side ? H : Math.round(bodyH * (tall ? (v.design === 'signal' ? .39 : .48) : (v.design === 'editorial' ? .52 : .47)));
     if (!side) topH = Math.max(topH, identityH + idPad * 2, !artRail && hasPortrait(v) ? v.portraitSize + idPad * 2 : 0);
     var contactPanelH = side ? H : bodyH - topH;
-    var cols = side ? 1 : tall ? (v.design === 'contour' ? 2 : 1) : 2;
+    var cols = v.contactLayout === 'stacked' || side ? 1 : tall ? (v.design === 'contour' ? 2 : 1) : 2;
     var innerW = contactPanelW - cPad * 2, workingW = innerW - matPad * 2;
     var cellW = Math.floor((workingW - gridGap * (cols - 1)) / cols), contactW = cellW - 22;
-    var rows = [], contactFont = 10.5;
-    function add(key, label, text, href) {
-      if (text) rows.push({key:key,label:label,icon:v[key + 'Icon'],text:text,lines:wrap(text,contactW - 2,contactFont,true),href:href});
-    }
-    add('website','Website',v.website && (v.websiteLabel || linkLabel(v.website)),webURL(v.website));
-    add('email','Email',v.email,'mailto:' + encodeURIComponent(v.email).replace(/%40/g,'@'));
-    add('phone','Phone',v.phone,phoneHref(v.phone));
-    add('linkedin','LinkedIn',v.linkedin && linkLabel(v.linkedin),webURL(v.linkedin));
-    add('location','Location',v.location,'');
+    var rows = contactRows(v,contactW - 2,st);
     if (tall && cols > 1 && rows.some(function (row) { return row.lines.length > 2; })) {
       cols = 1; cellW = workingW; contactW = cellW - 22;
-      rows.forEach(function (row) { row.lines = wrap(row.text,contactW - 2,contactFont,true); });
+      rows.forEach(function (row) { row.room = contactW - 2; row.lines = wrap(row.text,row.room,st.contactFont,st.contactFixed); });
     }
     var labelH = v.design === 'signal' ? 10 : 0, contactH = 0;
-    for (var i = 0; i < rows.length; i += cols) {
-      contactH += Math.max.apply(null,rows.slice(i,i + cols).map(function (row) { return row.lines.length * 14 + labelH; }));
+    var packed = v.contactLayout === 'inline' ? packContacts(rows,workingW,st,gridGap,rowGap,labelH) : null;
+    if (packed) contactH = packed.height;
+    else for (var i = 0; i < rows.length; i += cols) {
+      contactH += Math.max.apply(null,rows.slice(i,i + cols).map(function (row) { return contactHeight(row,st,labelH); }));
       if (i + cols < rows.length) contactH += rowGap;
     }
-    var tagLines = wrap(v.tags,workingW - 2,8.5,true), tagH = tagLines.length ? 8 + tagLines.length * 11 : 0;
+    var tagLines = v.footerVisible === 'hide' ? [] : wrap(v.tags,workingW - 2,st.tagFont,true), footerGap = scaled(8,v.sectionSpacing);
+    var tagH = tagLines.length ? footerGap + tagLines.length * st.tagLine : 0;
     contactH += matPad * 2;
     var gridW = innerW, groupW = innerW;
     if (matPad) {
-      cellW = Math.min(cellW,22 + Math.max.apply(null,rows.map(function (row) { return Math.max(lineWidth(row.lines,contactFont,true),v.design === 'signal' ? lineWidth([row.label.toUpperCase()],7.5,true) : 0); }).concat(0)));
-      contactW = cellW - 22;
-      gridW = cellW * cols + gridGap * (cols - 1);
-      groupW = Math.min(workingW,Math.max(rows.length ? gridW : 0,lineWidth(tagLines,8.5,true)));
+      if (packed) gridW = packed.width;
+      else {
+        cellW = Math.min(cellW,22 + Math.max.apply(null,rows.map(function (row) { return Math.max(lineWidth(row.lines,st.contactFont,st.contactFixed),v.design === 'signal' ? lineWidth([row.label.toUpperCase()],7.5,st.contactFixed) : 0); }).concat(0)));
+        contactW = cellW - 22;
+        gridW = cellW * cols + gridGap * (cols - 1);
+      }
+      groupW = Math.min(workingW,Math.max(rows.length ? gridW : 0,lineWidth(tagLines,st.tagFont,true)));
     }
-    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,fixedName,0,serif ? 1.12 : 1),lineWidth(titleLines,9,true,.73),lineWidth(subLines,9,true),frontHead ? 28 : 0));
+    var identityW = Math.min(contentW,Math.max(lineWidth(names,Math.floor(nameFont * 10) / 10,fixedName,0,serif ? 1.12 : 1),lineWidth(titleLines,st.titleFont,true,st.titleSpacing),lineWidth(subLines,st.subFont,true),frontHead ? 28 : 0));
     if (!side) {
       var minTop = Math.max(identityH + idPad * 2, !artRail && hasPortrait(v) ? v.portraitSize + idPad * 2 : 0);
       topH = Math.max(minTop, Math.min(topH, bodyH - cPad * 2 - contactH - tagH - (['editorial','contour','prism'].includes(v.design) ? 1 : 0)));
       contactPanelH = bodyH - topH;
     }
     var dotH = Math.min(artRail ? bodyH - idPad * 2 : topH - idPad * 2, 182);
-    return {tall:tall,W:W,H:H,bodyW:bodyW,bodyH:bodyH,mainW:mainW,pad:pad,idPad:idPad,cPad:cPad,rail:rail,frame:frame,
+    return typed({tall:tall,W:W,H:H,bodyW:bodyW,bodyH:bodyH,mainW:mainW,pad:pad,idPad:idPad,cPad:cPad,rail:rail,frame:frame,
       side:side,artRail:artRail,idW:idW,topH:topH,contactPanelW:contactPanelW,contactPanelH:contactPanelH,contactOffset:contactOffset,
       dotH:dotH,dotW:artW,gap:artGap,textW:textW,nameFont:nameFont,nameLine:nameLine,names:names,titleLines:titleLines,subLines:subLines,
       frontHead:frontHead,frontSpace:topH - idPad * 2 - identityH,identityH:identityH,innerW:innerW,contactW:contactW,cellW:cellW,
-      cols:cols,gridGap:gridGap,contactFont:contactFont,rows:rows,rowGap:rowGap,tagLines:tagLines,labelH:labelH,
-      contactH:contactH,tagH:tagH,backSpace:contactPanelH - cPad * 2 - contactH - tagH - (['editorial','contour','prism'].includes(v.design) ? 1 : 0),matPad:matPad,identityW:identityW,gridW:gridW,groupW:groupW};
+      cols:cols,gridGap:gridGap,rows:rows,rowGap:rowGap,tagLines:tagLines,labelH:labelH,
+      contactH:contactH,tagH:tagH,backSpace:contactPanelH - cPad * 2 - contactH - tagH - (['editorial','contour','prism'].includes(v.design) ? 1 : 0),matPad:matPad,identityW:identityW,gridW:gridW,groupW:groupW,
+      itemGap:gridGap,titleGap:titleGap,subGap:subGap,headGap:headGap,footerGap:footerGap,titleRoom:contentW - 2,tagRoom:workingW - 2},st,name,packed);
   }
 
   function validate(values) {
     var v = normalize(values), errors = {};
-    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkFadeAngle',0,360],['artworkFadeX',0,100],['artworkFadeY',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100]].forEach(function (rule) {
+    [['width',280,420],['height',180,320],['cardGap',0,60],['artworkScale',25,400],['artworkOpacity',0,100],['artworkFadeAngle',0,360],['artworkFadeX',0,100],['artworkFadeY',0,100],['artworkPositionX',0,100],['artworkPositionY',0,100],['motifScale',25,100],['motifPositionX',0,100],['motifPositionY',0,100],
+      ['lineSpacing',80,200],['textSpacing',0,200],['contactSpacing',0,200],['sectionSpacing',0,200]].forEach(function (rule) {
       var raw = values && typeof values === 'object' ? values[rule[0]] : undefined;
       if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') ||
         String(raw).trim() === '' || !Number.isInteger(Number(raw)) || Number(raw) < rule[1] || Number(raw) > rule[2])) {
         errors[rule[0]] = 'Enter a whole number from ' + rule[1] + ' to ' + rule[2] + '.';
       }
+    });
+    // Sizes use 0 for Auto/Template and padding uses -1 for the template inset;
+    // values between those sentinels and the minimum are rejected, not clamped.
+    fontSizes.concat([['contentPadding',0,48]]).forEach(function (rule) {
+      var raw = values && typeof values === 'object' ? values[rule[0]] : undefined, auto = rule[0] === 'contentPadding' ? -1 : 0;
+      if (raw !== undefined && ((typeof raw !== 'number' && typeof raw !== 'string') || String(raw).trim() === '' || !Number.isInteger(Number(raw)) ||
+        (Number(raw) !== auto && (Number(raw) < rule[1] || Number(raw) > rule[2])))) {
+        errors[rule[0]] = rule[0] === 'contentPadding' ? 'Use -1 for the template padding or a whole number from 0 to 48.' :
+          'Use 0 for ' + (rule[0] === 'nameFontSize' ? 'the automatic size' : 'the template size') + ' or a whole number from ' + rule[1] + ' to ' + rule[2] + '.';
+      }
+    });
+    Object.keys(formatChoices).forEach(function (key) {
+      if (!formatChoices[key][0].includes(v[key])) errors[key] = formatChoices[key][1];
     });
     Object.keys(limits).forEach(function (key) {
       if (v[key].length > limits[key]) errors[key] = 'Use ' + limits[key] + ' characters or fewer.';
@@ -541,14 +657,43 @@
       errors.phone = 'Use 5–20 digits with an optional leading +, spaces, brackets, or hyphens.';
     }
     if (Object.keys(errors).length) return errors;
-    var p = plan(v);
-    if (p.nameFont < 17) errors[units(v.nameLine1) >= units(v.nameLine2) ? 'nameLine1' : 'nameLine2'] = 'Shorten the name lines or increase the card width for readable text.';
-    if (p.titleLines.length > 2) errors.title = 'Shorten the title to fit two lines at this width.';
-    if (p.subLines.length > 2) errors.subtitle = 'Shorten the subtitle to fit two lines at this width.';
-    p.rows.forEach(function (row) { if (row.lines.length > 2) errors[row.key] = 'Shorten this text to fit two lines at this width.'; });
-    if (p.tagLines.length > 2) errors.tags = 'Shorten the tags to fit two lines at this width.';
+    var p = plan(v), wrapped = v.nameLayout === 'wrap';
+    // An explicit size is never reduced. Errors name the control that caused
+    // the overflow: a chosen size only when the template size would have fit.
+    if (v.nameFontSize && p.nameNeed > p.nameRoom) {
+      errors.nameFontSize = 'At ' + v.nameFontSize + ' px the ' + (wrapped ? 'longest name word' : 'name') + ' needs ' + Math.ceil(p.nameNeed) + ' px but ' +
+        Math.max(0,Math.floor(p.nameRoom)) + ' px is available. Choose a smaller name size' + (wrapped ? '' : ', Wrap name layout') + ' or a wider card.';
+    } else if (!v.nameFontSize && p.nameFont < 17) {
+      if (v.nameLayout === 'single' && v.nameLine2) errors.nameLayout = 'The joined name cannot stay on one readable line here. Choose Wrap or Template name layout, or widen the card.';
+      else errors[units(v.nameLine1) >= units(v.nameLine2) ? 'nameLine1' : 'nameLine2'] = 'Shorten the name lines or increase the card width for readable text.';
+    }
+    function tooLong(label, key) { return 'At ' + v[key] + ' px the ' + label + ' needs more than two lines here. Choose a smaller ' + label + ' size or a wider card.'; }
+    if (p.titleLines.length > 2) {
+      if (v.titleFontSize && wrap(v.title,p.titleRoom,9,true,.73).length <= 2) errors.titleFontSize = tooLong('title','titleFontSize');
+      else errors.title = 'Shorten the title to fit two lines at this width.';
+    }
+    if (p.subLines.length > 2) {
+      if (v.subtitleFontSize && wrap(v.subtitle,p.titleRoom,9,true).length <= 2) errors.subtitleFontSize = tooLong('subtitle','subtitleFontSize');
+      else errors.subtitle = 'Shorten the subtitle to fit two lines at this width.';
+    }
+    p.rows.forEach(function (row) {
+      if (row.lines.length <= 2) return;
+      var control = v.contactFontSize ? 'contactFontSize' : v.contactFont === 'sans' ? 'contactFont' : '';
+      if (control && wrap(row.text,row.room,10.5,true).length <= 2) errors[control] = row.label + ' needs more than two lines ' +
+        (control === 'contactFont' ? 'in Sans. Choose Template or Mono contact font' : 'at ' + v.contactFontSize + ' px. Choose a smaller contact size') + ' or a wider card.';
+      else errors[row.key] = 'Shorten this text to fit two lines at this width.';
+    });
+    if (p.tagLines.length > 2) {
+      if (v.footerFontSize && wrap(v.tags,p.tagRoom,8.5,true).length <= 2) errors.footerFontSize = 'At ' + v.footerFontSize + ' px the footer needs more than two lines here. Choose a smaller footer size, hide the footer or use a wider card.';
+      else errors.tags = 'Shorten the tags to fit two lines at this width.';
+    }
     var minimumSpace = v.cardFormat !== 'single' && (v.design === 'original' || v.cardFormat === 'front-back') && !isFlow(v) ? 10 : 0;
-    if (p.frontSpace < minimumSpace || p.backSpace < minimumSpace) errors.height = 'Increase the card height or shorten the text to keep everything readable.';
+    var formatted = Object.keys(typographyDefaults).some(function (key) { return v[key] !== typographyDefaults[key]; });
+    if (p.frontSpace < minimumSpace || p.backSpace < minimumSpace) errors.height = formatted ?
+      'Increase the card height, or reduce text sizes, spacing, padding or wrapped lines, to keep everything readable.' : 'Increase the card height or shorten the text to keep everything readable.';
+    if (v.cardFormat === 'single' && v.layout === 'stacked' && v.singleArrangement === 'columns' && Object.keys(errors).length) {
+      errors.singleArrangement = 'Side-by-side columns are narrow in the tall layout. Choose Rows or Automatic arrangement, or widen the card.';
+    }
     if (!Object.keys(errors).length && renderUnchecked(v).length >= 10000) {
       errors[v.pattern === 'custom' ? 'customPattern' : 'website'] = v.pattern === 'custom' ? 'Simplify the custom artwork or shorten URLs to keep the email under 10,000 HTML characters.' : 'Shorten the URLs to keep the HTML under 10,000 characters.';
     }
@@ -678,6 +823,25 @@
     return '<tr><td style="padding:0;font-family:' + family + ';font-size:' + font + 'px;line-height:' + line + 'px;font-weight:' + (weight || 400) + ';color:' + color + (spacing ? ';letter-spacing:' + spacing + 'px' : '') + ';white-space:nowrap">' + lines.map(function (text) { return backedText(escape(text),background); }).join('<br>') + '</td></tr>';
   }
   function blankCol(width) { return '<td width="' + width + '" style="padding:0;width:' + width + 'px;font-size:0;line-height:0">&nbsp;</td>'; }
+  // Inline contact rows are ordinary fixed-width email tables: each measured
+  // item keeps its icon, optional label and live link without flex or floats.
+  function inlineContacts(p, color, quiet, background, assetBase) {
+    // The decorative separator sits in its own unlinked cell between items.
+    var mark = p.separator ? '<td width="' + p.separatorW + '" align="center" valign="top" aria-hidden="true" style="padding:' + p.labelH + 'px 0 0;font-family:' + p.contactFamily +
+      ';font-size:' + p.contactFont + 'px;line-height:' + p.contactLine + 'px;color:' + quiet + ';text-align:center;white-space:nowrap">' + escape(p.separator) + '</td>' : '';
+    return p.inline.map(function (line, index) {
+      var cells = line.items.map(function (item, i) {
+        var row = item.row, label = row.lines.map(escape).join('<br>'), icon = '';
+        if (row.href) label = '<a href="' + escape(row.href) + '" style="color:' + color + ';text-decoration:none">' + label + '</a>';
+        if (p.labelH) label = '<span style="display:block;font-size:7.5px;line-height:10px;color:' + quiet + '">' + row.label.toUpperCase() + '</span>' + label;
+        if (item.iconW) icon = '<td width="' + item.iconW + '" valign="top" style="padding:' + (p.labelH + p.iconTop) + 'px 0 0;font-size:0;line-height:0"><img src="' +
+          escape(assetBase + '/' + iconFile(row.icon,background)) + '" width="14" height="14" alt="' + row.label + '" style="display:block;width:14px;height:14px;border:0"></td>';
+        return (i ? mark || (p.itemGap ? blankCol(p.itemGap) : '') : '') + icon + '<td width="' + item.textW + '" valign="top" style="padding:0;font-family:' + p.contactFamily +
+          ';font-size:' + p.contactFont + 'px;line-height:' + p.contactLine + 'px;color:' + color + ';white-space:nowrap">' + label + '</td>';
+      }).join('');
+      return '<tr><td style="padding:' + (index < p.inline.length - 1 && p.rowGap ? '0 0 ' + p.rowGap + 'px' : '0') + '">' + table(line.width,0,'<tr>' + cells + '</tr>') + '</td></tr>';
+    }).join('');
+  }
   function portraitSource(v, options) {
     return options && (options.preview === true || options.allowPortraitData === true) ? v.portraitData || v.portraitUrl : v.portraitUrl;
   }
@@ -777,12 +941,12 @@
     }
     function identity(height) {
       var name = textRow(p.names,Math.floor(p.nameFont * 10) / 10,p.nameLine,ink,nameFamily,font === 'serif' ? 400 : 600,0,frontMat);
-      var title = p.titleLines.length ? spacer(7) + textRow(p.titleLines,9,11,readable(v.frontBackground,v.accent),roleMono,400,.73,frontMat) : '';
-      var subtitle = p.subLines.length ? textRow(p.subLines,9,12,muted,mono,400,0,frontMat) : '';
-      var rows = name + title + (subtitle ? spacer(10) + subtitle : '');
-      if (v.design === 'orbit') rows = ruleRow(28,3,v.accent) + spacer(9) + rows;
-      if (v.design === 'studio') rows = ruleRow(flow ? p.identityW : p.textW,8,v.accent) + spacer(12) + rows;
-      if (v.design === 'prism' || v.design === 'signal') rows = subtitle + (subtitle ? spacer(10) : '') + name + title;
+      var title = p.titleLines.length ? gapRow(p.titleGap) + textRow(p.titleLines,p.titleFont,p.titleLine,readable(v.frontBackground,v.accent),roleMono,400,p.titleSpacing,frontMat) : '';
+      var subtitle = p.subLines.length ? textRow(p.subLines,p.subFont,p.subLine,muted,mono,400,0,frontMat) : '';
+      var rows = name + title + (subtitle ? gapRow(p.subGap) + subtitle : '');
+      if (v.design === 'orbit') rows = ruleRow(28,3,v.accent) + gapRow(p.headGap) + rows;
+      if (v.design === 'studio') rows = ruleRow(flow ? p.identityW : p.textW,8,v.accent) + gapRow(p.headGap) + rows;
+      if (v.design === 'prism' || v.design === 'signal') rows = subtitle + (subtitle ? gapRow(p.subGap) : '') + name + title;
       if (v.customAlign ? v.customAlign === 'center' : v.design === 'contour') rows = rows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
       var identity = flow ? informationMat(p.identityW,rows,v.frontBackground,p.matPad) : table(p.textW,0,rows);
       if (flow && (v.customAlign ? v.customAlign === 'center' : v.design === 'contour')) identity = identity.replace('<table ','<table align="center" ');
@@ -807,17 +971,18 @@
             if (p.labelH) label = '<span style="display:block;font-size:7.5px;line-height:10px;color:' + quiet + '">' + row.label.toUpperCase() + '</span>' + label;
             var iconCell = cell(22,icon);
             if (p.labelH) iconCell = iconCell.replace('padding:0','padding:10px 0 0');
-            content += '<tr>' + iconCell + '<td width="' + p.contactW + '" valign="top" style="padding:0;font-family:' + mono + ';font-size:10.5px;line-height:14px;color:' + color + ';white-space:nowrap">' + label + '</td></tr>';
+            content += '<tr>' + iconCell + '<td width="' + p.contactW + '" valign="top" style="padding:0;font-family:' + p.contactFamily + ';font-size:' + p.contactFont + 'px;line-height:' + p.contactLine + 'px;color:' + color + ';white-space:nowrap">' + label + '</td></tr>';
           }
           cells += cell(p.cellW,content ? table(p.cellW,0,content) : '');
         }
         grid += '<tr>' + cells + '</tr>';
-        if (i + p.cols < p.rows.length) grid += '<tr><td colspan="' + (p.cols * 2 - 1) + '" height="' + p.rowGap + '" style="padding:0;height:' + p.rowGap + 'px;font-size:0;line-height:0">&nbsp;</td></tr>';
+        if (i + p.cols < p.rows.length && p.rowGap) grid += '<tr><td colspan="' + (p.cols * 2 - 1) + '" height="' + p.rowGap + '" style="padding:0;height:' + p.rowGap + 'px;font-size:0;line-height:0">&nbsp;</td></tr>';
       }
+      if (p.inline) grid = inlineContacts(p,color,quiet,background,assetBase);
       var rows = grid ? '<tr><td style="padding:0">' + table(p.gridW,0,grid) + '</td></tr>' : '';
       if (p.tagLines.length) {
-        if (v.design === 'editorial') rows += spacer(8) + '<tr><td style="padding:0;background-color:' + v.backBackground + '">' + table(flow ? p.groupW : p.innerW,0,textRow(p.tagLines,8.5,11,readable(v.backBackground,cream),mono)) + '</td></tr>';
-        else rows += spacer(8) + textRow(p.tagLines,8.5,11,quiet,mono);
+        if (v.design === 'editorial') rows += gapRow(p.footerGap) + '<tr><td style="padding:0;background-color:' + v.backBackground + '">' + table(flow ? p.groupW : p.innerW,0,textRow(p.tagLines,p.tagFont,p.tagLine,readable(v.backBackground,cream),mono)) + '</td></tr>';
+        else rows += gapRow(p.footerGap) + textRow(p.tagLines,p.tagFont,p.tagLine,quiet,mono);
       }
       var information = flow ? informationMat(p.groupW,rows,background,p.matPad) : table(p.innerW,0,rows);
       return surface(width,height,'<tr>' + blankCol(p.cPad) + cell(p.innerW,information,'','middle') + blankCol(p.cPad) + '</tr>',background,x,y);
@@ -854,35 +1019,35 @@
     var flow = isFlow(v), surface = flowSurface(v,assetBase);
     function cell(width,html,style) { return '<td width="' + width + '" valign="top" style="padding:0;vertical-align:top' + (style ? ';' + style : '') + '">' + html + '</td>'; }
     var names = textRow(p.names,Math.floor(p.nameFont * 10) / 10,p.nameLine,ink,p.typography.family,p.typography.weight);
-    var title = p.titleLines.length ? spacer(7) + textRow(p.titleLines,9,11,readable(background,v.accent),roleMono,400,.73) : '';
-    var subtitle = p.subLines.length ? textRow(p.subLines,9,12,quiet,mono,400) : '';
-    var identityRows = v.design === 'prism' || v.design === 'signal' ? subtitle + (subtitle ? spacer(11) : '') + names + title : names + title + (subtitle ? spacer(11) + subtitle : '');
+    var title = p.titleLines.length ? gapRow(p.titleGap) + textRow(p.titleLines,p.titleFont,p.titleLine,readable(background,v.accent),roleMono,400,p.titleSpacing) : '';
+    var subtitle = p.subLines.length ? textRow(p.subLines,p.subFont,p.subLine,quiet,mono,400) : '';
+    var identityRows = v.design === 'prism' || v.design === 'signal' ? subtitle + (subtitle ? gapRow(p.subGap) : '') + names + title : names + title + (subtitle ? gapRow(p.subGap) + subtitle : '');
     var centered = v.customAlign ? v.customAlign === 'center' : v.design === 'contour';
     if (centered) identityRows = identityRows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
     var mat = flow ? informationMat(p.identityW,identityRows,background,p.matPad) : '';
     if (centered && mat) mat = mat.replace('<table ','<table align="center" ');
     var identity = flow ? '<tr><td style="padding:0">' + mat + '</td></tr>' : identityRows;
-    if (p.brandH) identity = ruleRow(p.brandW,p.brandH,v.accent) + spacer(p.brandGap) + identity;
+    if (p.brandH) identity = ruleRow(p.brandW,p.brandH,v.accent) + gapRow(p.brandGap) + identity;
     var text = cell(p.textW,table(p.textW,0,identity));
     var art = p.dotW ? cell(p.dotW,table(p.dotW,0,decoration(v,p,assetBase,options))) : '';
     var identityContent = v.design === 'orbit' || v.design === 'studio' ? art + (art ? blankCol(p.gap) : '') + text : text + (art ? blankCol(p.gap) : '') + art;
     var identityTable = table(p.idW,0,'<tr>' + identityContent + '</tr>');
-    var contacts = p.rows.map(function (row,index) {
+    var contacts = p.inline ? inlineContacts(p,ink,quiet,background,assetBase) : p.rows.map(function (row,index) {
       var bottom = index === p.rows.length - 1 ? 0 : p.rowGap, label = row.lines.map(escape).join('<br>');
       if (row.href) label = '<a href="' + escape(row.href) + '" style="color:' + ink + ';text-decoration:none">' + label + '</a>';
       if (p.labelH) label = '<span style="display:block;font-size:7.5px;line-height:10px;color:' + quiet + '">' + row.label.toUpperCase() + '</span>' + label;
       var icon = row.icon === 'none' ? '' : '<img src="' + escape(assetBase + '/' + iconFile(row.icon,background)) + '" width="14" height="14" alt="' + row.label + '" style="display:block;width:14px;height:14px;border:0">';
       return '<tr><td width="28" valign="top" style="padding:' + p.labelH + 'px 0 ' + bottom + 'px;font-size:0;line-height:0">' + icon +
         '</td><td width="1" style="padding:0;background-color:' + quiet + ';font-size:0;line-height:0">&nbsp;</td>' + blankCol(10) +
-        '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + mono + ';font-size:' + p.contactFont + 'px;line-height:14px;color:' + ink + ';white-space:nowrap">' + label + '</td></tr>';
+        '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + p.contactFamily + ';font-size:' + p.contactFont + 'px;line-height:' + p.contactLine + 'px;color:' + ink + ';white-space:nowrap">' + label + '</td></tr>';
     }).join('');
     var contactRows = contacts ? '<tr><td style="padding:0">' + table(flow ? p.groupW : p.contactPanelW,0,contacts) + '</td></tr>' : '';
     if (p.tagLines.length) contactRows += (v.design === 'original'
-      ? (contacts ? spacer(12) : '') + ruleRow(flow ? p.groupW : p.contactPanelW,1,v.accent) + spacer(8)
-      : (contacts ? spacer(14) : '')) + textRow(p.tagLines,8.5,11,quiet,mono);
+      ? (contacts ? gapRow(p.footerGap) : '') + ruleRow(flow ? p.groupW : p.contactPanelW,1,v.accent) + spacer(8)
+      : (contacts ? gapRow(p.footerGap) : '')) + textRow(p.tagLines,p.tagFont,p.tagLine,quiet,mono);
     var contactTable = flow ? informationMat(p.groupW,contactRows,background,p.matPad) : table(p.contactPanelW,0,contactRows);
-    var groupRows = p.tall ? '<tr>' + cell(p.innerW,identityTable) + '</tr>' + (p.hasContacts ? spacer(p.sectionGap) + '<tr>' + cell(p.innerW,contactTable) + '</tr>' : '') :
-      '<tr>' + cell(p.idW,identityTable) + blankCol(p.sectionGap) + cell(p.contactPanelW,p.hasContacts ? contactTable : '') + '</tr>';
+    var groupRows = p.stack ? '<tr>' + cell(p.innerW,identityTable) + '</tr>' + (p.hasContacts ? gapRow(p.sectionGap) + '<tr>' + cell(p.innerW,contactTable) + '</tr>' : '') :
+      '<tr>' + cell(p.idW,identityTable) + (p.sectionGap ? blankCol(p.sectionGap) : '') + cell(p.contactPanelW,p.hasContacts ? contactTable : '') + '</tr>';
     var body = surface(p.bodyW,p.bodyH,'<tr><td width="' + p.innerW + '" valign="top" style="padding:' + p.pad + 'px;vertical-align:top">' + table(p.innerW,0,groupRows) + '</td></tr>',background,p.frame + p.rail,p.frame);
     if (p.frame) {
       var edge = '<tr>' + blankCol(p.frame).replace('style="','height="' + p.frame + '" style="height:' + p.frame + 'px;') + blankCol(p.bodyW) + blankCol(p.frame) + '</tr>';
@@ -921,35 +1086,35 @@
     var flow = isFlow(v), surface = flowSurface(v,assetBase);
     var faceTypography = v.cardFormat === 'front-back' ? nameTypography(v) : {family:sans,weight:600};
     var identityRows = textRow(p.names, Math.floor(p.nameFont * 10) / 10, p.nameLine, frontText, faceTypography.family, faceTypography.weight);
-    if (p.titleLines.length) identityRows += spacer(7) + textRow(p.titleLines, 9, 11, titleColor, roleMono, 400, 0.73);
-    if (p.subLines.length) identityRows += spacer(11) + textRow(p.subLines, 9, 12, frontMuted, mono);
+    if (p.titleLines.length) identityRows += gapRow(p.titleGap) + textRow(p.titleLines, p.titleFont, p.titleLine, titleColor, roleMono, 400, p.titleSpacing);
+    if (p.subLines.length) identityRows += gapRow(p.subGap) + textRow(p.subLines, p.subFont, p.subLine, frontMuted, mono);
     var centeredFace = v.cardFormat === 'front-back' && (v.customAlign ? v.customAlign === 'center' : v.design === 'contour');
     if (centeredFace) identityRows = identityRows.replace(/<td style="/g,'<td align="center" style="text-align:center;');
     var faceMat = flow ? informationMat(p.identityW,identityRows,v.frontBackground,p.matPad) : '';
     if (centeredFace && faceMat) faceMat = faceMat.replace('<table ','<table align="center" ');
     var frontRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>' +
-      spacer(Math.min(Math.round(v.height * 0.19), p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + faceMat + '</td></tr>' : identityRows);
+      spacer(Math.min(p.frontGap, p.frontSpace)) + (flow ? '<tr><td style="padding:0">' + faceMat + '</td></tr>' : identityRows);
     var dots = spacer(13) + '<tr><td style="padding:0;font-size:0;line-height:0"><img src="' + escape(assetBase + '/dots.png') +
       '" width="' + p.dotW + '" height="' + p.dotH + '" alt="" style="display:block;width:' + p.dotW + 'px;height:' + p.dotH + 'px;border:0"></td></tr>';
     if (selectedPattern(v) !== 'dots' || hasPortrait(v) || isBackground(v)) dots = spacer(13) + decoration(v, p, assetBase, options);
     var artworkCell = isCanvasArtwork(v) && !p.dotW ? '' : blankCol(p.gap) + '<td width="' + p.dotW + '" valign="top" style="padding:0;vertical-align:top">' + table(p.dotW, 0, dots) + '</td>';
     var front = surface(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.textW + '" valign="top" style="padding:0;vertical-align:top">' +
       table(p.textW, 0, frontRows) + '</td>' + artworkCell + blankCol(p.right) + '</tr>', v.frontBackground,0,0);
-    var contacts = p.rows.map(function (row, i) {
+    var contacts = p.inline ? inlineContacts(p, backText, backMuted, v.backBackground, assetBase) : p.rows.map(function (row, i) {
       var bottom = i === p.rows.length - 1 ? 0 : p.rowGap, label = row.lines.map(escape).join('<br>');
       if (row.href) label = '<a href="' + escape(row.href) + '" style="color:' + backText + ';text-decoration:none">' + label + '</a>';
       var icon = row.icon === 'none' ? '' : '<img src="' + escape(assetBase + '/' + iconFile(row.icon, v.backBackground)) + '" width="14" height="14" alt="' + row.label + '" style="display:block;width:14px;height:14px;border:0">';
       return '<tr><td width="28" valign="top" style="padding:0 0 ' + bottom + 'px;font-size:0;line-height:0">' + icon +
         '</td><td width="1" style="padding:0;background-color:' + backMuted + ';font-size:0;line-height:0">&nbsp;</td>' + blankCol(10) +
-        '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + mono + ';font-size:' + p.contactFont +
-        'px;line-height:14px;color:' + backText + ';white-space:nowrap">' + label + '</td></tr>';
+        '<td width="' + (flow ? p.groupW - 39 : p.contactW) + '" valign="top" style="padding:0 0 ' + bottom + 'px;font-family:' + p.contactFamily + ';font-size:' + p.contactFont +
+        'px;line-height:' + p.contactLine + 'px;color:' + backText + ';white-space:nowrap">' + label + '</td></tr>';
     }).join('');
     var backRows = spacer(p.top) + '<tr><td style="padding:0">' + square(p.square, v.accent) + '</td></tr>';
     var backInformation = contacts ? '<tr><td style="padding:0">' + table(flow ? p.groupW : p.innerW,0,contacts) + '</td></tr>' : '';
-    var tagRows = p.tagLines.length ? spacer(12) + '<tr><td height="1" style="padding:0;height:1px;background-color:' + v.accent + ';font-size:0;line-height:0">&nbsp;</td></tr>' +
-      spacer(8) + textRow(p.tagLines,8.5,11,backMuted,mono) : '';
-    if (flow && (backInformation || tagRows)) backRows += spacer(Math.min(21,p.backSpace)) + '<tr><td style="padding:0">' + informationMat(p.groupW,backInformation + tagRows,v.backBackground,p.matPad) + '</td></tr>';
-    else if (!flow) backRows += (contacts ? spacer(Math.min(21,p.backSpace)) + backInformation : '') + tagRows;
+    var tagRows = p.tagLines.length ? gapRow(p.footerGap) + '<tr><td height="1" style="padding:0;height:1px;background-color:' + v.accent + ';font-size:0;line-height:0">&nbsp;</td></tr>' +
+      spacer(8) + textRow(p.tagLines,p.tagFont,p.tagLine,backMuted,mono) : '';
+    if (flow && (backInformation || tagRows)) backRows += spacer(Math.min(p.backGap,p.backSpace)) + '<tr><td style="padding:0">' + informationMat(p.groupW,backInformation + tagRows,v.backBackground,p.matPad) + '</td></tr>';
+    else if (!flow) backRows += (contacts ? spacer(Math.min(p.backGap,p.backSpace)) + backInformation : '') + tagRows;
     var back = surface(v.width, v.height, '<tr>' + blankCol(p.pad) + '<td width="' + p.innerW + '" valign="top" style="padding:0;vertical-align:top">' +
       table(p.innerW, 0, backRows) + '</td>' + blankCol(p.pad) + '</tr>', v.backBackground,v.layout === 'stacked' ? 0 : v.width + v.cardGap,v.layout === 'stacked' ? v.height + v.cardGap : 0);
     var cell = function (html) { return '<td valign="top" style="padding:0;vertical-align:top">' + html + '</td>'; };
@@ -971,13 +1136,16 @@
   }
   function plainText(values) {
     var v = checked(values), lines = [[v.nameLine1, v.nameLine2].filter(Boolean).join(' '), v.title, v.subtitle];
-    if (v.website) lines.push((v.websiteLabel ? v.websiteLabel + ': ' : '') + webURL(v.website));
-    if (v.email) lines.push(v.email);
-    if (v.phone) lines.push(v.phone);
-    if (v.linkedin) lines.push(webURL(v.linkedin));
-    if (v.location) lines.push(v.location);
-    if (v.tags) lines.push(v.tags);
+    // Hidden contacts keep their saved values but are omitted like the footer.
+    function shown(key) { return v[key] && v[key + 'Visible'] !== 'hide'; }
+    if (shown('website')) lines.push((v.websiteLabel ? v.websiteLabel + ': ' : '') + webURL(v.website));
+    if (shown('email')) lines.push(v.email);
+    if (shown('phone')) lines.push(v.phone);
+    if (shown('linkedin')) lines.push(webURL(v.linkedin));
+    if (shown('location')) lines.push(v.location);
+    // A hidden footer keeps its saved tags but is omitted from every export.
+    if (v.tags && v.footerVisible !== 'hide') lines.push(v.tags);
     return lines.filter(Boolean).join('\n');
   }
-  return Object.freeze({defaults:defaults, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, plainText:plainText});
+  return Object.freeze({defaults:defaults, typographyDefaults:typographyDefaults, contactDefaults:contactDefaults, compactPreset:compactPreset, limits:limits, icons:icons, designs:designs, customDesign:customDesign, patterns:patterns, flowingPatterns:flowingPatterns, resolveArtworkPlacement:resolveArtworkPlacement, flowAsset:flowAsset, motifBounds:motifBounds, artworkBounds:artworkBounds, recipeSchemas:recipeSchemas, parseCustomPattern:parseCustomPattern, parseCustomLayout:parseCustomLayout, iconFile:iconFile, normalize:normalize, dimensions:dimensions, effectiveFormat:effectiveFormat, validate:validate, render:render, plainText:plainText});
 }));

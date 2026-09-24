@@ -8,14 +8,23 @@
 
   var colorKeys = ['frontBackground', 'backBackground', 'accent'];
   var layoutKeys = ['design', 'customLayout', 'cardFormat', 'layout', 'width', 'height', 'cardGap'];
+  // Text, spacing and contact presentation format the signature, so only Layout
+  // and Design may change them. Hiding a contact never changes its details.
+  var visibilityKeys = ['websiteVisible', 'emailVisible', 'phoneVisible', 'linkedinVisible', 'locationVisible'];
+  var formatKeys = ['nameLayout', 'nameFontSize', 'titleFontSize', 'subtitleFontSize', 'contactFontSize', 'footerFontSize', 'lineSpacing', 'textSpacing', 'contactSpacing', 'sectionSpacing', 'contentPadding', 'singleArrangement', 'contactLayout', 'contactFont', 'footerVisible', 'contactSeparator'].concat(visibilityKeys);
+  var formatChoices = Object.freeze({nameLayout:['template','single','wrap'], singleArrangement:['auto','rows','columns'], contactLayout:['template','stacked','inline'], contactFont:['template','sans','mono'], footerVisible:['show','hide'],
+    contactSeparator:['none','bar','dot','slash','dash'], websiteVisible:['show','hide'], emailVisible:['show','hide'], phoneVisible:['show','hide'], linkedinVisible:['show','hide'], locationVisible:['show','hide']});
+  // Sizes use 0 for the template size; contentPadding uses -1 for the template padding.
+  var formatNumbers = Object.freeze({nameFontSize:[12,40,0], titleFontSize:[8,24,0], subtitleFontSize:[8,24,0], contactFontSize:[8,24,0], footerFontSize:[8,24,0], lineSpacing:[80,200], textSpacing:[0,200], contactSpacing:[0,200], sectionSpacing:[0,200], contentPadding:[-1,48]});
+  var compactFallback = Object.freeze({cardFormat:'single', layout:'paired', singleArrangement:'rows', width:280, height:180, contentPadding:24, portraitSize:96, nameLayout:'single', nameFontSize:22, titleFontSize:13, subtitleFontSize:13, contactFontSize:13, contactFont:'sans', contactLayout:'inline', contactSeparator:'bar', lineSpacing:100, textSpacing:100, contactSpacing:100, sectionSpacing:150, footerVisible:'hide'});
   var artworkKeys = ['pattern', 'customPattern', 'artworkPlacement', 'artworkScale', 'artworkOpacity', 'artworkFade', 'artworkFadeAngle', 'artworkFadeDirection', 'artworkFadeX', 'artworkFadeY', 'artworkPositionX', 'artworkPositionY', 'motifScale', 'motifPositionX', 'motifPositionY'];
   var iconKeys = ['websiteIcon', 'emailIcon', 'phoneIcon', 'linkedinIcon', 'locationIcon'];
   var photoKeys = ['portraitShape', 'portraitSize'];
   var textKeys = ['title', 'subtitle', 'tags'];
   var detailKeys = ['nameLine1', 'nameLine2', 'title', 'subtitle', 'website', 'websiteLabel', 'email', 'phone', 'linkedin', 'location', 'tags'];
   var sectionKeys = Object.freeze({
-    design: Object.freeze(layoutKeys.concat(artworkKeys, colorKeys, iconKeys, photoKeys)),
-    artwork: Object.freeze(artworkKeys.concat(colorKeys)), layout: Object.freeze(layoutKeys),
+    design: Object.freeze(layoutKeys.concat(formatKeys, artworkKeys, colorKeys, iconKeys, photoKeys)),
+    artwork: Object.freeze(artworkKeys.concat(colorKeys)), layout: Object.freeze(layoutKeys.concat(formatKeys)),
     colors: Object.freeze(colorKeys), details: Object.freeze(detailKeys),
     icons: Object.freeze(iconKeys), photo: Object.freeze(photoKeys)
   });
@@ -44,6 +53,14 @@
   }
   function freeze(value) { if (value && typeof value === 'object') { Object.keys(value).forEach(function (key) { freeze(value[key]); }); Object.freeze(value); } return value; }
   function sample() { return {...core.defaults}; }
+  // Prefer the editor's own compact starting point so the prompt matches its reset.
+  function compactExample(keys) {
+    var preset = plain(core.compactPreset) ? core.compactPreset : compactFallback, result = {};
+    keys.forEach(function (key) {
+      if (Object.hasOwn(preset, key)) try { result[key] = strictField(key, preset[key]); } catch (_) { /* Suggest only valid settings. */ }
+    });
+    return result;
+  }
   function recipe(key, value) {
     if (!plain(value)) fail(key + ' must be an object, not a JSON string or code.');
     var parse = key === 'customPattern' ? core.parseCustomPattern : core.parseCustomLayout;
@@ -52,6 +69,13 @@
   }
   function strictField(key, value) {
     if (key === 'customPattern' || key === 'customLayout') return recipe(key, value);
+    if (Object.hasOwn(formatNumbers, key)) {
+      var range = formatNumbers[key];
+      if (typeof value !== 'number' || !Number.isInteger(value) || (value !== range[2] && (value < range[0] || value > range[1]))) {
+        fail(key + ' must be ' + (range.length > 2 ? range[2] + ' (template size) or ' : '') + 'a whole number from ' + range[0] + (key === 'contentPadding' ? ' (template padding)' : '') + ' to ' + range[1] + '.');
+      }
+      return value;
+    }
     if (['width','height','cardGap','portraitSize','artworkScale','artworkOpacity','artworkFadeAngle','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY'].includes(key)) {
       var bounds = key === 'width' ? [280,420] : key === 'height' ? [180,320] : key === 'cardGap' ? [0,60] : key === 'artworkFadeAngle' ? [0,360] : key === 'artworkScale' ? [25,400] : key === 'motifScale' ? [25,100] : (['artworkOpacity','artworkFadeX','artworkFadeY'].includes(key) || key.startsWith('artworkPosition') || key.startsWith('motifPosition')) ? [0,100] : [40,96];
       if (typeof value !== 'number' || !Number.isInteger(value) || value < bounds[0] || value > bounds[1]) fail(key + ' must be a whole number from ' + bounds[0] + ' to ' + bounds[1] + '.');
@@ -63,7 +87,7 @@
     if (detailKeys.includes(key) && (value.length > core.limits[key] || /[<>]/.test(value))) fail(key + ' is too long or contains markup. Use plain text within the requested limit.');
     var choices = key === 'design' ? core.designs.map(function (item) { return item.id; }).concat('custom') :
       key === 'pattern' ? Object.keys(core.patterns) : key === 'layout' ? ['paired','stacked'] : key === 'cardFormat' ? ['auto','single','front-back'] :
-      key === 'artworkFade' ? ['none','linear','radial'] : key === 'artworkFadeDirection' ? ['normal','reverse'] : key === 'artworkPlacement' ? ['auto','motif','flow','background'] : key === 'portraitShape' ? ['circle','rounded','square'] : iconKeys.includes(key) ? Object.keys(core.icons) : null;
+      key === 'artworkFade' ? ['none','linear','radial'] : key === 'artworkFadeDirection' ? ['normal','reverse'] : key === 'artworkPlacement' ? ['auto','motif','flow','background'] : key === 'portraitShape' ? ['circle','rounded','square'] : iconKeys.includes(key) ? Object.keys(core.icons) : Object.hasOwn(formatChoices, key) ? formatChoices[key] : null;
     if (choices && !choices.includes(value)) fail('Choose an available value for ' + key + '.');
     return colorKeys.includes(key) ? value.toLowerCase() : value;
   }
@@ -137,6 +161,11 @@
       lines.push('Built-in design choices: ' + core.designs.map(function (item) { return item.id; }).join(', ') + '. To create a layout variation use design:"custom" plus customLayout:{"composition":"orbit","font":"sans","align":"left"}. composition is orbit|studio|contour|prism|editorial|signal; font is sans|serif|mono; align is left|center. These are structured variations of six email-compatible compositions, not arbitrary layout code.');
       lines.push('cardFormat is auto|single|front-back and is independent of the template and orientation. auto is the compatibility default: it preserves the existing two-card Original or joined named/custom composition, including its original dimensions. single creates one card with one frontBackground surface, preserving but ignoring backBackground and cardGap. front-back creates two separate cards for any template and uses both backgrounds and cardGap. Omit cardFormat to preserve the current choice.');
       lines.push('layout:"paired" is horizontal; layout:"stacked" is vertical. width is an integer 280–420; height is an integer 180–320; cardGap is an integer 0–60 pixels (default 20, zero removes the gap between two cards). With front-back, or auto on Original, horizontal output is (width*2+cardGap) by height; vertical is width by (height*2+cardGap). With auto, other compositions retain (width*2+20) by height horizontally or width by (height*2+20) vertically. Explicit single-card height is measured from the content with height as its minimum, so do not assume a fixed two-panel size. The editor uses SignatureCore.dimensions for actual preview and export dimensions. Stored gap and colors survive format switches. Avoid reducing dimensions for unknown text lengths.');
+    }
+    if (keys.includes('nameLayout')) {
+      lines.push('Text and spacing settings apply to every template; their defaults keep the template exactly as it is. nameLayout is template|single|wrap: template keeps the design\'s name lines, single places both stored name lines on one line (the stored lines are kept), wrap wraps the combined name to the available width. nameFontSize is 0 (template automatic size) or an integer 12–40 pixels. titleFontSize (role), subtitleFontSize, contactFontSize and footerFontSize (tags) are each 0 (template size) or an integer 8–24 pixels. 0 means the template size, never zero pixels; values between 1 and the minimum are rejected. lineSpacing is an integer 80–200 percent of the template line height (default 100). textSpacing (between name, role and subtitle), contactSpacing (between contact rows or inline items) and sectionSpacing (between the identity and contact sections) are integers 0–200 percent of the template spacing (default 100). contentPadding is -1 (template padding) or an integer 0–48 pixels. singleArrangement is auto|rows|columns and only affects cardFormat:"single": auto follows the orientation, rows places identity above contacts, columns places them side by side. contactLayout is template|stacked|inline; inline packs whole contact items into measured rows and starts another row when space runs out. contactFont is template|sans|mono. footerVisible is show|hide; hide removes the tags footer from the signature while keeping the tags text stored.');
+      lines.push('Contact presentation also applies to every template and its defaults keep the template unchanged. contactSeparator is none|bar|dot|slash|dash (no mark, |, ·, / or –; default none). It is a decorative, unlinked mark placed only between visible contacts that share a row with contactLayout:"inline", never before the first or after the last item of a row; stacked and template contact lists show no separators. websiteVisible, emailVisible, phoneVisible, linkedinVisible and locationVisible are each show|hide (default show). hide removes that contact from the preview, email and plain text while its stored text, label, icon and link stay unchanged, so show brings it back. Use hide instead of deleting contact details; my contact details are not included here.');
+      lines.push('A compact starting point with a one-line name and one row of contacts: ' + JSON.stringify(compactExample(keys)) + '. Content is never clipped or dropped: if text does not fit, the preview reports which setting to adjust, so reduce sizes or spacing or widen the card rather than removing information.');
     }
     if (keys.includes('pattern')) lines.push('pattern choices: ' + Object.keys(core.patterns).join(', ') + '. To create new artwork use pattern:"custom" and customPattern:{"palette":["#b6a1ed","#ffe9a5"],"rows":["....00..","....00..","........","..11....","..11....","........","......00","......00"]}. palette contains 1–8 six-digit hex colors; rows contains 4–32 equal strings, each 4–16 characters wide, no more than 384 cells total. A dot is transparent; digits 0–7 select an existing palette entry. Prefer sparse pixel art and long contiguous color runs: email HTML must stay under 10,000 characters. Avoid noisy checkerboards. Custom grid artwork can be a side motif or a background layer.');
     if (keys.includes('artworkPlacement')) lines.push('artworkPlacement is auto|motif|flow|background. Auto uses full-canvas artwork for cutpaper|colorfield|chromatic|counterform|overprint|gesture; all other patterns and custom recipes use a side motif. Explicit flow is only for those six abstract patterns. background gives any built-in pattern or custom grid its own layer behind text and photos, cropped at the card edges. At 100% the whole artwork fits the signature; larger values crop it. artworkOpacity is an integer 0–100 percent (default 100), used only for background placement. artworkFade is none|linear|radial (default none), used only with background placement. Linear fades from artworkOpacity to transparent along artworkFadeAngle (integer 0–360 CSS degrees; 0 up, 90 right, 180 down, 270 left). Radial fades from artworkOpacity at its center to transparent at the farthest corner; artworkFadeX/Y are center coordinates, integers 0–100 percent of the full signature canvas, default 50. artworkFadeDirection normal|reverse swaps the visible and transparent ends (default normal). Fade affects only the artwork, never text or photos. artworkScale is an integer 25–400 percent; artworkPositionX and artworkPositionY are integers 0–100 for the full-canvas focal position. Set artworkPlacement:"motif" or "background" when switching to a custom recipe from flow. Side motifs use motifScale (integer 25–100 percent of the fitted maximum), motifPositionX (0–100, left to right), and motifPositionY (0–100, top to bottom). Side details stay inside their reserved area. Choose background placement to expand behind content and crop at card edges without resizing the photo or text. The four AI-inspired built-ins are neural (Neural bloom), latent (Latent field), tokenweave (Token weave), and resonance (Resonance). Choose a built-in or create a customPattern recipe to replace it; existing PNG shapes cannot be edited individually. Preserve the panel colors unless the brief explicitly requests changing them. Keep flowing marks clear of readable text.');

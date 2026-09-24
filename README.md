@@ -24,9 +24,9 @@ The server serves only the app, artwork, and detector files listed in `scripts/p
 
 ## Choose a design
 
-The editor has four tabs: **Design**, **Colors**, **Details**, and **Photo**. The header's **Appearance** menu selects **Classic red** or **Plum** for the editor. Classic red is the default, with red controls and a dark canvas; Plum uses violet controls and a light stone canvas. This browser preference is saved separately from signature drafts and does not change your palette, exported HTML, draft links, or session backups. New signatures still start with the **Plum signature palette**. In **Design**, use the arrows beside the layout or artwork dropdown to try the previous or next available choice. Each click moves one enabled entry, wraps at the ends, and creates one Undo step. The native dropdowns remain available for direct selection.
+The editor has four tabs: **Layout**, **Details**, **Photo**, and **Design**. Layout holds the format, orientation, template, and spacing controls. Design places Colors and Artwork beside one another. The header's **Appearance** menu selects **Classic red** or **Plum** for the editor. Classic red is the default, with red controls and a dark canvas; Plum uses violet controls and a light stone canvas. This browser preference is saved separately from signature drafts and does not change your palette, exported HTML, draft links, or session backups. New signatures still start with the **Plum signature palette**. Previous/next controls and native dropdowns remain available under the advanced layout and artwork options; each selection creates one Undo step.
 
-**Browse designs** opens the **Layouts** and **Artwork** library with larger previews and descriptions. Choosing a card returns to the preview. **Browse artwork** opens the artwork tab directly. Colors live in **Colors → Palettes**.
+**Change template** opens the **Layouts** and **Artwork** library with larger previews and descriptions. Choosing a card returns to the preview. **Browse all artwork** opens the artwork tab directly. Colors live in **Design → Colors → Palettes**.
 
 | Design | Composition |
 | --- | --- |
@@ -99,6 +99,19 @@ In **Layout**, choose a **Card format** independently of **Horizontal** or **Ver
 Saved signatures keep their existing composition and dimensions until a format is explicitly selected. Their missing gap setting still defaults to **20 px**. Switching formats preserves the photo, colors, spacing, template, and information so Undo or switching back can restore the other presentation. Preview scaling fits the editor to the screen without changing export dimensions.
 
 Switch to **Email**, then choose **Desktop** or **Mobile** to inspect the signature in a simulated message. Desktop fits within a message up to 780 px wide; Mobile uses up to 390 px, depending on available space. These controls change only the preview fit. Export dimensions still come from **Layout → Size & spacing**, and the preview width choice is not included in draft links or session backups. Actual email apps may display the signature differently.
+
+### Make a compact signature
+
+Start with **Layout → Size & spacing → Use compact email layout**. This starts at 560 px wide with balanced 24 px insets, a 96 px photo, a one-line name, 13 px contact text and bar separators. The height fits the content; longer details may need extra rows or width. It keeps your actual name, role, contacts, photo crop, colors, artwork and stored footer text, and preserves which contacts you have hidden. One Undo returns to your previous layout, including photo size and separators.
+
+- **Details → Name layout:** keep the saved name lines, join them into one line, or wrap the full name to fit. Your manual line breaks are retained when switching modes.
+- **Details → Contact layout:** use the template arrangement, stacked contacts, or inline contacts. Inline items move to additional rows when needed.
+- **Details → Contact separator:** choose None, a bar, dot, slash or dash between inline contacts. Separators stay inside each row. Click a contact label to hide or show that contact without deleting its value; the button indicates its current state.
+- **Details → Typography:** size the name, role, specialty, contacts and footer independently. Template follows the design; explicit sizes use pixels. Contacts can use sans serif or monospace.
+- **Layout → Size & spacing:** adjust line, text, contact and section spacing, plus card padding. Content arrangement places details above or beside contacts on a Single card. Wide cards use twice the width setting; minimum height can leave extra space beneath shorter content.
+- **Details → Footer & icons:** show or hide the footer without deleting it.
+
+**Reset text & spacing** returns typography and spacing to template values and keeps contact visibility and separators. Formatting settings travel with draft links and session backups and belong to the Design import group. If a selected size does not fit, adjust the highlighted setting, use wrapping, or widen the card.
 
 ## Add details and a photo
 

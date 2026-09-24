@@ -346,9 +346,18 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 
 /* Details keeps the original fields, with contact labels beside their inputs. */
 .field.contact-field{display:grid;grid-template-columns:86px minmax(0,1fr);gap:5px 11px;align-items:center}
-.contact-field label{justify-content:flex-start;gap:7px}
+.contact-field label{justify-content:flex-start;gap:0 7px;flex-wrap:wrap}
 .contact-field label img{flex:none}
 .contact-field .field-error{grid-column:1/-1}
+/* Contact labels double as show/hide toggles, keeping the label's appearance and column. */
+.contact-toggle{display:flex;align-items:center;gap:7px;min-width:0;min-height:40px;padding:0;border:0;background:none;color:var(--muted);font-size:14px;font-weight:500;line-height:1.4;text-align:left}
+.contact-toggle:hover{color:var(--ui-accent)}
+.contact-toggle-icon{display:grid;flex:none}
+.contact-toggle-icon>*{grid-area:1/1}
+.contact-toggle .contact-hidden-icon{display:none}
+.contact-toggle[aria-pressed="false"]{text-decoration:line-through}
+.contact-toggle[aria-pressed="false"] img{visibility:hidden}
+.contact-toggle[aria-pressed="false"] .contact-hidden-icon{display:block}
 #icons-disclosure .contact-icons-note{margin:16px 0 11px}
 
 /* Header action menus reuse the existing appearance-menu treatment. */
@@ -373,3 +382,16 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
   .export-menu,.editor-options{position:static}
   .export-options,.editor-options-content{max-height:60dvh}
 }
+
+/* Text and spacing controls reuse the existing field, disclosure and artwork slider styles. */
+#typography-disclosure .section-note{margin:0 0 14px}
+.compact-start{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:20px}
+.compact-start .button{max-width:100%;white-space:normal;text-align:left}
+.compact-start .field-note{margin:0}
+.compact-start .text-button{min-height:36px}
+.spacing-controls{margin-top:20px}
+.spacing-controls .range-field{margin-top:15px}
+.spacing-controls .range-field>label{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--muted)}
+.spacing-controls output{color:var(--muted);font-variant-numeric:tabular-nums}
+.spacing-controls input[type=range]{min-height:28px}
+.spacing-controls>.field-note{margin-top:12px}

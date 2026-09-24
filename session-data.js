@@ -17,8 +17,31 @@
     imageBackground:'transparent', selectedThemeId:'', themeName:''});
   var own = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
   var informationFields = Object.freeze(['nameLine1','nameLine2','title','subtitle','website','websiteLabel','email','phone','linkedin','location','tags','portraitData','portraitUrl']);
-  var designFields = Object.freeze(['width','height','cardGap','cardFormat','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize']);
+  var designFields = Object.freeze(['width','height','cardGap','cardFormat','layout','design','pattern','customPattern','customLayout','artworkPlacement','artworkScale','artworkOpacity','artworkFade','artworkFadeAngle','artworkFadeDirection','artworkFadeX','artworkFadeY','artworkPositionX','artworkPositionY','motifScale','motifPositionX','motifPositionY','accent','frontBackground','backBackground','websiteIcon','emailIcon','phoneIcon','linkedinIcon','locationIcon','imageBase','portraitShape','portraitSize',
+    'nameLayout','nameFontSize','titleFontSize','subtitleFontSize','contactFontSize','footerFontSize','lineSpacing','textSpacing','contactSpacing','sectionSpacing','contentPadding','singleArrangement','contactLayout','contactFont','footerVisible',
+    'contactSeparator','websiteVisible','emailVisible','phoneVisible','linkedinVisible','locationVisible']);
+  // Text, spacing and contact presentation controls are Design settings. Sizes
+  // use 0 for the template size, so 1 up to the minimum is rejected rather than
+  // clamped; contentPadding uses -1 for the template padding. Hiding a contact
+  // keeps its Information. Older files omit these fields entirely.
+  var formatChoices = Object.freeze({nameLayout:['template','single','wrap'], singleArrangement:['auto','rows','columns'],
+    contactLayout:['template','stacked','inline'], contactFont:['template','sans','mono'], footerVisible:['show','hide'],
+    contactSeparator:['none','bar','dot','slash','dash'], websiteVisible:['show','hide'], emailVisible:['show','hide'],
+    phoneVisible:['show','hide'], linkedinVisible:['show','hide'], locationVisible:['show','hide']});
+  var formatNumbers = Object.freeze({nameFontSize:[12,40,0], titleFontSize:[8,24,0], subtitleFontSize:[8,24,0], contactFontSize:[8,24,0],
+    footerFontSize:[8,24,0], lineSpacing:[80,200], textSpacing:[0,200], contactSpacing:[0,200], sectionSpacing:[0,200], contentPadding:[-1,48]});
   function fail(message) { throw new TypeError(message); }
+  function checkedFormat(key, value) {
+    var choices = formatChoices[key], range = formatNumbers[key];
+    if (choices) {
+      if (!choices.includes(value)) fail('Draft ' + key + ' must be one of: ' + choices.join(', ') + '.');
+      return;
+    }
+    if (typeof value !== 'number' || !Number.isInteger(value) || (value !== range[2] && (value < range[0] || value > range[1]))) {
+      fail('Draft ' + key + ' must be ' + (range.length > 2 ? range[2] + ' (template size) or ' : '') + 'a whole number from ' +
+        range[0] + (key === 'contentPadding' ? ' (template padding)' : '') + ' to ' + range[1] + '.');
+    }
+  }
   function object(value, label) {
     if (!value || typeof value !== 'object' || Array.isArray(value) ||
       Object.prototype.toString.call(value) !== '[object Object]') fail(label + ' must be a JSON object.');
@@ -42,6 +65,9 @@
   function checkedDraft(value) {
     object(value, 'Draft');
     var input = {};
+    Object.keys(formatChoices).concat(Object.keys(formatNumbers)).forEach(function (key) {
+      if (own(value, key)) checkedFormat(key, value[key]);
+    });
     Object.keys(core.defaults).forEach(function (key) {
       if (!own(value, key)) return;
       if (typeof value[key] !== typeof core.defaults[key] ||

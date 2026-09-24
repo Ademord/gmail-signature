@@ -38,6 +38,14 @@ const envelope = draft => ({
   format: 'signature-editor-session', version: 1, exportedAt: '2026-09-05T12:00:00.000Z',
   draft, themes: [savedTheme], ui: oldUI
 });
+// Fixed template defaults for text and spacing (compact editor contract v1)
+// and contact presentation (v2) fields added after these sessions were written.
+const formatDefaults = {
+  nameLayout: 'template', nameFontSize: 0, titleFontSize: 0, subtitleFontSize: 0, contactFontSize: 0, footerFontSize: 0,
+  lineSpacing: 100, textSpacing: 100, contactSpacing: 100, sectionSpacing: 100, contentPadding: -1,
+  singleArrangement: 'auto', contactLayout: 'template', contactFont: 'template', footerVisible: 'show',
+  contactSeparator: 'none', websiteVisible: 'show', emailVisible: 'show', phoneVisible: 'show', linkedinVisible: 'show', locationVisible: 'show'
+};
 
 test('a pre-studio 23-field session preserves every old field, theme provenance, and UI setting', () => {
   assert.equal(Object.keys(legacyDraft).length, 23);
@@ -56,6 +64,8 @@ test('a pre-studio 23-field session preserves every old field, theme provenance,
   });
   assert.equal(restored.draft.cardGap, 20);
   assert.equal(restored.draft.cardFormat, 'auto');
+  assert.deepEqual(Object.fromEntries(Object.keys(formatDefaults).map(key => [key, restored.draft[key]])), formatDefaults);
+  assert.equal(signature.render(restored.draft), signature.render(legacyDraft));
   const again = session.parse(session.serialize(restored));
   assert.deepEqual(again, restored);
   assert.match(signature.render(again.draft), /href="mailto:zoe@example.com"/);
@@ -71,7 +81,7 @@ test('every named design round-trips photo bytes, independent pattern, legacy de
       portraitUrl: 'https://example.com/cropped-photo.png?v=2', portraitShape: 'rounded', portraitSize: 96 };
     const input = { draft, themes: [savedTheme], ui: { ...oldUI, editorTab: 'photo' } };
     const text = session.serialize(input), restored = session.parse(text);
-    assert.deepEqual(restored, {...input, draft:{...draft, cardGap:20, cardFormat:'auto', artworkOpacity:100,artworkFade:'none',artworkFadeAngle:90,artworkFadeDirection:'normal',artworkFadeX:50,artworkFadeY:50}}, design);
+    assert.deepEqual(restored, {...input, draft:{...draft, cardGap:20, cardFormat:'auto', artworkOpacity:100,artworkFade:'none',artworkFadeAngle:90,artworkFadeDirection:'normal',artworkFadeX:50,artworkFadeY:50, ...formatDefaults}}, design);
     assert.equal(Buffer.byteLength(text) < 1024 * 1024, true);
     assert.ok(signature.render(restored.draft, { preview: true }).includes(photo), design);
     const email = signature.render(restored.draft);
